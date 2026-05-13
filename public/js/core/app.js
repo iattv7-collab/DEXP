@@ -1,9 +1,12 @@
 // public/js/core/app.js
 
 import { watchAuthState } from "../services/firebase/auth-service.js";
+import { LABELS } from "../config/labels.js";
 
 function initializeApp() {
-  console.log("DEXP initialized");
+  document.title = LABELS.appName;
+
+  console.log(`${LABELS.appName} initialized`);
 }
 
 watchAuthState((user) => {
