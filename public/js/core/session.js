@@ -1,29 +1,55 @@
 // public/js/core/session.js
 
-let currentUser = null;
-let currentProfile = null;
-let currentDealer = null;
-let enabledModules = [];
+const SESSION_KEY = "dexp_session";
+
+let currentSession = null;
 
 export function setSession({ user, profile, dealer, modules }) {
-  currentUser = user || null;
-  currentProfile = profile || null;
-  currentDealer = dealer || null;
-  enabledModules = modules || [];
+  currentSession = {
+    uid: user?.uid || null,
+    email: user?.email || profile?.email || "",
+    displayName: user?.displayName || profile?.displayName || "",
+    role: profile?.role || "pending",
+    dealerId: profile?.dealerId || "",
+    dealerName: dealer?.name || "",
+    modules: Array.isArray(modules) ? modules : [],
+    profile,
+    dealer
+  };
+
+  localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
 }
 
 export function getSession() {
-  return {
-    user: currentUser,
-    profile: currentProfile,
-    dealer: currentDealer,
-    modules: enabledModules
-  };
+  if (currentSession) {
+    return currentSession;
+  }
+
+  try {
+    currentSession = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  } catch (error) {
+    currentSession = null;
+  }
+
+  return currentSession;
 }
 
 export function clearSession() {
-  currentUser = null;
-  currentProfile = null;
-  currentDealer = null;
-  enabledModules = [];
+  currentSession = null;
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export function hasRole(role) {
+  const session = getSession();
+  return session?.role === role;
+}
+
+export function hasAnyRole(roles = []) {
+  const session = getSession();
+  return roles.includes(session?.role);
+}
+
+export function hasModule(moduleKey) {
+  const session = getSession();
+  return session?.modules?.includes(moduleKey);
 }

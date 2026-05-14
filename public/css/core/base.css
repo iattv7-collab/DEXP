@@ -1,20 +1,135 @@
 /* public/css/core/base.css */
 
+:root {
+  --blue: #0b3d91;
+  --teal: #00a8c6;
+  --bg: #f4f7fb;
+  --card: #ffffff;
+  --text: #102033;
+  --muted: #5f6b7a;
+  --border: #d9e2ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  background: #f5f7fa;
-  color: #1f2937;
+  margin: 0;
+  font-family: "Times New Roman", Times, serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
-.app-shell {
-  padding: 40px;
+#appHeader {
+  background: var(--blue);
+  color: white;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
-h1 {
-  font-size: 32px;
-  margin-bottom: 10px;
+#appHeader h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1;
 }
 
-p {
-  font-size: 16px;
+#appHeader p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  opacity: 0.95;
+}
+
+#appHeader nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+button {
+  font-family: "Times New Roman", Times, serif;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-size: 15px;
+  cursor: pointer;
+  background: var(--teal);
+  color: white;
+  font-weight: bold;
+}
+
+button:hover {
+  filter: brightness(0.95);
+}
+
+#logoutButton {
+  background: white;
+  color: var(--blue);
+}
+
+#dashboardPage {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 22px;
+}
+
+#dashboardContent {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 6px 18px rgba(10, 35, 66, 0.08);
+}
+
+#welcomeText {
+  margin: 0 0 18px;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+#modulesContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.dashboard-module-button {
+  min-height: 95px;
+  border-radius: 14px;
+  background: white;
+  color: var(--blue);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(10, 35, 66, 0.08);
+  font-size: 18px;
+  text-align: left;
+  padding: 18px;
+}
+
+.dashboard-module-button:hover {
+  border-color: var(--teal);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  #appHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  #appHeader nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #dashboardPage {
+    padding: 14px;
+  }
+
+  #modulesContainer {
+    grid-template-columns: 1fr;
+  }
 }

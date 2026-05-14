@@ -2,7 +2,9 @@
 
 import {
   doc,
-  getDoc
+  getDoc,
+  setDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
@@ -16,9 +18,18 @@ export async function getDealer(dealerId) {
 
   const snapshot = await getDoc(dealerRef);
 
-  if (!snapshot.exists()) {
-    return null;
+  if (snapshot.exists()) {
+    return snapshot.data();
   }
 
-  return snapshot.data();
+  const newDealer = {
+    id: dealerId,
+    name: "DEXP Demo Dealer",
+    active: true,
+    createdAt: serverTimestamp()
+  };
+
+  await setDoc(dealerRef, newDealer);
+
+  return newDealer;
 }

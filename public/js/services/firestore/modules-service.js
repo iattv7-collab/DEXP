@@ -2,10 +2,22 @@
 
 import {
   doc,
-  getDoc
+  getDoc,
+  setDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
+
+import {
+  MODULES,
+  CORE_MODULES
+} from "../../config/modules.js";
+
+const DEFAULT_ENABLED_MODULES = [
+  ...CORE_MODULES,
+  MODULES.MOVE_LOCATE
+];
 
 export async function getDealerModules(dealerId) {
   if (!dealerId) {
@@ -16,9 +28,17 @@ export async function getDealerModules(dealerId) {
 
   const snapshot = await getDoc(moduleRef);
 
-  if (!snapshot.exists()) {
-    return [];
+  if (snapshot.exists()) {
+    return snapshot.data().enabledModules || [];
   }
 
-  return snapshot.data().enabledModules || [];
+  const newModuleRegistry = {
+    dealerId,
+    enabledModules: DEFAULT_ENABLED_MODULES,
+    createdAt: serverTimestamp()
+  };
+
+  await setDoc(moduleRef, newModuleRegistry);
+
+  return DEFAULT_ENABLED_MODULES;
 }

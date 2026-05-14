@@ -2,9 +2,11 @@
 
 import { watchAuthState } from "../services/firebase/auth-service.js";
 import { LABELS } from "../config/labels.js";
+
 import { ensureUserProfile } from "../services/firestore/users-service.js";
 import { getDealer } from "../services/firestore/dealers-service.js";
 import { getDealerModules } from "../services/firestore/modules-service.js";
+
 import { setSession, clearSession } from "./session.js";
 
 function initializeApp() {
@@ -13,11 +15,19 @@ function initializeApp() {
   console.log(`${LABELS.appName} initialized`);
 }
 
-watchAuthState(async (user) => {
-  if (user) {
+async function loadUserSession(user) {
+  try {
     const profile = await ensureUserProfile(user);
 
+    if (!profile?.dealerId) {
+      throw new Error("Missing dealer assignment");
+    }
+
     const dealer = await getDealer(profile.dealerId);
+
+    if (!dealer) {
+      throw new Error("Dealer not found");
+    }
 
     const modules = await getDealerModules(profile.dealerId);
 
@@ -29,9 +39,23 @@ watchAuthState(async (user) => {
     });
 
     console.log("Logged in:", profile.email);
-    console.log("User role:", profile.role);
+    console.log("Role:", profile.role);
     console.log("Dealer:", profile.dealerId);
-    console.log("Enabled modules:", modules);
+    console.log("Modules:", modules);
+
+  } catch (error) {
+    console.error("Session initialization failed:", error);
+
+    clearSession();
+
+    window.location.href = "/pages/auth/login.html";
+  }
+}
+
+watchAuthState(async (user) => {
+
+  if (user) {
+    await loadUserSession(user);
   } else {
     clearSession();
 
@@ -39,4 +63,8 @@ watchAuthState(async (user) => {
   }
 
   initializeApp();
+
+  window.dispatchEvent(
+    new CustomEvent("dexp-session-ready")
+  );
 });

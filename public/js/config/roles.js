@@ -15,3 +15,8 @@ export const ROLES = {
 };
 
 export const DEFAULT_ROLE = ROLES.PENDING;
+
+export const SETUP_ADMIN_EMAILS = [
+  "iattv7@gmail.com",
+  "777mlvl@gmail.com"
+];
