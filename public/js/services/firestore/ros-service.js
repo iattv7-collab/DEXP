@@ -9,7 +9,6 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   limit,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -159,11 +158,6 @@ export async function getDealerROs() {
       ROS_FIELDS.dealerId,
       "==",
       session.dealerId
-    ),
-
-    orderBy(
-      ROS_FIELDS.createdAt,
-      "desc"
     ),
 
     limit(100)
