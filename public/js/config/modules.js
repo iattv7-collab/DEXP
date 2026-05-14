@@ -17,7 +17,7 @@ export const MODULES = {
 export const MODULE_CONFIG = {
   [MODULES.MASTER_RO]: {
     label: "Master RO",
-    route: "/pages/master-ro/master-ro.html",
+    route: "/pages/master-ro/index.html",
     icon: "table_chart",
     adminOnly: true
   },
