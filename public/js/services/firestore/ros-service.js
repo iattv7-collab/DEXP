@@ -22,7 +22,7 @@ import { ROS_STATUS } from "../../config/ros-statuses.js";
 const ROS_COLLECTION = "ros";
 const ACTIVITY_LOG_COLLECTION = "activityLog";
 
-export async function createRO(data = {}) {
+export async function createRO(data = {}, options = {}) {
   const session = requireDealerSession();
 
   const roRef = doc(collection(db, ROS_COLLECTION));
@@ -55,9 +55,9 @@ export async function createRO(data = {}) {
   await setDoc(roRef, roData);
 
   await addROActivity(roRef.id, {
-    eventType: "ro_created",
-    module: "master-ro",
-    message: "RO created",
+    eventType: options.eventType || "ro_created",
+    module: options.module || "master-ro",
+    message: options.message || "RO created",
     after: roData
   });
 

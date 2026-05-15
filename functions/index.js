@@ -1,32 +1,56 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+const {onRequest} = require("firebase-functions/v2/https");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+const vision = require("@google-cloud/vision");
+const cors = require("cors")({origin: true});
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+setGlobalOptions({
+  maxInstances: 10,
+});
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+const visionClient = new vision.ImageAnnotatorClient();
+
+exports.scanRO = onRequest(async (req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({
+          error: "Method not allowed",
+        });
+      }
+
+      const imageBase64 = req.body && req.body.image;
+
+      if (!imageBase64) {
+        return res.status(400).json({
+          error: "Missing image",
+        });
+      }
+
+      const request = {
+        image: {
+          content: imageBase64,
+        },
+      };
+
+      const visionResponse = await visionClient.textDetection(request);
+      const result = visionResponse[0];
+      const detections = result.textAnnotations || [];
+
+      const rawText = detections[0] && detections[0].description ?
+        detections[0].description :
+        "";
+
+      return res.json({
+        success: true,
+        rawText: rawText,
+      });
+    } catch (error) {
+      console.error("scanRO failed:", error);
+
+      return res.status(500).json({
+        error: "OCR failed",
+      });
+    }
+  });
+});

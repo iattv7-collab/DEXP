@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -16,6 +17,7 @@ import {
 
 const DEFAULT_ENABLED_MODULES = [
   ...CORE_MODULES,
+  MODULES.SCANNER_RO,
   MODULES.MOVE_LOCATE
 ];
 
@@ -29,7 +31,24 @@ export async function getDealerModules(dealerId) {
   const snapshot = await getDoc(moduleRef);
 
   if (snapshot.exists()) {
-    return snapshot.data().enabledModules || [];
+    const existingModules =
+      snapshot.data().enabledModules || [];
+
+    const mergedModules = Array.from(
+      new Set([
+        ...existingModules,
+        ...DEFAULT_ENABLED_MODULES
+      ])
+    );
+
+    if (mergedModules.length !== existingModules.length) {
+      await updateDoc(moduleRef, {
+        enabledModules: mergedModules,
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    return mergedModules;
   }
 
   const newModuleRegistry = {

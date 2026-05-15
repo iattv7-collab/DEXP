@@ -1,6 +1,7 @@
 // public/js/config/modules.js
 
 export const MODULES = {
+  SCANNER_RO: "scanner-ro",
   MASTER_RO: "master-ro",
   RO_TRACKER: "ro-tracker",
   MOVE_LOCATE: "move-locate",
@@ -15,6 +16,12 @@ export const MODULES = {
 };
 
 export const MODULE_CONFIG = {
+  [MODULES.SCANNER_RO]: {
+    label: "Scanner RO",
+    route: "/pages/scanner-ro/index.html",
+    icon: "document_scanner"
+  },
+
   [MODULES.MASTER_RO]: {
     label: "Master RO",
     route: "/pages/master-ro/index.html",
