@@ -5,7 +5,8 @@ import { protectRoute } from "/js/core/router.js";
 
 import {
     createRO,
-    getDealerROs
+    updateRO,
+    watchDealerROs
 } from "/js/services/firestore/ros-service.js";
 
 import { MODULES } from "/js/config/modules.js";
@@ -28,6 +29,7 @@ const createTestRoButton = document.getElementById("createTestRoButton");
 const roSearchInput = document.getElementById("roSearchInput");
 
 let currentROs = [];
+let unsubscribeROs = null;
 
 window.addEventListener("dexp-session-ready", () => {
     initializeMasterRO();
@@ -48,7 +50,17 @@ async function initializeMasterRO() {
         renderROs(filterROs(roSearchInput.value));
     });
 
-    await loadROs();
+    roList.addEventListener("click", async (event) => {
+        const button = event.target.closest(".js-status-test");
+
+        if (!button) {
+            return;
+        }
+
+        await handleCheckIn(button.dataset.roId);
+    });
+
+    startROListener();
 }
 
 async function createTestRO() {
@@ -65,10 +77,9 @@ async function createTestRO() {
         [ROS_FIELDS.scanSource]: "manual-test"
     });
 
-    await loadROs();
 }
 
-async function loadROs() {
+function startROListener() {
     roList.innerHTML = `
     <tr>
       <td colspan="${MASTER_RO_COLUMNS.length}">
@@ -77,9 +88,33 @@ async function loadROs() {
     </tr>
   `;
 
-    currentROs = await getDealerROs();
+    if (unsubscribeROs) {
+        unsubscribeROs();
+    }
 
-    renderROs(currentROs);
+    unsubscribeROs = watchDealerROs((ros) => {
+        currentROs = ros;
+
+        renderROs(filterROs(roSearchInput.value));
+    });
+}
+
+async function handleCheckIn(roId) {
+    if (!roId) {
+        return;
+    }
+
+    await updateRO(
+        roId,
+        {
+            [ROS_FIELDS.status]: "checked-in"
+        },
+        {
+            eventType: "status_changed",
+            module: "master-ro",
+            message: "Status changed to checked-in"
+        }
+    );
 }
 
 function filterROs(searchValue = "") {
@@ -182,8 +217,12 @@ function getColumnValue(ro, column) {
     if (column.key === "actions") {
         return `
       <div class="action-button-row">
-        <button class="small-button secondary" type="button">
-          Edit
+        <button
+          class="small-button secondary js-status-test"
+          type="button"
+          data-ro-id="${ro.id}"
+        >
+          Check In
         </button>
 
         <button class="small-button secondary" type="button">

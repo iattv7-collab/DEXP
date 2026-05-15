@@ -10,6 +10,7 @@ import {
   query,
   where,
   limit,
+  onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -119,6 +120,29 @@ export async function getDealerROs() {
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => doc.data());
+}
+
+export function watchDealerROs(callback) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    callback([]);
+    return () => { };
+  }
+
+  const rosRef = collection(db, ROS_COLLECTION);
+
+  const q = query(
+    rosRef,
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
+    limit(100)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const ros = snapshot.docs.map((doc) => doc.data());
+
+    callback(ros);
+  });
 }
 
 export async function addROActivity(roId, activity = {}) {
