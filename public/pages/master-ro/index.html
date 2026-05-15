@@ -12,16 +12,41 @@
 </head>
 
 <body>
-  <main id="masterRoPage">
-    <section id="masterRoContent">
-      <h2>Master RO</h2>
+  <main id="masterRoPage" class="page-shell full-page">
 
-      <button id="createTestRoButton" type="button">
-        Create Test RO
-      </button>
+    <section class="page-card">
 
-      <section id="roList"></section>
+      <div class="page-title-row">
+        <div>
+          <h2>Master RO</h2>
+          <p>All active repair orders for this dealer.</p>
+        </div>
+
+        <button id="createTestRoButton" type="button">
+          Create Test RO
+        </button>
+      </div>
+
+      <div class="toolbar-row">
+        <input
+          id="roSearchInput"
+          type="search"
+          placeholder="Search RO, tag, VIN, customer, vehicle, status, or location"
+        />
+      </div>
+
+      <section class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr id="masterRoTableHead"></tr>
+          </thead>
+
+          <tbody id="roList"></tbody>
+        </table>
+      </section>
+
     </section>
+
   </main>
 
   <script type="module" src="/js/core/app.js"></script>
