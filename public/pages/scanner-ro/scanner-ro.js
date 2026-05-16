@@ -19,13 +19,11 @@ const imagePreview = document.getElementById("imagePreview");
 const roNumberInput = document.getElementById("roNumberInput");
 const tagNumberInput = document.getElementById("tagNumberInput");
 const vinInput = document.getElementById("vinInput");
-const yearInput = document.getElementById("yearInput");
-const makeInput = document.getElementById("makeInput");
-const modelInput = document.getElementById("modelInput");
-const colorInput = document.getElementById("colorInput");
 const customerNameInput = document.getElementById("customerNameInput");
 const customerPhoneInput = document.getElementById("customerPhoneInput");
-
+const advisorNameInput = document.getElementById("advisorNameInput");
+const advisorNumberInput = document.getElementById("advisorNumberInput");
+const ocrDebugText = document.getElementById("ocrDebugText");
 const fillTestDataButton = document.getElementById("fillTestDataButton");
 const saveRoButton = document.getElementById("saveRoButton");
 const scannerMessage = document.getElementById("scannerMessage");
@@ -84,12 +82,11 @@ async function handleROScan(event) {
         roNumberInput.value = result.roNumber || "";
         tagNumberInput.value = result.tagNumber || "";
         vinInput.value = result.vin || "";
-        yearInput.value = result.year || "";
-        makeInput.value = result.make || "";
-        modelInput.value = result.model || "";
-        colorInput.value = result.color || "";
         customerNameInput.value = result.customerName || "";
         customerPhoneInput.value = result.customerPhone || "";
+        advisorNameInput.value = result.advisorName || "";
+        advisorNumberInput.value = result.advisorNumber || "";
+        ocrDebugText.value = result.rawOcrText || "";
 
         showMessage("RO scan complete.");
     } catch (error) {
@@ -103,12 +100,10 @@ function fillTestData() {
     roNumberInput.value = `RO-${Date.now()}`;
     tagNumberInput.value = `T-${Date.now().toString().slice(-4)}`;
     vinInput.value = "WP0AA2A90RS123456";
-    yearInput.value = "2024";
-    makeInput.value = "Porsche";
-    modelInput.value = "911";
-    colorInput.value = "White";
     customerNameInput.value = "Test Customer";
     customerPhoneInput.value = "555-555-5555";
+    advisorNameInput.value = "";
+    advisorNumberInput.value = "";
 
     showMessage("Test data filled.");
 }
@@ -134,13 +129,11 @@ async function saveRO() {
                 [ROS_FIELDS.roNumber]: roNumber,
                 [ROS_FIELDS.tagNumber]: tagNumber,
                 [ROS_FIELDS.vin]: vin,
-                [ROS_FIELDS.year]: yearInput.value.trim(),
-                [ROS_FIELDS.make]: makeInput.value.trim(),
-                [ROS_FIELDS.model]: modelInput.value.trim(),
-                [ROS_FIELDS.color]: colorInput.value.trim(),
                 [ROS_FIELDS.customerName]: customerNameInput.value.trim(),
                 [ROS_FIELDS.customerPhone]: customerPhoneInput.value.trim(),
-                [ROS_FIELDS.scanSource]: "scanner-ro-manual-test"
+                [ROS_FIELDS.advisorName]: advisorNameInput.value.trim(),
+                [ROS_FIELDS.advisorNumber]: advisorNumberInput.value.trim(),
+                [ROS_FIELDS.scanSource]: "scanner-ro"
             },
             {
                 eventType: "scanned_ro_created",
@@ -165,13 +158,12 @@ function clearForm() {
     roNumberInput.value = "";
     tagNumberInput.value = "";
     vinInput.value = "";
-    yearInput.value = "";
-    makeInput.value = "";
-    modelInput.value = "";
-    colorInput.value = "";
     customerNameInput.value = "";
     customerPhoneInput.value = "";
+    advisorNameInput.value = "";
+    advisorNumberInput.value = "";
 
+    ocrDebugText.value = "";
     roImageInput.value = "";
     imagePreview.removeAttribute("src");
     imagePreviewWrap.classList.add("hidden");

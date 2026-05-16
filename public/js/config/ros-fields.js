@@ -30,6 +30,9 @@ export const ROS_FIELDS = {
   techId: "techId",
   techName: "techName",
 
+  // advisor  
+  advisorNumber: "advisorNumber",
+
   // Status
   status: "status",
 

@@ -2,104 +2,98 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Scanner RO</title>
+    <title>Scanner RO</title>
 
-  <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
 </head>
 
 <body>
-  <main id="scannerRoPage" class="page-shell">
+    <main id="scannerRoPage" class="page-shell">
 
-    <section class="page-card">
+        <section class="page-card">
 
-      <div class="page-title-row">
-        <div>
-          <h2>Scanner RO</h2>
-          <p>Scan or upload a repair order to create a new RO.</p>
-        </div>
-      </div>
+            <div class="page-title-row">
+                <div>
+                    <h2>Scanner RO</h2>
+                    <p>Scan or upload a repair order to create a new RO.</p>
+                </div>
+            </div>
 
-      <div class="toolbar-row">
-        <input
-          id="roImageInput"
-          type="file"
-          accept="image/*"
-          capture="environment"
-        />
-      </div>
+            <div class="toolbar-row">
+                <input id="roImageInput" type="file" accept="image/*" capture="environment" />
+            </div>
 
-      <section id="imagePreviewWrap" class="scanner-preview hidden">
-        <img id="imagePreview" alt="RO preview" />
-      </section>
+            <section id="imagePreviewWrap" class="scanner-preview hidden">
+                <img id="imagePreview" alt="RO preview" />
+            </section>
 
-      <section class="form-grid">
-        <label>
-          RO Number
-          <input id="roNumberInput" type="text" />
-        </label>
+            <section class="form-grid">
+                <label>
+                    RO Number
+                    <input id="roNumberInput" type="text" />
+                </label>
 
-        <label>
-          Tag Number
-          <input id="tagNumberInput" type="text" />
-        </label>
+                <label>
+                    Tag Number
+                    <input id="tagNumberInput" type="text" />
+                </label>
 
-        <label>
-          VIN
-          <input id="vinInput" type="text" />
-        </label>
+                <label>
+                    VIN
+                    <input id="vinInput" type="text" />
+                </label>
 
-        <label>
-          Year
-          <input id="yearInput" type="text" />
-        </label>
+                <label>
+                    Customer Name
+                    <input id="customerNameInput" type="text" />
+                </label>
 
-        <label>
-          Make
-          <input id="makeInput" type="text" />
-        </label>
+                <label>
+                    Customer Phone
+                    <input id="customerPhoneInput" type="text" />
+                </label>
 
-        <label>
-          Model
-          <input id="modelInput" type="text" />
-        </label>
+                <label>
+                    Advisor Name
+                    <input id="advisorNameInput" type="text" />
+                </label>
 
-        <label>
-          Color
-          <input id="colorInput" type="text" />
-        </label>
+                <label>
+                    Advisor Number
+                    <input id="advisorNumberInput" type="text" />
+                </label>
 
-        <label>
-          Customer Name
-          <input id="customerNameInput" type="text" />
-        </label>
+            </section>
 
-        <label>
-          Customer Phone
-          <input id="customerPhoneInput" type="text" />
-        </label>
-      </section>
+            <div class="action-row">
+                <button id="fillTestDataButton" type="button">
+                    Fill Test Data
+                </button>
 
-      <div class="action-row">
-        <button id="fillTestDataButton" type="button">
-          Fill Test Data
-        </button>
+                <button id="saveRoButton" type="button">
+                    Save RO
+                </button>
+            </div>
 
-        <button id="saveRoButton" type="button">
-          Save RO
-        </button>
-      </div>
+            <p id="scannerMessage" class="page-message"></p>
 
-      <p id="scannerMessage" class="page-message"></p>
+            <section class="ocr-debug-section">
+                <h3>OCR Debug Text</h3>
 
-    </section>
+                <textarea id="ocrDebugText" class="ocr-debug-text" readonly></textarea>
+            </section>
 
-  </main>
+        </section>
 
-  <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/scanner-ro/scanner-ro.js"></script>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/pages/scanner-ro/scanner-ro.js"></script>
 </body>
+
 </html>
