@@ -1,0 +1,217 @@
+<!-- public/pages/move-locate/move-locate.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Move & Locate</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <main id="moveLocatePage" class="full-page">
+
+    <section class="page-shell full-page">
+
+      <div class="page-title-row">
+        <div>
+          <h2>Move & Locate</h2>
+        </div>
+      </div>
+
+      <section class="tool-card">
+
+        <h3>Find Vehicle / Move Vehicle</h3>
+
+        <p class="tool-help">
+          Search by RO, Tag, or VIN
+        </p>
+
+        <div class="tool-row">
+
+          <input id="vehicleSearchInput" type="text" placeholder="RO # or Tag #" />
+
+          <button id="searchModeToggleButton" type="button" class="small-button secondary">
+            By Tag
+          </button>
+
+          <button id="searchVehicleButton" type="button">
+            Find
+          </button>
+
+        </div>
+
+      </section>
+
+      <section class="tool-card">
+
+        <h3>Vehicle Preview</h3>
+
+        <p id="moveLocateMessage" class="tool-message">
+          Enter RO # or Tag #.
+        </p>
+
+        <div id="vehicleResultCard" class="tool-preview">
+
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+
+            <div class="tool-preview-grid">
+
+              <div>
+                <strong>TAG</strong>
+                <span id="previewTag">—</span>
+              </div>
+
+              <div>
+                <strong>RO</strong>
+                <span id="previewRO">—</span>
+              </div>
+
+              <div>
+                <strong>Location:</strong>
+                <span id="previewLocation"></span>
+              </div>
+
+              <div>
+                <strong>Status:</strong>
+                <span id="previewStatus"></span>
+              </div>
+
+              <div>
+                <strong>Blocked by:</strong>
+                <span id="previewBlockedBy">—</span>
+              </div>
+
+            </div>
+
+            <button id="detailsButton" type="button" class="small-button secondary">
+              View Details
+            </button>
+
+          </div>
+
+          <div id="vehicleDetailsPanel" class="tool-details hidden">
+
+            <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
+
+            <div><b>VIN:</b> <span id="detailVIN"></span></div>
+
+            <div><b>Model:</b> <span id="detailVehicle"></span></div>
+
+            <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
+
+            <div><b>Started By:</b> <span id="detailMoveStartedBy"></span></div>
+
+            <div><b>Started At:</b> <span id="detailMoveStartedAt"></span></div>
+
+          </div>
+
+        </div>
+
+        <div id="vehicleDetailsPanel" class="tool-details hidden">
+
+          <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
+
+          <div><b>VIN:</b> <span id="detailVIN"></span></div>
+
+          <div><b>Model:</b> <span id="detailVehicle"></span></div>
+
+          <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
+
+          <div><b>Started By:</b> <span id="detailMoveStartedBy"></span></div>
+
+          <div><b>Started At:</b> <span id="detailMoveStartedAt"></span></div>
+
+        </div>
+
+      </section>
+
+      <section class="tool-card">
+
+        <h3>Move Vehicle</h3>
+
+        <p class="tool-help">
+          When the vehicle physically starts moving, mark it as moving.
+        </p>
+
+        <div class="tool-row">
+
+          <button id="startMoveButton" type="button">
+            Start Move
+          </button>
+
+          <button id="cancelMoveButton" type="button" class="small-button secondary hidden">
+            Cancel Move
+          </button>
+
+        </div>
+
+        <div id="finalLocationPanel" class="hidden">
+
+          <div class="tool-details-grid">
+
+            <label>
+              Final Location
+              <input id="currentLocationInput" type="text" placeholder="Example: Main Lot A12" />
+            </label>
+
+          </div>
+
+          <div class="tool-row">
+            <button id="saveLocationButton" type="button">
+              Save Final Location
+            </button>
+          </div>
+
+        </div>
+
+      </section>
+
+      <section class="tool-card">
+
+        <h3>Vehicles Currently Moving</h3>
+
+        <p class="tool-help">
+          Live list of vehicles marked as moving and waiting for final location.
+        </p>
+
+        <div class="table-wrap">
+
+          <table class="data-table">
+
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>RO</th>
+                <th>Current Location</th>
+                <th>Started By</th>
+                <th>Started At</th>
+              </tr>
+            </thead>
+
+            <tbody id="movingVehiclesTableBody">
+              <tr>
+                <td colspan="5">No moving vehicles.</td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/move-locate/move-locate.js"></script>
+</body>
+
+</html>

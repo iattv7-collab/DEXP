@@ -24,23 +24,23 @@ body {
 #appHeader {
   background: var(--blue);
   color: white;
-  padding: 14px 18px;
+  padding: 12px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  gap: 10px;
+  box-shadow: none;
 }
 
 #appHeader h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
 }
 
 #appHeader p {
-  margin: 6px 0 0;
-  font-size: 15px;
+  margin: 4px 0 0;
+  font-size: 14px;
   opacity: 0.95;
 }
 
@@ -52,10 +52,10 @@ body {
 
 button {
   font-family: "Times New Roman", Times, serif;
-  border: none;
-  border-radius: 8px;
-  padding: 9px 13px;
-  font-size: 15px;
+  border: 1px solid #bfc7d1;
+  border-radius: 7px;
+  padding: 7px 11px;
+  font-size: 14px;
   cursor: pointer;
   background: var(--teal);
   color: white;
@@ -74,44 +74,44 @@ button:hover {
 #dashboardPage {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 22px;
+  padding: 14px;
 }
 
 #dashboardContent {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  box-shadow: 0 6px 18px rgba(10, 35, 66, 0.08);
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: none;
 }
 
 #welcomeText {
-  margin: 0 0 18px;
-  font-size: 18px;
+  margin: 0 0 12px;
+  font-size: 16px;
   color: var(--muted);
 }
 
 #modulesContainer {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
 }
 
 .dashboard-module-button {
-  min-height: 95px;
-  border-radius: 14px;
+  min-height: 72px;
+  border-radius: 10px;
   background: white;
   color: var(--blue);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(10, 35, 66, 0.08);
-  font-size: 18px;
+  border: 1px solid #cfd6dd;
+  box-shadow: none;
+  font-size: 16px;
   text-align: left;
-  padding: 18px;
+  padding: 12px;
 }
 
 .dashboard-module-button:hover {
   border-color: var(--teal);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 @media (max-width: 600px) {
@@ -126,7 +126,7 @@ button:hover {
   }
 
   #dashboardPage {
-    padding: 14px;
+    padding: 10px;
   }
 
   #modulesContainer {
@@ -139,55 +139,55 @@ button:hover {
 .page-shell {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 22px;
+  padding: 14px;
 }
 
 .page-card {
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  box-shadow: 0 6px 18px rgba(10, 35, 66, 0.08);
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: none;
 }
 
 .page-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .page-title-row h2 {
   margin: 0;
   color: var(--blue);
-  font-size: 26px;
+  font-size: 22px;
 }
 
 .page-title-row p {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .toolbar-row {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .toolbar-row input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: "Times New Roman", Times, serif;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .table-wrap {
   width: 100%;
   max-height: 62vh;
   overflow: auto;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .data-table {
@@ -201,15 +201,15 @@ button:hover {
   background: var(--blue);
   color: white;
   text-align: left;
-  padding: 12px;
-  font-size: 15px;
+  padding: 9px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
 .data-table td {
   border-bottom: 1px solid var(--border);
-  padding: 12px;
-  font-size: 15px;
+  padding: 8px;
+  font-size: 14px;
   vertical-align: top;
   white-space: nowrap;
 }
@@ -220,17 +220,17 @@ button:hover {
 
 .status-pill {
   display: inline-block;
-  padding: 5px 9px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: #eef6fb;
   color: var(--blue);
   font-weight: bold;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 @media (max-width: 700px) {
   .page-shell {
-    padding: 14px;
+    padding: 10px;
   }
 
   .page-title-row {
@@ -257,15 +257,15 @@ button:hover {
 
   .data-table tr {
     border: 1px solid var(--border);
-    border-radius: 14px;
-    margin-bottom: 12px;
-    padding: 10px;
-    box-shadow: 0 4px 12px rgba(10, 35, 66, 0.06);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    box-shadow: none;
   }
 
   .data-table td {
     border-bottom: none;
-    padding: 7px 4px;
+    padding: 5px 2px;
   }
 
   .data-table td::before {
@@ -281,9 +281,9 @@ button:hover {
 }
 
 .small-button {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -332,7 +332,7 @@ button:hover {
   left: 0;
   z-index: 3;
   background: white;
-  box-shadow: 2px 0 4px rgba(10, 35, 66, 0.08);
+  box-shadow: none;
 }
 
 .data-table th:first-child {
@@ -347,7 +347,7 @@ button:hover {
   right: 0;
   z-index: 3;
   background: white;
-  box-shadow: -2px 0 4px rgba(10, 35, 66, 0.08);
+  box-shadow: none;
 }
 
 .data-table th:last-child {
@@ -358,44 +358,44 @@ button:hover {
 
 .action-button-row {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   align-items: center;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .form-grid label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 15px;
+  gap: 4px;
+  font-size: 14px;
   color: var(--text);
 }
 
 .form-grid input {
-  padding: 11px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: "Times New Roman", Times, serif;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .action-row {
   display: flex;
-  gap: 12px;
-  margin-top: 22px;
+  gap: 10px;
+  margin-top: 14px;
   flex-wrap: wrap;
 }
 
 .scanner-preview {
-  margin-top: 18px;
+  margin-top: 12px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 10px;
   overflow: hidden;
   background: white;
   max-width: 700px;
@@ -407,9 +407,10 @@ button:hover {
 }
 
 .page-message {
-  margin-top: 18px;
+  margin-top: 10px;
   color: var(--blue);
   font-weight: bold;
+  font-size: 14px;
 }
 
 .hidden {
@@ -419,4 +420,77 @@ button:hover {
 .field-error {
   border: 2px solid #c00000 !important;
   background: #ffecec !important;
+}
+
+/* Compact operational tool UI */
+
+.tool-card {
+  background: var(--card);
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.tool-card h3 {
+  margin: 0 0 5px;
+  color: var(--blue);
+  font-size: 16px;
+}
+
+.tool-help {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tool-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tool-row input {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.tool-preview {
+  border: 1px solid #d4dbe3;
+  border-radius: 10px;
+  padding: 8px;
+  background: white;
+}
+
+.tool-preview-grid {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.tool-preview-grid div {
+  margin-bottom: 3px;
+}
+
+.tool-message {
+  margin: 6px 0 8px;
+  color: #008a2e;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+.tool-details {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.tool-details div {
+  margin-bottom: 3px;
 }
