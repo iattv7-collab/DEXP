@@ -5,6 +5,9 @@ import { protectRoute } from "/js/core/router.js";
 import { scanROImage } from "/js/services/ocr/ro-ocr-service.js";
 import { createRO } from "/js/services/firestore/ros-service.js";
 
+import { decodeVIN }
+    from "/js/services/vin/vin-decoder-service.js";
+
 import { MODULES } from "/js/config/modules.js";
 import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
@@ -115,6 +118,20 @@ async function saveRO() {
     const tagNumber = tagNumberInput.value.trim();
     const vin = vinInput.value.trim();
 
+    let decodedVehicle = {
+        year: "",
+        make: "",
+        model: ""
+    };
+
+    if (vin.length === 17) {
+        try {
+            decodedVehicle = await decodeVIN(vin);
+        } catch (error) {
+            console.error("VIN decode failed:", error);
+        }
+    }
+
     if (!roNumber && !tagNumber && !vin) {
         showMessage("Enter at least RO, tag, or VIN before saving.");
         return;
@@ -129,6 +146,9 @@ async function saveRO() {
                 [ROS_FIELDS.roNumber]: roNumber,
                 [ROS_FIELDS.tagNumber]: tagNumber,
                 [ROS_FIELDS.vin]: vin,
+                [ROS_FIELDS.year]: decodedVehicle.year,
+                [ROS_FIELDS.make]: decodedVehicle.make,
+                [ROS_FIELDS.model]: decodedVehicle.model,
                 [ROS_FIELDS.customerName]: customerNameInput.value.trim(),
                 [ROS_FIELDS.customerPhone]: customerPhoneInput.value.trim(),
                 [ROS_FIELDS.advisorName]: advisorNameInput.value.trim(),
