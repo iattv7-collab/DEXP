@@ -113,22 +113,6 @@
 
         </div>
 
-        <div id="vehicleDetailsPanel" class="tool-details hidden">
-
-          <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
-
-          <div><b>VIN:</b> <span id="detailVIN"></span></div>
-
-          <div><b>Model:</b> <span id="detailVehicle"></span></div>
-
-          <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
-
-          <div><b>Started By:</b> <span id="detailMoveStartedBy"></span></div>
-
-          <div><b>Started At:</b> <span id="detailMoveStartedAt"></span></div>
-
-        </div>
-
       </section>
 
       <section class="tool-card">
@@ -153,19 +137,41 @@
 
         <div id="finalLocationPanel" class="hidden">
 
+          <div class="tool-help" style="margin-bottom:10px;">
+            Save the final location only when the vehicle has arrived.
+          </div>
+
           <div class="tool-details-grid">
 
             <label>
-              Final Location
-              <input id="currentLocationInput" type="text" placeholder="Example: Main Lot A12" />
+              Moved To
+              <select id="moveAreaSelect">
+                <option value="">Select...</option>
+                <option value="main">Main Store</option>
+                <option value="annex">Annex</option>
+              </select>
+            </label>
+
+            <label>
+              Location / Spot
+              <select id="finalLocationSelect">
+                <option value="">Select area first...</option>
+              </select>
+            </label>
+
+            <label>
+              Blocking Tag
+              <input id="blocksTagInput" type="text" placeholder="Optional" />
             </label>
 
           </div>
 
           <div class="tool-row">
+
             <button id="saveLocationButton" type="button">
-              Save Final Location
+              Save Location
             </button>
+
           </div>
 
         </div>

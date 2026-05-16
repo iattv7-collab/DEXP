@@ -12,6 +12,11 @@ import {
 import { MODULES } from "/js/config/modules.js";
 import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
+import {
+  getActiveLocations,
+  groupLocationsByArea
+} from "/js/services/firestore/locations-service.js";
+
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE]
 });
@@ -40,7 +45,9 @@ const detailAdvisor = document.getElementById("detailAdvisor");
 const startMoveButton = document.getElementById("startMoveButton");
 const cancelMoveButton = document.getElementById("cancelMoveButton");
 const finalLocationPanel = document.getElementById("finalLocationPanel");
-const currentLocationInput = document.getElementById("currentLocationInput");
+const moveAreaSelect = document.getElementById("moveAreaSelect");
+const finalLocationSelect = document.getElementById("finalLocationSelect");
+const blocksTagInput = document.getElementById("blocksTagInput");
 const saveLocationButton = document.getElementById("saveLocationButton");
 
 const movingVehiclesTableBody = document.getElementById("movingVehiclesTableBody");
@@ -48,6 +55,11 @@ const movingVehiclesTableBody = document.getElementById("movingVehiclesTableBody
 let currentRO = null;
 let lastROs = [];
 let searchMode = "tag";
+
+let groupedLocations = {
+  main: [],
+  annex: []
+};
 
 window.addEventListener("dexp-session-ready", () => {
   initializeMoveLocate();
@@ -88,6 +100,59 @@ function initializeMoveLocate() {
   saveLocationButton.addEventListener("click", async () => {
     await saveFinalLocation();
   });
+
+  async function loadLocationCatalog() {
+    try {
+      const locations = await getActiveLocations();
+
+      groupedLocations =
+        groupLocationsByArea(locations);
+
+      moveAreaSelect.addEventListener(
+        "change",
+        populateLocationDropdown
+      );
+
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function populateLocationDropdown() {
+    const area = moveAreaSelect.value;
+
+    finalLocationSelect.innerHTML = "";
+
+    const placeholder =
+      document.createElement("option");
+
+    placeholder.value = "";
+    placeholder.textContent =
+      "Select location...";
+
+    finalLocationSelect.appendChild(
+      placeholder
+    );
+
+    if (!area) {
+      return;
+    }
+
+    const locations =
+      groupedLocations[area] || [];
+
+    locations.forEach((location) => {
+      const option =
+        document.createElement("option");
+
+      option.value = location.label;
+      option.textContent = location.label;
+
+      finalLocationSelect.appendChild(option);
+    });
+  }
+
+  loadLocationCatalog();
 
   loadMovingVehicles();
 }
@@ -193,8 +258,6 @@ function renderSelectedVehicle(ro) {
 
   document.getElementById("detailMoveStartedAt").textContent =
     formatDateTime(ro.moveStartedAt);
-
-  currentLocationInput.value = location;
 
   vehicleResultCard.classList.remove("hidden");
 
@@ -313,10 +376,17 @@ async function saveFinalLocation() {
     return;
   }
 
-  const currentLocation = currentLocationInput.value.trim();
+  const selectedArea = moveAreaSelect.value;
+  const currentLocation = finalLocationSelect.value.trim();
+  const blockingTag = blocksTagInput.value.trim();
+
+  if (!selectedArea) {
+    showMessage("Select Main Store or Annex.");
+    return;
+  }
 
   if (!currentLocation) {
-    showMessage("Enter final location.");
+    showMessage("Select final location.");
     return;
   }
 
@@ -325,6 +395,8 @@ async function saveFinalLocation() {
       currentRO.id,
       {
         [ROS_FIELDS.currentLocation]: currentLocation,
+        currentLocationArea: selectedArea,
+        blockingTag: blockingTag,
         locationUpdatedAt: Date.now(),
         moveStatus: "",
         moveStartedAt: null,
@@ -341,11 +413,17 @@ async function saveFinalLocation() {
       ...currentRO,
       [ROS_FIELDS.currentLocation]: currentLocation,
       currentLocation,
+      currentLocationArea: selectedArea,
+      blockingTag: blockingTag,
       locationUpdatedAt: Date.now(),
       moveStatus: "",
       moveStartedAt: null,
       moveStartedBy: ""
     };
+
+    moveAreaSelect.value = "";
+    finalLocationSelect.innerHTML = `<option value="">Select area first...</option>`;
+    blocksTagInput.value = "";
 
     finalLocationPanel.classList.add("hidden");
     cancelMoveButton.classList.add("hidden");

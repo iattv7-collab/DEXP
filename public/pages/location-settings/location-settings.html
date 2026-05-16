@@ -1,0 +1,128 @@
+<!-- public/pages/location-settings/location-settings.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Location Settings</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+
+  <main class="page-shell full-page">
+
+    <div class="page-title-row">
+      <div>
+        <h2>Location Settings</h2>
+      </div>
+    </div>
+
+    <section class="tool-card">
+
+      <h3>Add Location</h3>
+
+      <div class="tool-details-grid">
+
+        <label>
+          Location Name
+          <input
+            id="locationNameInput"
+            type="text"
+            placeholder="Example: Main Lot A1"
+          />
+        </label>
+
+        <label>
+          Area
+          <select id="locationAreaSelect">
+            <option value="main">Main Store</option>
+            <option value="annex">Annex</option>
+          </select>
+        </label>
+
+      </div>
+
+      <div class="tool-row">
+
+        <button id="addLocationButton" type="button">
+          Add Location
+        </button>
+
+      </div>
+
+      <p id="locationSettingsMessage" class="tool-message"></p>
+
+    </section>
+
+    <section class="tool-card">
+
+      <h3>Active Locations</h3>
+
+      <div class="table-wrap">
+
+        <table class="data-table">
+
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Area</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="activeLocationsTableBody">
+            <tr>
+              <td colspan="4">Loading...</td>
+            </tr>
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+    <section class="tool-card">
+
+      <h3>Inactive Locations</h3>
+
+      <div class="table-wrap">
+
+        <table class="data-table">
+
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Area</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="inactiveLocationsTableBody">
+            <tr>
+              <td colspan="4">Loading...</td>
+            </tr>
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/location-settings/location-settings.js"></script>
+
+</body>
+
+</html>

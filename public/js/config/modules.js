@@ -5,6 +5,7 @@ export const MODULES = {
   MASTER_RO: "master-ro",
   RO_TRACKER: "ro-tracker",
   MOVE_LOCATE: "move-locate",
+  LOCATION_SETTINGS: "location-settings",
   REQUESTS: "requests",
   LOANERS: "loaners",
   WASH: "wash",
@@ -39,6 +40,12 @@ export const MODULE_CONFIG = {
     label: "Move & Locate",
     route: "/pages/move-locate/move-locate.html",
     icon: "location_on"
+  },
+
+  [MODULES.LOCATION_SETTINGS]: {
+    label: "Location Settings",
+    route: "/pages/location-settings/location-settings.html",
+    icon: "settings"
   },
 
   [MODULES.REQUESTS]: {

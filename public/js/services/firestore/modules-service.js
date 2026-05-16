@@ -18,7 +18,8 @@ import {
 const DEFAULT_ENABLED_MODULES = [
   ...CORE_MODULES,
   MODULES.SCANNER_RO,
-  MODULES.MOVE_LOCATE
+  MODULES.MOVE_LOCATE,
+  MODULES.LOCATION_SETTINGS
 ];
 
 export async function getDealerModules(dealerId) {
