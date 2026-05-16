@@ -25,12 +25,31 @@ const ACTIVITY_LOG_COLLECTION = "activityLog";
 export async function createRO(data = {}, options = {}) {
   const session = requireDealerSession();
 
+  const roNumber = String(data[ROS_FIELDS.roNumber] || "").trim();
+  const tagNumber = String(data[ROS_FIELDS.tagNumber] || "").trim();
+
+  if (roNumber) {
+    const existingRO = await findActiveROByNumber(roNumber);
+
+    if (existingRO) {
+      throw new Error("RO number already exists.");
+    }
+  }
+
+  if (tagNumber) {
+    const existingTag = await findActiveROByTag(tagNumber);
+
+    if (existingTag) {
+      throw new Error("Tag number already exists in active RO list.");
+    }
+  }
+
   const roRef = doc(collection(db, ROS_COLLECTION));
 
   const roData = {
     [ROS_FIELDS.id]: roRef.id,
-    [ROS_FIELDS.roNumber]: data[ROS_FIELDS.roNumber] || "",
-    [ROS_FIELDS.tagNumber]: data[ROS_FIELDS.tagNumber] || "",
+    [ROS_FIELDS.roNumber]: roNumber,
+    [ROS_FIELDS.tagNumber]: tagNumber,
     [ROS_FIELDS.vin]: data[ROS_FIELDS.vin] || "",
     [ROS_FIELDS.vinLast8]: buildVinLast8(data[ROS_FIELDS.vin]),
     [ROS_FIELDS.year]: data[ROS_FIELDS.year] || "",
@@ -143,6 +162,56 @@ export function watchDealerROs(callback) {
 
     callback(ros);
   });
+}
+
+export async function findActiveROByNumber(roNumber = "") {
+  const session = getSession();
+
+  if (!session?.dealerId || !roNumber) {
+    return null;
+  }
+
+  const rosRef = collection(db, ROS_COLLECTION);
+
+  const q = query(
+    rosRef,
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
+    where(ROS_FIELDS.roNumber, "==", String(roNumber).trim()),
+    limit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return snapshot.docs[0].data();
+}
+
+export async function findActiveROByTag(tagNumber = "") {
+  const session = getSession();
+
+  if (!session?.dealerId || !tagNumber) {
+    return null;
+  }
+
+  const rosRef = collection(db, ROS_COLLECTION);
+
+  const q = query(
+    rosRef,
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
+    where(ROS_FIELDS.tagNumber, "==", String(tagNumber).trim()),
+    limit(1)
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return snapshot.docs[0].data();
 }
 
 export async function addROActivity(roId, activity = {}) {

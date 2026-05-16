@@ -3,7 +3,11 @@
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { protectRoute } from "/js/core/router.js";
 import { scanROImage } from "/js/services/ocr/ro-ocr-service.js";
-import { createRO } from "/js/services/firestore/ros-service.js";
+import {
+    createRO,
+    findActiveROByNumber,
+    findActiveROByTag
+} from "/js/services/firestore/ros-service.js";
 
 import { decodeVIN }
     from "/js/services/vin/vin-decoder-service.js";
@@ -132,6 +136,24 @@ async function saveRO() {
         }
     }
 
+    if (roNumber) {
+        const existingRO = await findActiveROByNumber(roNumber);
+
+        if (existingRO) {
+            showMessage("RO number already exists.");
+            return;
+        }
+    }
+
+    if (tagNumber) {
+        const existingTag = await findActiveROByTag(tagNumber);
+
+        if (existingTag) {
+            showMessage("Tag number already exists in active RO list.");
+            return;
+        }
+    }
+
     if (!roNumber && !tagNumber && !vin) {
         showMessage("Enter at least RO, tag, or VIN before saving.");
         return;
@@ -167,12 +189,17 @@ async function saveRO() {
         showMessage("RO saved.");
     } catch (error) {
         console.error("Failed to save RO:", error);
-        showMessage("Could not save RO. Try again.");
-    } finally {
+
+        showMessage(
+            error?.message || "Could not save RO."
+        );
+    }
+    finally {
         saveRoButton.disabled = false;
         saveRoButton.textContent = "Save RO";
     }
 }
+
 
 function clearForm() {
     roNumberInput.value = "";
