@@ -44,7 +44,20 @@ export async function createRO(data = {}, options = {}) {
     }
   }
 
-  const roRef = doc(collection(db, ROS_COLLECTION));
+  const normalizedRONumber = roNumber
+    .replace(/\s+/g, "")
+    .toUpperCase();
+
+  const normalizedTagNumber = tagNumber
+    .replace(/\s+/g, "")
+    .toUpperCase();
+
+  const roDocId =
+    normalizedRONumber ||
+    `TAG-${normalizedTagNumber}` ||
+    crypto.randomUUID();
+
+  const roRef = doc(db, ROS_COLLECTION, roDocId);
 
   const roData = {
     [ROS_FIELDS.id]: roRef.id,

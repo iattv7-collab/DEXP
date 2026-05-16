@@ -415,3 +415,8 @@ button:hover {
 .hidden {
   display: none;
 }
+
+.field-error {
+  border: 2px solid #c00000 !important;
+  background: #ffecec !important;
+}

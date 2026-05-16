@@ -52,6 +52,9 @@ function initializeScannerRO() {
 
     fillTestDataButton.addEventListener("click", fillTestData);
 
+    roNumberInput.addEventListener("input", checkScannerDuplicates);
+    tagNumberInput.addEventListener("input", checkScannerDuplicates);
+
     saveRoButton.addEventListener("click", async () => {
         await saveRO();
     });
@@ -95,7 +98,12 @@ async function handleROScan(event) {
         advisorNumberInput.value = result.advisorNumber || "";
         ocrDebugText.value = result.rawOcrText || "";
 
-        showMessage("RO scan complete.");
+        await checkScannerDuplicates();
+
+        if (!roNumberInput.classList.contains("field-error") &&
+            !tagNumberInput.classList.contains("field-error")) {
+            showMessage("RO scan complete.");
+        }
     } catch (error) {
         console.error("RO scan failed:", error);
 
@@ -115,12 +123,61 @@ function fillTestData() {
     showMessage("Test data filled.");
 }
 
+async function checkScannerDuplicates() {
+    clearMessage();
+
+    roNumberInput.classList.remove("field-error");
+    tagNumberInput.classList.remove("field-error");
+
+    const roNumber = roNumberInput.value.trim();
+    const tagNumber = tagNumberInput.value.trim();
+
+    let duplicateFound = false;
+    const messages = [];
+
+    if (roNumber) {
+        const existingRO = await findActiveROByNumber(roNumber);
+
+        if (existingRO) {
+            roNumberInput.classList.add("field-error");
+            messages.push(`RO number ${roNumber} already exists.`);
+            duplicateFound = true;
+        }
+    }
+
+    if (tagNumber) {
+        const existingTag = await findActiveROByTag(tagNumber);
+
+        if (existingTag) {
+            tagNumberInput.classList.add("field-error");
+            messages.push(`Tag number ${tagNumber} already exists.`);
+            duplicateFound = true;
+        }
+    }
+
+    if (duplicateFound) {
+        showMessage(messages.join(" "));
+        return true;
+    }
+
+    return false;
+}
+
 async function saveRO() {
     clearMessage();
+
+    roNumberInput.classList.remove("field-error");
+    tagNumberInput.classList.remove("field-error");
 
     const roNumber = roNumberInput.value.trim();
     const tagNumber = tagNumberInput.value.trim();
     const vin = vinInput.value.trim();
+
+    const hasDuplicate = await checkScannerDuplicates();
+
+    if (hasDuplicate) {
+        return;
+    }
 
     let decodedVehicle = {
         year: "",
@@ -133,24 +190,6 @@ async function saveRO() {
             decodedVehicle = await decodeVIN(vin);
         } catch (error) {
             console.error("VIN decode failed:", error);
-        }
-    }
-
-    if (roNumber) {
-        const existingRO = await findActiveROByNumber(roNumber);
-
-        if (existingRO) {
-            showMessage("RO number already exists.");
-            return;
-        }
-    }
-
-    if (tagNumber) {
-        const existingTag = await findActiveROByTag(tagNumber);
-
-        if (existingTag) {
-            showMessage("Tag number already exists in active RO list.");
-            return;
         }
     }
 
