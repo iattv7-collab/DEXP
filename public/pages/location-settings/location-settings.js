@@ -9,8 +9,15 @@ import { MODULES } from "/js/config/modules.js";
 import {
   getAllLocations,
   createLocation,
-  updateLocation
+  updateLocation,
+  deleteLocation
 } from "/js/services/firestore/locations-service.js";
+
+import {
+  getAreas,
+  createArea,
+  deleteArea
+} from "/js/services/firestore/areas-service.js";
 
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE]
@@ -21,6 +28,15 @@ const locationNameInput =
 
 const locationAreaSelect =
   document.getElementById("locationAreaSelect");
+
+const areaNameInput =
+  document.getElementById("areaNameInput");
+
+const addAreaButton =
+  document.getElementById("addAreaButton");
+
+const areasTableBody =
+  document.getElementById("areasTableBody");
 
 const addLocationButton =
   document.getElementById("addLocationButton");
@@ -53,7 +69,152 @@ function initializeLocationSettings() {
     }
   );
 
+  addAreaButton.addEventListener(
+    "click",
+    async () => {
+      await handleCreateArea();
+    }
+  );
+
+  loadAreas();
   loadLocations();
+}
+
+async function handleCreateArea() {
+  clearMessage();
+
+  const label =
+    areaNameInput.value.trim();
+
+  if (!label) {
+    showMessage("Enter area name.");
+    return;
+  }
+
+  try {
+    await createArea(label);
+
+    areaNameInput.value = "";
+
+    await loadAreas();
+
+    showMessage("Area added.");
+  } catch (error) {
+    console.error(error);
+
+    showMessage(
+      "Could not create area."
+    );
+  }
+}
+
+async function loadAreas() {
+  try {
+    const areas =
+      await getAreas();
+
+    renderAreas(areas);
+    populateAreaDropdown(areas);
+  } catch (error) {
+    console.error(error);
+
+    showMessage(
+      "Could not load areas."
+    );
+  }
+}
+
+function renderAreas(areas = []) {
+  areasTableBody.innerHTML = "";
+
+  if (!areas.length) {
+    areasTableBody.innerHTML = `
+      <tr>
+        <td colspan="2">
+          No areas created.
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+  areas.forEach((area) => {
+    const row =
+      document.createElement("tr");
+
+    row.innerHTML = `
+      <td>
+        ${area.label || ""}
+      </td>
+
+      <td>
+        <button
+          class="small-button secondary delete-area-button"
+          data-id="${area.id}"
+        >
+          Delete
+        </button>
+      </td>
+    `;
+
+    areasTableBody.appendChild(row);
+  });
+
+  bindDeleteAreaButtons();
+}
+
+function bindDeleteAreaButtons() {
+  document
+    .querySelectorAll(
+      ".delete-area-button"
+    )
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        async () => {
+          const id =
+            button.dataset.id;
+
+          await deleteArea(id);
+
+          await loadAreas();
+
+          showMessage(
+            "Area deleted."
+          );
+        }
+      );
+    });
+}
+
+function populateAreaDropdown(
+  areas = []
+) {
+  locationAreaSelect.innerHTML = "";
+
+  const placeholder =
+    document.createElement("option");
+
+  placeholder.value = "";
+  placeholder.textContent =
+    "Select area...";
+
+  locationAreaSelect.appendChild(
+    placeholder
+  );
+
+  areas.forEach((area) => {
+    const option =
+      document.createElement("option");
+
+    option.value = area.value;
+    option.textContent = area.label;
+
+    locationAreaSelect.appendChild(
+      option
+    );
+  });
 }
 
 async function handleCreateLocation() {
@@ -154,17 +315,18 @@ function renderActiveLocations(
       </td>
 
       <td data-label="Status">
-        Active
-      </td>
+  Active
+</td>
 
-      <td data-label="Actions">
-        <button
-          class="small-button secondary deactivate-location-button"
-          data-id="${location.id}"
-        >
-          Deactivate
-        </button>
-      </td>
+<td data-label="Actions">
+  <button
+    class="small-button secondary deactivate-location-button"
+    data-id="${location.id}"
+  >
+    Deactivate
+  </button>
+</td>
+
     `;
 
     activeLocationsTableBody.appendChild(
@@ -210,13 +372,20 @@ function renderInactiveLocations(
       </td>
 
       <td data-label="Actions">
-        <button
-          class="small-button"
-          data-id="${location.id}"
-        >
-          Reactivate
-        </button>
-      </td>
+  <button
+    class="small-button reactivate-location-button"
+    data-id="${location.id}"
+  >
+    Reactivate
+  </button>
+
+  <button
+    class="small-button secondary delete-location-button"
+    data-id="${location.id}"
+  >
+    Delete
+  </button>
+</td>
     `;
 
     inactiveLocationsTableBody.appendChild(
@@ -225,6 +394,8 @@ function renderInactiveLocations(
   });
 
   bindReactivateButtons();
+
+  bindDeleteLocationButtons();
 }
 
 function bindDeactivateButtons() {
@@ -258,7 +429,7 @@ function bindDeactivateButtons() {
 
 function bindReactivateButtons() {
   inactiveLocationsTableBody
-    .querySelectorAll("button")
+    .querySelectorAll(".reactivate-location-button")
     .forEach((button) => {
       button.addEventListener(
         "click",
@@ -283,12 +454,32 @@ function bindReactivateButtons() {
     });
 }
 
-function formatArea(area) {
-  if (area === "annex") {
-    return "Annex";
-  }
+function bindDeleteLocationButtons() {
+  inactiveLocationsTableBody
+    .querySelectorAll(".delete-location-button")
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        async () => {
+          const id =
+            button.dataset.id;
 
-  return "Main Store";
+          await deleteLocation(id);
+
+          await loadLocations();
+
+          showMessage(
+            "Location deleted."
+          );
+        }
+      );
+    });
+}
+
+function formatArea(area) {
+  return String(area || "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function showMessage(message) {

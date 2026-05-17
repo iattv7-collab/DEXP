@@ -6,6 +6,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   where,
@@ -41,7 +42,7 @@ export async function getActiveLocations() {
 
   return snapshot.docs.map((docItem) => ({
     id: docItem.id,
-    ...docItem.data()
+    ...docItem.data(),
   }));
 }
 
@@ -54,23 +55,17 @@ export async function getAllLocations() {
 
   const locationsRef = collection(db, COLLECTION_NAME);
 
-  const q = query(
-    locationsRef,
-    where("dealerId", "==", dealerId),
-  );
+  const q = query(locationsRef, where("dealerId", "==", dealerId));
 
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((docItem) => ({
     id: docItem.id,
-    ...docItem.data()
+    ...docItem.data(),
   }));
 }
 
-export async function createLocation({
-  label,
-  area = "main"
-}) {
+export async function createLocation({ label, area = "main" }) {
   const dealerId = getDealerId();
 
   if (!dealerId) {
@@ -83,16 +78,9 @@ export async function createLocation({
     throw new Error("Location label required");
   }
 
-  const id =
-    cleanLabel
-      .toLowerCase()
-      .replace(/\s+/g, "-");
+  const id = cleanLabel.toLowerCase().replace(/\s+/g, "-");
 
-  const locationRef = doc(
-    db,
-    COLLECTION_NAME,
-    `${dealerId}_${id}`
-  );
+  const locationRef = doc(db, COLLECTION_NAME, `${dealerId}_${id}`);
 
   await setDoc(locationRef, {
     dealerId,
@@ -100,40 +88,41 @@ export async function createLocation({
     area,
     active: true,
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 
   return true;
 }
 
-export async function updateLocation(
-  locationId,
-  updates = {}
-) {
-  const locationRef = doc(
-    db,
-    COLLECTION_NAME,
-    locationId
-  );
+export async function updateLocation(locationId, updates = {}) {
+  const locationRef = doc(db, COLLECTION_NAME, locationId);
 
   await updateDoc(locationRef, {
     ...updates,
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 
   return true;
 }
 
-export function groupLocationsByArea(
-  locations = []
-) {
-  return {
-    main: locations.filter(
-      (location) => location.area === "main"
-    ),
+export async function deleteLocation(locationId) {
+  const locationRef = doc(db, COLLECTION_NAME, locationId);
 
-    annex: locations.filter(
-      (location) => location.area === "annex"
-    )
-  };
+  await deleteDoc(locationRef);
+
+  return true;
+}
+
+export function groupLocationsByArea(locations = []) {
+  return locations.reduce((groups, location) => {
+    const area = String(location.area || "default").trim();
+
+    if (!groups[area]) {
+      groups[area] = [];
+    }
+
+    groups[area].push(location);
+
+    return groups;
+  }, {});
 }
