@@ -126,12 +126,6 @@
         </section>
 
         <section class="tool-card">
-          <h3>Move Vehicle</h3>
-
-          <p class="tool-help">
-            When the vehicle physically starts moving, mark it as moving.
-          </p>
-
           <div class="tool-row">
             <button id="startMoveButton" type="button">Start Move</button>
 
@@ -153,11 +147,7 @@
           </div>
 
           <div id="finalLocationPanel" class="hidden">
-            <div class="tool-help" style="margin-bottom: 10px">
-              Save the final location only when the vehicle has arrived.
-            </div>
-
-            <div class="tool-details-grid">
+            <div id="singleFinalLocationControls" class="tool-details-grid">
               <label>
                 Moved To
                 <select id="moveAreaSelect">
@@ -182,7 +172,9 @@
               </label>
             </div>
 
-            <div class="tool-row">
+            <div id="groupFinalLocationList"></div>
+
+            <div class="tool-row hidden">
               <button id="saveLocationButton" type="button">
                 Save Location
               </button>
