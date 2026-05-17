@@ -1,0 +1,16 @@
+{
+  "name": "DEXP",
+  "short_name": "DEXP",
+  "start_url": "/pages/dashboard/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b3d91",
+  "theme_color": "#0b3d91",
+  "icons": [
+    {
+      "src": "/assets/logo-v2.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

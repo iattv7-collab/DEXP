@@ -1,23 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>DEXP Sign In</title>
+    <title>DEXP Sign In</title>
 
-  <link rel="stylesheet" href="/css/core/reset.css" />
-  <link rel="stylesheet" href="/css/core/base.css" />
-</head>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/assets/logo-v2.png" />
+    <meta name="theme-color" content="#0b3d91" />
+  </head>
 
-<body>
-  <main class="app-shell">
-    <h1>DEXP</h1>
-    <p>Dealer Execution Platform</p>
+  <body>
+    <main class="app-shell" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+      <section class="tool-card" style="width:100%; max-width:420px; text-align:center; padding:32px;">
+        <img
+          src="/assets/logo-v2.png"
+          alt="DEXP"
+          style="width:180px; max-width:70%; margin-bottom:18px;"
+        />
 
-    <button id="btn-login">Sign In with Google</button>
-  </main>
+        <h1>DEXP</h1>
+        <p class="tool-help">Dealer Execution Platform</p>
 
-  <script type="module" src="/js/pages/auth/login-page.js"></script>
-</body>
+        <button id="btn-login" type="button" style="width:100%; margin-top:20px;">
+          Sign In with Google
+        </button>
+      </section>
+    </main>
+
+    <script type="module" src="/js/pages/auth/login-page.js"></script>
+  </body>
 </html>
