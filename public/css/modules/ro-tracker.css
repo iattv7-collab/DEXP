@@ -1,0 +1,130 @@
+/* public/css/modules/ro-tracker.css */
+
+.ro-tracker-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.ro-tracker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  background: white;
+}
+
+.ro-tracker-table th {
+  background: #009bb5;
+  color: white;
+  border: 1px solid #bfc7d1;
+  padding: 4px 6px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.ro-tracker-table td {
+  border: 1px solid #c9c9c9;
+  padding: 3px 6px;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+
+.ro-tracker-table tr.row-ready td {
+  background: #39f243;
+}
+
+.ro-tracker-table tr.row-waiter td {
+  background: #39f243;
+}
+
+.ro-tracker-table tr.row-past td {
+  background: #d93b3b;
+  color: white;
+}
+
+.ro-tracker-table tr.row-today td {
+  background: #fff8b8;
+}
+
+.ro-tracker-table input,
+.ro-tracker-table button {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 13px;
+}
+
+.ro-tracker-table .center {
+  text-align: center;
+}
+
+.ro-tracker-table .cell-edit {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.ro-tracker-table .cell-edit:focus {
+  outline: 1px solid #0b3d91;
+  background: #ffffff;
+}
+
+.ro-tracker-table .smallbtn {
+  padding: 1px 8px;
+  border: 1px solid #777;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.ro-tracker-table .cell-video-sent {
+  background: #39f243;
+}
+
+.ro-column-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.ro-column-settings-modal {
+  background: white;
+  width: 420px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  font-family: "Times New Roman", Times, serif;
+}
+
+.ro-column-settings-modal h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.ro-column-settings-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  margin-bottom: 20px;
+}
+
+.ro-column-settings-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ro-column-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

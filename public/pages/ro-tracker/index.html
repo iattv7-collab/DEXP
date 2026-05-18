@@ -1,0 +1,117 @@
+```html
+<!-- public/pages/ro-tracker/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>RO Tracker</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/ro-tracker.css" />
+</head>
+
+<body>
+  <main id="roTrackerPage" class="page-shell full-page">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+
+        <div>
+          <h2>RO Tracker</h2>
+
+          <p>
+            Active repair order workflow.
+          </p>
+        </div>
+
+        <button
+          id="btnColumnSettings"
+          type="button"
+        >
+          Columns
+        </button>
+
+      </div>
+
+      <div class="toolbar-row">
+
+        <input
+          id="searchActive"
+          type="search"
+          placeholder="Search RO, tag, customer, or phone"
+        />
+
+        <button
+          id="btnToggleView"
+          type="button"
+        >
+          Short View
+        </button>
+
+        <button
+          id="btnFollowUp"
+          type="button"
+        >
+          Follow Up
+        </button>
+
+        <button
+          id="btnArchiveView"
+          type="button"
+        >
+          Archive / Follow Up
+        </button>
+
+        <button
+          id="btnSettings"
+          type="button"
+        >
+          Settings
+        </button>
+
+      </div>
+
+      <div
+        id="roTrackerMessage"
+        class="tool-message"
+      ></div>
+
+      <section class="ro-tracker-table-wrap">
+
+        <table
+          id="roTrackerTable"
+          class="ro-tracker-table"
+        >
+
+          <thead>
+            <tr id="roTrackerTableHead"></tr>
+          </thead>
+
+          <tbody id="roTrackerTableBody"></tbody>
+
+        </table>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+
+  <script
+    type="module"
+    src="/pages/ro-tracker/ro-tracker-page.js"
+  ></script>
+
+</body>
+</html>
+```

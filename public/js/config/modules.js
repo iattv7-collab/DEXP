@@ -32,7 +32,7 @@ export const MODULE_CONFIG = {
 
   [MODULES.RO_TRACKER]: {
     label: "RO Tracker",
-    route: "/pages/ro-tracker/ro-tracker.html",
+    route: "/pages/ro-tracker/index.html",
     icon: "assignment"
   },
 
@@ -100,6 +100,7 @@ export const MODULE_CONFIG = {
 
 export const CORE_MODULES = [
   MODULES.MASTER_RO,
+  MODULES.RO_TRACKER,
   MODULES.NOTIFICATIONS,
   MODULES.ADMIN
 ];
