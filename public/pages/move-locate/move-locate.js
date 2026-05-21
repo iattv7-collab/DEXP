@@ -806,6 +806,7 @@ async function saveGroupFinalLocation({
   }
 
   try {
+    await clearCarsBlockedByTag(getROTag(ro));
     await updateRO(
       ro.id,
       {
@@ -904,6 +905,7 @@ async function saveFinalLocation() {
   }
 
   try {
+    await clearCarsBlockedByTag(getROTag(currentRO));
     await updateRO(
       currentRO.id,
       {
