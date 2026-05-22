@@ -65,7 +65,7 @@ export async function getAllLocations() {
   }));
 }
 
-export async function createLocation({ label, area = "main" }) {
+export async function createLocation({ label, area = "main", capacity = 0 }) {
   const dealerId = getDealerId();
 
   if (!dealerId) {
@@ -86,6 +86,7 @@ export async function createLocation({ label, area = "main" }) {
     dealerId,
     label: cleanLabel,
     area,
+    capacity: Number(capacity || 0),
     active: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

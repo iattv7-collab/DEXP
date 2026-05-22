@@ -60,7 +60,7 @@
             <input
               id="locationNameInput"
               type="text"
-              placeholder="Example: Main Lot A1"
+              placeholder="Example: Main Lot A"
             />
           </label>
 
@@ -70,10 +70,22 @@
               <option value="">Select area...</option>
             </select>
           </label>
+
+          <label>
+            Capacity
+            <input
+              id="locationCapacityInput"
+              type="number"
+              min="0"
+              placeholder="Example: 12"
+            />
+          </label>
         </div>
 
         <div class="tool-row">
-          <button id="addLocationButton" type="button">Add Location</button>
+          <button id="addLocationButton" type="button">
+            Add Location
+          </button>
         </div>
 
         <p id="locationSettingsMessage" class="tool-message"></p>
@@ -88,6 +100,7 @@
               <tr>
                 <th>Location</th>
                 <th>Area</th>
+                <th>Capacity</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -95,7 +108,7 @@
 
             <tbody id="activeLocationsTableBody">
               <tr>
-                <td colspan="4">Loading...</td>
+                <td colspan="5">Loading...</td>
               </tr>
             </tbody>
           </table>
@@ -111,6 +124,7 @@
               <tr>
                 <th>Location</th>
                 <th>Area</th>
+                <th>Capacity</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -118,7 +132,7 @@
 
             <tbody id="inactiveLocationsTableBody">
               <tr>
-                <td colspan="4">Loading...</td>
+                <td colspan="5">Loading...</td>
               </tr>
             </tbody>
           </table>
@@ -127,6 +141,7 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
+
     <script
       type="module"
       src="/pages/location-settings/location-settings.js"

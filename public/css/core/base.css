@@ -499,3 +499,58 @@ button:hover {
   background: #ffd7d7 !important;
   border: 2px solid #d60000 !important;
 }
+
+button:disabled {
+  background: #bfc7d1 !important;
+  color: #6b7280 !important;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.parking-availability-wrap {
+  margin-top: 10px;
+}
+
+.parking-availability-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.parking-availability-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.parking-availability-item {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: #ffffff;
+  border: 1px solid #c9c9c9;
+  border-radius: 8px;
+
+  padding: 8px 12px;
+
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.parking-availability-label {
+  color: #222;
+}
+
+.parking-availability-count {
+  color: #008a2e;
+}
+
+.parking-availability-item.parking-full {
+  border-color: #b00020;
+}
+
+.parking-availability-item.parking-full .parking-availability-count {
+  color: #b00020;
+}

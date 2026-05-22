@@ -10,71 +10,61 @@ import {
   getAllLocations,
   createLocation,
   updateLocation,
-  deleteLocation
+  deleteLocation,
 } from "/js/services/firestore/locations-service.js";
 
 import {
   getAreas,
   createArea,
-  deleteArea
+  deleteArea,
 } from "/js/services/firestore/areas-service.js";
 
 protectRoute({
-  allowedModules: [MODULES.MOVE_LOCATE]
+  allowedModules: [MODULES.MOVE_LOCATE],
 });
 
-const locationNameInput =
-  document.getElementById("locationNameInput");
+const locationCapacityInput = document.getElementById("locationCapacityInput");
 
-const locationAreaSelect =
-  document.getElementById("locationAreaSelect");
+const locationNameInput = document.getElementById("locationNameInput");
 
-const areaNameInput =
-  document.getElementById("areaNameInput");
+const locationAreaSelect = document.getElementById("locationAreaSelect");
 
-const addAreaButton =
-  document.getElementById("addAreaButton");
+const areaNameInput = document.getElementById("areaNameInput");
 
-const areasTableBody =
-  document.getElementById("areasTableBody");
+const addAreaButton = document.getElementById("addAreaButton");
 
-const addLocationButton =
-  document.getElementById("addLocationButton");
+const areasTableBody = document.getElementById("areasTableBody");
 
-const locationSettingsMessage =
-  document.getElementById("locationSettingsMessage");
+const addLocationButton = document.getElementById("addLocationButton");
 
-const activeLocationsTableBody =
-  document.getElementById("activeLocationsTableBody");
-
-const inactiveLocationsTableBody =
-  document.getElementById("inactiveLocationsTableBody");
-
-window.addEventListener(
-  "dexp-session-ready",
-  () => {
-    initializeLocationSettings();
-  }
+const locationSettingsMessage = document.getElementById(
+  "locationSettingsMessage",
 );
+
+const activeLocationsTableBody = document.getElementById(
+  "activeLocationsTableBody",
+);
+
+const inactiveLocationsTableBody = document.getElementById(
+  "inactiveLocationsTableBody",
+);
+
+window.addEventListener("dexp-session-ready", () => {
+  initializeLocationSettings();
+});
 
 function initializeLocationSettings() {
   renderAppHeader({
-    title: "Location Settings"
+    title: "Location Settings",
   });
 
-  addLocationButton.addEventListener(
-    "click",
-    async () => {
-      await handleCreateLocation();
-    }
-  );
+  addLocationButton.addEventListener("click", async () => {
+    await handleCreateLocation();
+  });
 
-  addAreaButton.addEventListener(
-    "click",
-    async () => {
-      await handleCreateArea();
-    }
-  );
+  addAreaButton.addEventListener("click", async () => {
+    await handleCreateArea();
+  });
 
   loadAreas();
   loadLocations();
@@ -83,8 +73,7 @@ function initializeLocationSettings() {
 async function handleCreateArea() {
   clearMessage();
 
-  const label =
-    areaNameInput.value.trim();
+  const label = areaNameInput.value.trim();
 
   if (!label) {
     showMessage("Enter area name.");
@@ -102,25 +91,20 @@ async function handleCreateArea() {
   } catch (error) {
     console.error(error);
 
-    showMessage(
-      "Could not create area."
-    );
+    showMessage("Could not create area.");
   }
 }
 
 async function loadAreas() {
   try {
-    const areas =
-      await getAreas();
+    const areas = await getAreas();
 
     renderAreas(areas);
     populateAreaDropdown(areas);
   } catch (error) {
     console.error(error);
 
-    showMessage(
-      "Could not load areas."
-    );
+    showMessage("Could not load areas.");
   }
 }
 
@@ -140,8 +124,7 @@ function renderAreas(areas = []) {
   }
 
   areas.forEach((area) => {
-    const row =
-      document.createElement("tr");
+    const row = document.createElement("tr");
 
     row.innerHTML = `
       <td>
@@ -165,66 +148,47 @@ function renderAreas(areas = []) {
 }
 
 function bindDeleteAreaButtons() {
-  document
-    .querySelectorAll(
-      ".delete-area-button"
-    )
-    .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset.id;
+  document.querySelectorAll(".delete-area-button").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.id;
 
-          await deleteArea(id);
+      await deleteArea(id);
 
-          await loadAreas();
+      await loadAreas();
 
-          showMessage(
-            "Area deleted."
-          );
-        }
-      );
+      showMessage("Area deleted.");
     });
+  });
 }
 
-function populateAreaDropdown(
-  areas = []
-) {
+function populateAreaDropdown(areas = []) {
   locationAreaSelect.innerHTML = "";
 
-  const placeholder =
-    document.createElement("option");
+  const placeholder = document.createElement("option");
 
   placeholder.value = "";
-  placeholder.textContent =
-    "Select area...";
+  placeholder.textContent = "Select area...";
 
-  locationAreaSelect.appendChild(
-    placeholder
-  );
+  locationAreaSelect.appendChild(placeholder);
 
   areas.forEach((area) => {
-    const option =
-      document.createElement("option");
+    const option = document.createElement("option");
 
     option.value = area.value;
     option.textContent = area.label;
 
-    locationAreaSelect.appendChild(
-      option
-    );
+    locationAreaSelect.appendChild(option);
   });
 }
 
 async function handleCreateLocation() {
   clearMessage();
 
-  const label =
-    locationNameInput.value.trim();
+  const capacity = Number(locationCapacityInput.value || 0);
 
-  const area =
-    locationAreaSelect.value;
+  const label = locationNameInput.value.trim();
+
+  const area = locationAreaSelect.value;
 
   if (!label) {
     showMessage("Enter location name.");
@@ -234,10 +198,12 @@ async function handleCreateLocation() {
   try {
     await createLocation({
       label,
-      area
+      area,
+      capacity,
     });
 
     locationNameInput.value = "";
+    locationCapacityInput.value = "";
 
     await loadLocations();
 
@@ -245,54 +211,39 @@ async function handleCreateLocation() {
   } catch (error) {
     console.error(error);
 
-    showMessage(
-      "Could not create location."
-    );
+    showMessage("Could not create location.");
   }
 }
 
 async function loadLocations() {
   try {
-    const locations =
-      await getAllLocations();
+    const locations = await getAllLocations();
 
     renderLocationTables(locations);
   } catch (error) {
     console.error(error);
 
-    showMessage(
-      "Could not load locations."
-    );
+    showMessage("Could not load locations.");
   }
 }
 
-function renderLocationTables(
-  locations = []
-) {
-  const active =
-    locations.filter(
-      (location) => location.active !== false
-    );
+function renderLocationTables(locations = []) {
+  const active = locations.filter((location) => location.active !== false);
 
-  const inactive =
-    locations.filter(
-      (location) => location.active === false
-    );
+  const inactive = locations.filter((location) => location.active === false);
 
   renderActiveLocations(active);
 
   renderInactiveLocations(inactive);
 }
 
-function renderActiveLocations(
-  locations = []
-) {
+function renderActiveLocations(locations = []) {
   activeLocationsTableBody.innerHTML = "";
 
   if (!locations.length) {
     activeLocationsTableBody.innerHTML = `
       <tr>
-        <td colspan="4">
+        <td colspan="5">
           No active locations.
         </td>
       </tr>
@@ -302,8 +253,7 @@ function renderActiveLocations(
   }
 
   locations.forEach((location) => {
-    const row =
-      document.createElement("tr");
+    const row = document.createElement("tr");
 
     row.innerHTML = `
       <td data-label="Location">
@@ -314,38 +264,37 @@ function renderActiveLocations(
         ${formatArea(location.area)}
       </td>
 
+      <td data-label="Capacity">
+        ${location.capacity || 0}
+      </td>
+
       <td data-label="Status">
-  Active
-</td>
+        Active
+      </td>
 
-<td data-label="Actions">
-  <button
-    class="small-button secondary deactivate-location-button"
-    data-id="${location.id}"
-  >
-    Deactivate
-  </button>
-</td>
-
+      <td data-label="Actions">
+        <button
+          class="small-button secondary deactivate-location-button"
+          data-id="${location.id}"
+        >
+          Deactivate
+        </button>
+      </td>
     `;
 
-    activeLocationsTableBody.appendChild(
-      row
-    );
+    activeLocationsTableBody.appendChild(row);
   });
 
   bindDeactivateButtons();
 }
 
-function renderInactiveLocations(
-  locations = []
-) {
+function renderInactiveLocations(locations = []) {
   inactiveLocationsTableBody.innerHTML = "";
 
   if (!locations.length) {
     inactiveLocationsTableBody.innerHTML = `
       <tr>
-        <td colspan="4">
+        <td colspan="5">
           No inactive locations.
         </td>
       </tr>
@@ -355,8 +304,7 @@ function renderInactiveLocations(
   }
 
   locations.forEach((location) => {
-    const row =
-      document.createElement("tr");
+    const row = document.createElement("tr");
 
     row.innerHTML = `
       <td data-label="Location">
@@ -367,90 +315,69 @@ function renderInactiveLocations(
         ${formatArea(location.area)}
       </td>
 
+      <td data-label="Capacity">
+        ${location.capacity || 0}
+      </td>
+
       <td data-label="Status">
         Inactive
       </td>
 
       <td data-label="Actions">
-  <button
-    class="small-button reactivate-location-button"
-    data-id="${location.id}"
-  >
-    Reactivate
-  </button>
+        <button
+          class="small-button reactivate-location-button"
+          data-id="${location.id}"
+        >
+          Reactivate
+        </button>
 
-  <button
-    class="small-button secondary delete-location-button"
-    data-id="${location.id}"
-  >
-    Delete
-  </button>
-</td>
+        <button
+          class="small-button secondary delete-location-button"
+          data-id="${location.id}"
+        >
+          Delete
+        </button>
+      </td>
     `;
 
-    inactiveLocationsTableBody.appendChild(
-      row
-    );
+    inactiveLocationsTableBody.appendChild(row);
   });
 
   bindReactivateButtons();
-
   bindDeleteLocationButtons();
 }
 
 function bindDeactivateButtons() {
-  document
-    .querySelectorAll(
-      ".deactivate-location-button"
-    )
-    .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset.id;
+  document.querySelectorAll(".deactivate-location-button").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.id;
 
-          await updateLocation(
-            id,
-            {
-              active: false
-            }
-          );
+      await updateLocation(id, {
+        active: false,
+      });
 
-          await loadLocations();
+      await loadLocations();
 
-          showMessage(
-            "Location deactivated."
-          );
-        }
-      );
+      showMessage("Location deactivated.");
     });
+  });
 }
 
 function bindReactivateButtons() {
   inactiveLocationsTableBody
     .querySelectorAll(".reactivate-location-button")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset.id;
+      button.addEventListener("click", async () => {
+        const id = button.dataset.id;
 
-          await updateLocation(
-            id,
-            {
-              active: true
-            }
-          );
+        await updateLocation(id, {
+          active: true,
+        });
 
-          await loadLocations();
+        await loadLocations();
 
-          showMessage(
-            "Location reactivated."
-          );
-        }
-      );
+        showMessage("Location reactivated.");
+      });
     });
 }
 
@@ -458,21 +385,15 @@ function bindDeleteLocationButtons() {
   inactiveLocationsTableBody
     .querySelectorAll(".delete-location-button")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset.id;
+      button.addEventListener("click", async () => {
+        const id = button.dataset.id;
 
-          await deleteLocation(id);
+        await deleteLocation(id);
 
-          await loadLocations();
+        await loadLocations();
 
-          showMessage(
-            "Location deleted."
-          );
-        }
-      );
+        showMessage("Location deleted.");
+      });
     });
 }
 
@@ -483,11 +404,9 @@ function formatArea(area) {
 }
 
 function showMessage(message) {
-  locationSettingsMessage.textContent =
-    message;
+  locationSettingsMessage.textContent = message;
 }
 
 function clearMessage() {
-  locationSettingsMessage.textContent =
-    "";
+  locationSettingsMessage.textContent = "";
 }
