@@ -54,21 +54,28 @@ const cancelMoveButton = document.getElementById("cancelMoveButton");
 const overrideCancelMoveButton = document.getElementById(
   "overrideCancelMoveButton",
 );
-const finalLocationPanel = document.getElementById("finalLocationPanel");
-const moveActionSection = finalLocationPanel.closest(".tool-card");
+const takeOverMoveButton = document.getElementById("takeOverMoveButton");
 
-const moveAreaSelect = document.getElementById("moveAreaSelect");
-const finalLocationSelect = document.getElementById("finalLocationSelect");
+const finalLocationPanel = document.getElementById("finalLocationPanel");
 
 const singleFinalLocationControls = document.getElementById(
   "singleFinalLocationControls",
 );
+const singleSaveLocationRow = document.getElementById("singleSaveLocationRow");
 
+const moveAreaSelect = document.getElementById("moveAreaSelect");
+const finalLocationSelect = document.getElementById("finalLocationSelect");
 const blocksTagInput = document.getElementById("blocksTagInput");
 const saveLocationButton = document.getElementById("saveLocationButton");
+
 const groupFinalLocationList = document.getElementById(
   "groupFinalLocationList",
 );
+const groupSaveLocationRow = document.getElementById("groupSaveLocationRow");
+const saveGroupLocationsButton = document.getElementById(
+  "saveGroupLocationsButton",
+);
+
 const movingVehiclesTableBody = document.getElementById(
   "movingVehiclesTableBody",
 );
@@ -77,7 +84,6 @@ let currentRO = null;
 let currentMoveGroup = [];
 let lastROs = [];
 let searchMode = "tag";
-
 let groupedLocations = {};
 
 const DEVICE_ID_KEY = "dexp_device_id";
@@ -87,7 +93,6 @@ function getDeviceId() {
 
   if (!deviceId) {
     deviceId = crypto.randomUUID();
-
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }
 
@@ -103,12 +108,7 @@ function initializeMoveLocate() {
     title: "Move & Locate",
   });
 
-  vehicleResultCard.classList.add("hidden");
-  vehicleDetailsPanel.classList.add("hidden");
-  moveChainPanel.classList.add("hidden");
-  finalLocationPanel.classList.add("hidden");
-  cancelMoveButton.classList.add("hidden");
-  overrideCancelMoveButton.classList.add("hidden");
+  hideInitialPanels();
 
   searchModeToggleButton.addEventListener("click", toggleSearchMode);
 
@@ -136,13 +136,42 @@ function initializeMoveLocate() {
     await overrideCancelMove();
   });
 
-  saveLocationButton.addEventListener("click", async () => {
-    await saveFinalLocation();
-  });
+  if (takeOverMoveButton) {
+    takeOverMoveButton.addEventListener("click", async () => {
+      await takeOverMove();
+    });
+  }
+
+  if (saveLocationButton) {
+    saveLocationButton.addEventListener("click", async () => {
+      await saveAllLocations();
+    });
+  }
+
+  if (saveGroupLocationsButton) {
+    saveGroupLocationsButton.addEventListener("click", async () => {
+      await saveAllLocations();
+    });
+  }
 
   loadLocationCatalog();
-
   loadMovingVehicles();
+}
+
+function hideInitialPanels() {
+  vehicleResultCard.classList.add("hidden");
+  vehicleDetailsPanel.classList.add("hidden");
+  moveChainPanel.classList.add("hidden");
+  finalLocationPanel.classList.add("hidden");
+  cancelMoveButton.classList.add("hidden");
+  overrideCancelMoveButton.classList.add("hidden");
+
+  if (takeOverMoveButton) {
+    takeOverMoveButton.classList.add("hidden");
+  }
+
+  hideOldSingleSaveUi();
+  hideUnifiedSaveButton();
 }
 
 async function loadLocationCatalog() {
@@ -151,19 +180,25 @@ async function loadLocationCatalog() {
 
     groupedLocations = groupLocationsByArea(locations);
 
-    populateAreaDropdown();
+    populateLegacyAreaDropdown();
 
-    moveAreaSelect.addEventListener("change", populateLocationDropdown);
+    if (moveAreaSelect) {
+      moveAreaSelect.addEventListener("change", populateLegacyLotDropdown);
+    }
   } catch (error) {
     console.error(error);
+    showMessage("Could not load locations.");
   }
 }
 
-function populateAreaDropdown() {
+function populateLegacyAreaDropdown() {
+  if (!moveAreaSelect) {
+    return;
+  }
+
   moveAreaSelect.innerHTML = "";
 
   const placeholder = document.createElement("option");
-
   placeholder.value = "";
   placeholder.textContent = "Select area...";
 
@@ -179,21 +214,18 @@ function populateAreaDropdown() {
   });
 }
 
-function formatAreaLabel(area) {
-  return String(area || "")
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
+function populateLegacyLotDropdown() {
+  if (!finalLocationSelect || !moveAreaSelect) {
+    return;
+  }
 
-function populateLocationDropdown() {
   const area = moveAreaSelect.value;
 
   finalLocationSelect.innerHTML = "";
 
   const placeholder = document.createElement("option");
-
   placeholder.value = "";
-  placeholder.textContent = "Select location...";
+  placeholder.textContent = "Select lot...";
 
   finalLocationSelect.appendChild(placeholder);
 
@@ -201,16 +233,28 @@ function populateLocationDropdown() {
     return;
   }
 
-  const locations = groupedLocations[area] || [];
+  const lots = groupedLocations[area] || [];
 
-  locations.forEach((location) => {
+  lots.forEach((lot) => {
     const option = document.createElement("option");
 
-    option.value = location.label;
-    option.textContent = location.label;
+    option.value = lot.label;
+    option.textContent = lot.label;
 
     finalLocationSelect.appendChild(option);
   });
+}
+
+function formatAreaLabel(area) {
+  return String(area || "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getSessionUserName() {
+  const session = getSession();
+
+  return session?.displayName || session?.email || "";
 }
 
 function isMoveOwner(ro) {
@@ -220,6 +264,10 @@ function isMoveOwner(ro) {
     ro?.moveStartedByUid === session?.uid &&
     ro?.moveStartedDeviceId === getDeviceId()
   );
+}
+
+function isMoving(ro) {
+  return ro?.moveStatus === "moving";
 }
 
 function toggleSearchMode() {
@@ -248,7 +296,6 @@ function loadMovingVehicles() {
 
       if (updatedRO) {
         currentRO = updatedRO;
-
         renderSelectedVehicle(updatedRO);
       }
     }
@@ -286,16 +333,30 @@ async function findVehicle() {
 
   if (!match) {
     currentRO = null;
+    currentMoveGroup = [];
     vehicleResultCard.classList.add("hidden");
     vehicleDetailsPanel.classList.add("hidden");
     finalLocationPanel.classList.add("hidden");
     cancelMoveButton.classList.add("hidden");
+    overrideCancelMoveButton.classList.add("hidden");
+
+    if (takeOverMoveButton) {
+      takeOverMoveButton.classList.add("hidden");
+    }
 
     showMessage("Vehicle not found.");
     return;
   }
 
   currentRO = match;
+
+  if (isMoving(match) && isMoveOwner(match)) {
+    currentMoveGroup = getCurrentMoveGroup(match);
+    renderUnifiedMoveCards();
+  } else {
+    currentMoveGroup = [];
+  }
+
   renderMovingVehicles();
   renderSelectedVehicle(match);
 
@@ -303,22 +364,21 @@ async function findVehicle() {
 }
 
 function renderSelectedVehicle(ro) {
-  const location =
-    ro[ROS_FIELDS.currentLocation] || ro.currentLocation || ro.location || "";
-
+  const area = getROArea(ro);
+  const lot = getROLot(ro);
   const moveStatus = ro.moveStatus || "";
+  const blockedByChain = buildBlockedByChain(ro, lastROs);
 
-  previewTag.textContent = ro[ROS_FIELDS.tagNumber] || "—";
+  previewTag.textContent = getROTag(ro) || "—";
   previewRO.textContent = ro[ROS_FIELDS.roNumber] || "—";
-  previewLocation.textContent = location || "No location saved";
+  previewLocation.textContent = formatAreaLot(area, lot) || "No location saved";
   previewStatus.textContent = moveStatus || "Not moving";
-  previewBlockedBy.textContent =
-    buildBlockedByChain(ro, lastROs).join(", ") || "—";
+  previewBlockedBy.textContent = blockedByChain.join(", ") || "—";
+
   moveChainPanel.classList.add("hidden");
   moveChainList.innerHTML = "";
 
   detailCustomerName.textContent = ro[ROS_FIELDS.customerName] || "";
-
   detailVIN.textContent = ro[ROS_FIELDS.vin] || "";
 
   detailVehicle.textContent = [
@@ -341,78 +401,54 @@ function renderSelectedVehicle(ro) {
 
   vehicleResultCard.classList.remove("hidden");
 
-  if (moveStatus === "moving") {
+  if (isMoving(ro)) {
     startMoveButton.classList.add("hidden");
 
     if (isMoveOwner(ro)) {
       finalLocationPanel.classList.remove("hidden");
-
       cancelMoveButton.classList.remove("hidden");
       overrideCancelMoveButton.classList.add("hidden");
+
+      if (takeOverMoveButton) {
+        takeOverMoveButton.classList.add("hidden");
+      }
+
+      currentMoveGroup = getCurrentMoveGroup(ro);
+      renderUnifiedMoveCards();
     } else {
       finalLocationPanel.classList.add("hidden");
-
       cancelMoveButton.classList.add("hidden");
+      overrideCancelMoveButton.classList.remove("hidden");
 
-      overrideCancelMoveButton.classList.add("hidden");
+      if (takeOverMoveButton) {
+        takeOverMoveButton.classList.remove("hidden");
+      }
 
       showMessage(
-        `Vehicle is being moved by ${ro.moveStartedBy || "another user"}.`,
+        `Vehicle is already being moved by ${ro.moveStartedBy || "another user"}.`,
       );
     }
-  } else {
-    finalLocationPanel.classList.add("hidden");
 
-    cancelMoveButton.classList.add("hidden");
-    overrideCancelMoveButton.classList.add("hidden");
-
-    startMoveButton.classList.remove("hidden");
-  }
-}
-
-function renderMoveChain(ro) {
-  if (currentMoveGroup.length > 1) {
-    moveChainPanel.classList.add("hidden");
-    moveChainList.innerHTML = "";
     return;
   }
 
-  const chain = buildBlockedByChain(ro, lastROs);
+  finalLocationPanel.classList.add("hidden");
+  cancelMoveButton.classList.add("hidden");
+  overrideCancelMoveButton.classList.add("hidden");
 
-  moveChainList.innerHTML = "";
-
-  if (!chain.length) {
-    moveChainPanel.classList.add("hidden");
-    return;
+  if (takeOverMoveButton) {
+    takeOverMoveButton.classList.add("hidden");
   }
 
-  moveChainPanel.classList.remove("hidden");
-
-  const moveOrder = [...chain].reverse();
-
-  moveOrder.forEach((tag, index) => {
-    const row = document.createElement("div");
-
-    row.textContent = `${index + 1}. Move ${tag}`;
-
-    moveChainList.appendChild(row);
-  });
-
-  const targetRow = document.createElement("div");
-
-  targetRow.innerHTML = `<b>Target:</b> ${getROTag(ro)}`;
-
-  moveChainList.appendChild(targetRow);
+  startMoveButton.classList.remove("hidden");
 }
 
 function toggleDetails() {
   vehicleDetailsPanel.classList.toggle("hidden");
 
-  if (vehicleDetailsPanel.classList.contains("hidden")) {
-    detailsButton.textContent = "View Details";
-  } else {
-    detailsButton.textContent = "Hide Details";
-  }
+  detailsButton.textContent = vehicleDetailsPanel.classList.contains("hidden")
+    ? "View Details"
+    : "Hide Details";
 }
 
 async function startMove() {
@@ -423,17 +459,57 @@ async function startMove() {
     return;
   }
 
+  lastROs = await getDealerROs();
+
+  const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
+
+  if (!freshCurrentRO) {
+    showMessage("Vehicle not found.");
+    return;
+  }
+
+  if (isMoving(freshCurrentRO) && !isMoveOwner(freshCurrentRO)) {
+    currentRO = freshCurrentRO;
+    renderSelectedVehicle(freshCurrentRO);
+    showMessage(
+      `Vehicle is already being moved by ${freshCurrentRO.moveStartedBy || "another user"}.`,
+    );
+    return;
+  }
+
+  if (isMoving(freshCurrentRO) && isMoveOwner(freshCurrentRO)) {
+    currentRO = freshCurrentRO;
+    currentMoveGroup = getCurrentMoveGroup(freshCurrentRO);
+    renderUnifiedMoveCards();
+    showMessage("Move already started.");
+    return;
+  }
+
+  const moveGroup = buildMoveGroup(freshCurrentRO, lastROs);
+
+  const alreadyMoving = moveGroup.find((ro) => {
+    return isMoving(ro) && !isMoveOwner(ro);
+  });
+
+  if (alreadyMoving) {
+    showMessage(
+      `${getROTag(alreadyMoving)} is already being moved by ${
+        alreadyMoving.moveStartedBy || "another user"
+      }.`,
+    );
+    return;
+  }
+
   const session = getSession();
   const startedAt = Date.now();
-  const startedBy = session?.displayName || session?.email || "";
+  const startedBy = getSessionUserName();
   const startedByUid = session?.uid || "";
   const deviceId = getDeviceId();
   const moveGroupId = crypto.randomUUID();
-
-  const moveGroup = buildMoveGroup(currentRO, lastROs);
+  const targetTag = getROTag(freshCurrentRO);
 
   try {
-    for (const ro of moveGroup) {
+    for (const [index, ro] of moveGroup.entries()) {
       await updateRO(
         ro.id,
         {
@@ -444,77 +520,414 @@ async function startMove() {
           moveStartedDeviceId: deviceId,
 
           moveGroupId,
-          moveGroupTargetId: currentRO.id,
-          moveGroupTargetTag: getROTag(currentRO),
-          moveGroupOrder: moveGroup.findIndex((item) => item.id === ro.id) + 1,
+          moveGroupTargetId: freshCurrentRO.id,
+          moveGroupTargetTag: targetTag,
+          moveGroupOrder: index + 1,
         },
         {
           eventType:
-            ro.id === currentRO.id
+            ro.id === freshCurrentRO.id
               ? "vehicle_move_started"
               : "vehicle_group_move_started",
           module: "move-locate",
           message:
-            ro.id === currentRO.id
+            ro.id === freshCurrentRO.id
               ? "Target vehicle move started"
-              : `Blocker ${getROTag(ro)} move started for target ${getROTag(currentRO)}`,
+              : `Blocker ${getROTag(ro)} move started for target ${targetTag}`,
         },
       );
     }
 
-    currentMoveGroup = moveGroup.map((ro, index) => ({
-      ...ro,
-      moveStatus: "moving",
-      moveStartedAt: startedAt,
-      moveStartedBy: startedBy,
-      moveStartedByUid: startedByUid,
-      moveStartedDeviceId: deviceId,
-      moveGroupId,
-      moveGroupTargetId: currentRO.id,
-      moveGroupTargetTag: getROTag(currentRO),
-      moveGroupOrder: index + 1,
-    }));
+    lastROs = await getDealerROs();
 
-    lastROs = lastROs.map((ro) => {
-      const movedRO = currentMoveGroup.find((item) => item.id === ro.id);
-
-      if (!movedRO) {
-        return ro;
-      }
-
-      return movedRO;
-    });
+    currentMoveGroup = lastROs
+      .filter((ro) => ro.moveGroupId === moveGroupId)
+      .sort((a, b) => (a.moveGroupOrder || 0) - (b.moveGroupOrder || 0));
 
     currentRO =
-      currentMoveGroup.find((ro) => ro.id === currentRO.id) || currentRO;
+      currentMoveGroup.find((ro) => ro.id === freshCurrentRO.id) ||
+      freshCurrentRO;
 
-    finalLocationPanel.classList.remove("hidden");
-    cancelMoveButton.classList.remove("hidden");
     startMoveButton.classList.add("hidden");
+    cancelMoveButton.classList.remove("hidden");
+    finalLocationPanel.classList.remove("hidden");
 
-    if (currentMoveGroup.length > 1) {
-      moveChainPanel.classList.add("hidden");
-      setGroupMoveFocusMode(true);
-      renderGroupFinalLocationList();
-    } else {
-      setGroupMoveFocusMode(false);
-      groupFinalLocationList.innerHTML = "";
-    }
-
+    renderUnifiedMoveCards();
     renderMovingVehicles();
     renderSelectedVehicle(currentRO);
 
-    if (currentMoveGroup.length > 1) {
-      showMessage(
-        `${currentMoveGroup.length} vehicles marked as moving. Select each moving tag below to save its final location.`,
-      );
-    } else {
-      showMessage("Vehicle marked as moving.");
-    }
+    showMessage(
+      currentMoveGroup.length > 1
+        ? `${currentMoveGroup.length} vehicles locked for move. Select final locations for all.`
+        : "Vehicle locked for move. Select final location.",
+    );
   } catch (error) {
     console.error(error);
-    showMessage("Could not start move group.");
+    showMessage("Could not start move.");
   }
+}
+
+function getCurrentMoveGroup(ro) {
+  if (!ro?.moveGroupId) {
+    return [ro];
+  }
+
+  const group = lastROs
+    .filter((item) => item.moveGroupId === ro.moveGroupId)
+    .sort((a, b) => (a.moveGroupOrder || 0) - (b.moveGroupOrder || 0));
+
+  return group.length ? group : [ro];
+}
+
+function renderUnifiedMoveCards() {
+  groupFinalLocationList.innerHTML = "";
+
+  hideOldSingleSaveUi();
+  showUnifiedSaveButton();
+
+  if (!currentMoveGroup.length) {
+    updateUnifiedSaveButtonState();
+    return;
+  }
+
+  currentMoveGroup.forEach((ro) => {
+    const card = document.createElement("div");
+
+    card.className = "tool-preview";
+    card.style.marginBottom = "10px";
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+        <div>
+          <div><b>TAG</b> ${getROTag(ro)}</div>
+          <div><b>RO</b> ${ro[ROS_FIELDS.roNumber] || ""}</div>
+          <div><b>Current Area/Lot:</b> ${formatAreaLot(getROArea(ro), getROLot(ro)) || ""}</div>
+          <div><b>Status:</b> ${ro.moveStatus || ""}</div>
+        </div>
+
+        <div>
+          <label>
+            Final Area
+            <select class="group-area-select" data-id="${ro.id}">
+              <option value="">Select area...</option>
+              ${Object.keys(groupedLocations)
+                .map(
+                  (area) =>
+                    `<option value="${escapeHtml(area)}">${escapeHtml(
+                      formatAreaLabel(area),
+                    )}</option>`,
+                )
+                .join("")}
+            </select>
+          </label>
+
+          <label>
+            Final Lot
+            <select class="group-lot-select" data-id="${ro.id}">
+              <option value="">Select area first...</option>
+            </select>
+          </label>
+
+          <label>
+            Blocking Tag
+            <input
+              class="group-blocking-input"
+              data-id="${ro.id}"
+              type="text"
+              placeholder="Tag this car is blocking"
+            />
+          </label>
+        </div>
+      </div>
+    `;
+
+    groupFinalLocationList.appendChild(card);
+  });
+
+  groupFinalLocationList
+    .querySelectorAll(".group-area-select")
+    .forEach((select) => {
+      select.addEventListener("change", () => {
+        const roId = select.dataset.id;
+        const lotSelect = groupFinalLocationList.querySelector(
+          `.group-lot-select[data-id="${roId}"]`,
+        );
+
+        lotSelect.innerHTML = `<option value="">Select lot...</option>`;
+
+        const lots = groupedLocations[select.value] || [];
+
+        lots.forEach((lot) => {
+          const option = document.createElement("option");
+
+          option.value = lot.label;
+          option.textContent = lot.label;
+
+          lotSelect.appendChild(option);
+        });
+
+        updateUnifiedSaveButtonState();
+      });
+    });
+
+  groupFinalLocationList
+    .querySelectorAll(".group-lot-select")
+    .forEach((select) => {
+      select.addEventListener("change", updateUnifiedSaveButtonState);
+    });
+
+  groupFinalLocationList
+    .querySelectorAll(".group-blocking-input")
+    .forEach((input) => {
+      input.addEventListener("input", () => {
+        input.value = normalizeTag(input.value);
+      });
+    });
+
+  updateUnifiedSaveButtonState();
+}
+
+function hideOldSingleSaveUi() {
+  if (singleFinalLocationControls) {
+    singleFinalLocationControls.classList.add("hidden");
+  }
+
+  if (singleSaveLocationRow) {
+    singleSaveLocationRow.classList.add("hidden");
+  }
+
+  if (saveLocationButton) {
+    saveLocationButton.disabled = true;
+  }
+}
+
+function showUnifiedSaveButton() {
+  if (groupSaveLocationRow) {
+    groupSaveLocationRow.classList.remove("hidden");
+  }
+}
+
+function hideUnifiedSaveButton() {
+  if (groupSaveLocationRow) {
+    groupSaveLocationRow.classList.add("hidden");
+  }
+
+  if (saveGroupLocationsButton) {
+    saveGroupLocationsButton.disabled = true;
+  }
+}
+
+function updateUnifiedSaveButtonState() {
+  if (!saveGroupLocationsButton) {
+    return;
+  }
+
+  if (!currentMoveGroup.length) {
+    saveGroupLocationsButton.disabled = true;
+    return;
+  }
+
+  const allHaveFinalLocation = currentMoveGroup.every((ro) => {
+    const areaSelect = groupFinalLocationList.querySelector(
+      `.group-area-select[data-id="${ro.id}"]`,
+    );
+
+    const lotSelect = groupFinalLocationList.querySelector(
+      `.group-lot-select[data-id="${ro.id}"]`,
+    );
+
+    return Boolean(areaSelect?.value && lotSelect?.value);
+  });
+
+  saveGroupLocationsButton.disabled = !allHaveFinalLocation;
+}
+
+async function saveAllLocations() {
+  clearMessage();
+
+  if (!currentMoveGroup.length) {
+    showMessage("No move to save.");
+    return;
+  }
+
+  const saveItems = currentMoveGroup.map((ro) => {
+    const areaSelect = groupFinalLocationList.querySelector(
+      `.group-area-select[data-id="${ro.id}"]`,
+    );
+
+    const lotSelect = groupFinalLocationList.querySelector(
+      `.group-lot-select[data-id="${ro.id}"]`,
+    );
+
+    const blockingInput = groupFinalLocationList.querySelector(
+      `.group-blocking-input[data-id="${ro.id}"]`,
+    );
+
+    return {
+      ro,
+      finalArea: areaSelect?.value || "",
+      finalLot: lotSelect?.value?.trim() || "",
+      blockingTag: normalizeTag(blockingInput?.value || ""),
+    };
+  });
+
+  const missingLocation = saveItems.find((item) => {
+    return !item.finalArea || !item.finalLot;
+  });
+
+  if (missingLocation) {
+    showMessage("Select final area and lot for every moving vehicle.");
+    updateUnifiedSaveButtonState();
+    return;
+  }
+
+  clearMoveValidationErrors();
+
+  const validationMessage = validateSaveItems(saveItems);
+
+  if (validationMessage) {
+    showMessage(validationMessage);
+    updateUnifiedSaveButtonState();
+    return;
+  }
+
+  saveGroupLocationsButton.disabled = true;
+
+  try {
+    for (const item of saveItems) {
+      await saveOneMovedVehicle(item);
+    }
+
+    currentMoveGroup = [];
+    groupFinalLocationList.innerHTML = "";
+
+    finalLocationPanel.classList.add("hidden");
+    cancelMoveButton.classList.add("hidden");
+    startMoveButton.classList.remove("hidden");
+
+    hideUnifiedSaveButton();
+
+    lastROs = await getDealerROs();
+
+    renderMovingVehicles();
+
+    showMessage("All locations saved.");
+    setTimeout(resetMoveLocateForm, 2000);
+  } catch (error) {
+    console.error(error);
+    showMessage(error?.message || "Could not save locations.");
+    updateUnifiedSaveButtonState();
+  }
+}
+
+function clearMoveValidationErrors() {
+  groupFinalLocationList
+    .querySelectorAll(".move-validation-error")
+    .forEach((card) => {
+      card.classList.remove("move-validation-error");
+    });
+}
+
+function validateSaveItems(saveItems) {
+  for (const item of saveItems) {
+    if (item.blockingTag && item.blockingTag === getROTag(item.ro)) {
+      return "A vehicle cannot block itself.";
+    }
+
+    if (!item.blockingTag) {
+      continue;
+    }
+
+    const blockedRO = findROByTag(item.blockingTag, lastROs);
+
+    if (!blockedRO) {
+      return `Blocking tag ${item.blockingTag} was not found.`;
+    }
+
+    const blockedArea = getROArea(blockedRO);
+    const blockedLot = getROLot(blockedRO);
+
+    const card = groupFinalLocationList
+      .querySelector(`.group-blocking-input[data-id="${item.ro.id}"]`)
+      ?.closest(".tool-preview");
+
+    if (card) {
+      card.classList.remove("move-validation-error");
+    }
+
+    if (
+      (blockedArea && blockedArea !== item.finalArea) ||
+      (blockedLot && blockedLot !== item.finalLot)
+    ) {
+      if (card) {
+        card.classList.add("move-validation-error");
+      }
+
+      return `Blocking tag ${item.blockingTag} is not in the same lot.`;
+    }
+
+    const chain = buildBlockedByChain(item.ro, lastROs);
+
+    if (chain.includes(item.blockingTag)) {
+      return "This would create a circular blocking chain.";
+    }
+  }
+
+  return "";
+}
+
+async function saveOneMovedVehicle({ ro, finalArea, finalLot, blockingTag }) {
+  const movedTag = getROTag(ro);
+
+  await clearCarsBlockedByTag(movedTag);
+
+  await updateRO(
+    ro.id,
+    {
+      [ROS_FIELDS.currentLocation]: finalLot,
+      currentLocation: finalLot,
+      currentLocationArea: finalArea,
+
+      blockedByTag: "",
+      blockingTag: "",
+
+      locationUpdatedAt: Date.now(),
+
+      moveStatus: "",
+      moveStartedAt: null,
+      moveStartedBy: "",
+      moveStartedByUid: "",
+      moveStartedDeviceId: "",
+
+      moveGroupId: "",
+      moveGroupTargetId: "",
+      moveGroupTargetTag: "",
+      moveGroupOrder: null,
+    },
+    {
+      eventType: "location_updated",
+      module: "move-locate",
+      message: `Vehicle moved to ${formatAreaLot(finalArea, finalLot)}`,
+    },
+  );
+
+  lastROs = await getDealerROs();
+
+  if (blockingTag) {
+    await saveBlockingRelationship({
+      blockerRO: {
+        ...ro,
+        [ROS_FIELDS.currentLocation]: finalLot,
+        currentLocation: finalLot,
+        currentLocationArea: finalArea,
+      },
+      blockedTag: blockingTag,
+      area: finalArea,
+      lot: finalLot,
+    });
+  }
+
+  lastROs = await getDealerROs();
 }
 
 async function cancelMove() {
@@ -525,10 +938,16 @@ async function cancelMove() {
     return;
   }
 
-  const groupId = currentRO.moveGroupId || "";
-  const moveGroup = groupId
-    ? lastROs.filter((ro) => ro.moveGroupId === groupId)
-    : [currentRO];
+  lastROs = await getDealerROs();
+
+  const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
+
+  if (!freshCurrentRO) {
+    showMessage("Vehicle not found.");
+    return;
+  }
+
+  const moveGroup = getCurrentMoveGroup(freshCurrentRO);
 
   try {
     for (const ro of moveGroup) {
@@ -560,8 +979,9 @@ async function cancelMove() {
       );
     }
 
+    currentMoveGroup = [];
     currentRO = {
-      ...currentRO,
+      ...freshCurrentRO,
       moveStatus: "",
       moveStartedAt: null,
       moveStartedBy: "",
@@ -573,13 +993,12 @@ async function cancelMove() {
       moveGroupOrder: null,
     };
 
-    currentMoveGroup = [];
-
     groupFinalLocationList.innerHTML = "";
-    setGroupMoveFocusMode(false);
     finalLocationPanel.classList.add("hidden");
     cancelMoveButton.classList.add("hidden");
     startMoveButton.classList.remove("hidden");
+
+    hideUnifiedSaveButton();
 
     lastROs = await getDealerROs();
 
@@ -611,278 +1030,67 @@ async function overrideCancelMove() {
   }
 
   try {
-    await updateRO(
-      currentRO.id,
-      {
-        moveStatus: "",
-        moveStartedAt: null,
-        moveStartedBy: "",
-        moveStartedByUid: "",
-        moveStartedDeviceId: "",
-      },
-      {
-        eventType: "vehicle_move_override_cancelled",
-        module: "move-locate",
-        message: "Vehicle move overridden and cancelled",
-      },
-    );
+    lastROs = await getDealerROs();
 
+    const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
+
+    if (!freshCurrentRO) {
+      showMessage("Vehicle not found.");
+      return;
+    }
+
+    const moveGroup = getCurrentMoveGroup(freshCurrentRO);
+
+    for (const ro of moveGroup) {
+      await updateRO(
+        ro.id,
+        {
+          moveStatus: "",
+          moveStartedAt: null,
+          moveStartedBy: "",
+          moveStartedByUid: "",
+          moveStartedDeviceId: "",
+
+          moveGroupId: "",
+          moveGroupTargetId: "",
+          moveGroupTargetTag: "",
+          moveGroupOrder: null,
+        },
+        {
+          eventType: "vehicle_move_override_cancelled",
+          module: "move-locate",
+          message: "Vehicle move overridden and cancelled",
+        },
+      );
+    }
+
+    currentMoveGroup = [];
     currentRO = {
-      ...currentRO,
+      ...freshCurrentRO,
       moveStatus: "",
       moveStartedAt: null,
       moveStartedBy: "",
       moveStartedByUid: "",
       moveStartedDeviceId: "",
+      moveGroupId: "",
+      moveGroupTargetId: "",
+      moveGroupTargetTag: "",
+      moveGroupOrder: null,
     };
 
-    await loadMovingVehicles();
-    renderSelectedVehicle(currentRO);
+    lastROs = await getDealerROs();
+
+    resetMoveLocateForm();
+    renderMovingVehicles();
 
     showMessage("Move override cancelled.");
-    setTimeout(resetMoveLocateForm, 2000);
   } catch (error) {
     console.error(error);
     showMessage("Could not override move.");
   }
 }
 
-function setGroupMoveFocusMode(isGroupMove) {
-  if (isGroupMove) {
-    selectedVehicleSection.classList.add("hidden");
-    moveChainPanel.classList.add("hidden");
-    singleFinalLocationControls.classList.add("hidden");
-    saveLocationButton.parentElement.classList.add("hidden");
-    return;
-  }
-
-  selectedVehicleSection.classList.remove("hidden");
-  singleFinalLocationControls.classList.remove("hidden");
-  saveLocationButton.parentElement.classList.remove("hidden");
-}
-
-function renderGroupFinalLocationList() {
-  groupFinalLocationList.innerHTML = "";
-
-  if (currentMoveGroup.length <= 1) {
-    groupFinalLocationList.innerHTML = "";
-    return;
-  }
-
-  currentMoveGroup.forEach((ro) => {
-    const card = document.createElement("div");
-
-    card.className = "tool-preview";
-    card.style.marginBottom = "10px";
-
-    card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
-        <div>
-          <div><b>TAG</b> ${getROTag(ro)}</div>
-          <div><b>RO</b> ${ro[ROS_FIELDS.roNumber] || ""}</div>
-          <div><b>Current Location:</b> ${
-            ro[ROS_FIELDS.currentLocation] || ro.currentLocation || ""
-          }</div>
-          <div><b>Status:</b> ${ro.moveStatus || ""}</div>
-        </div>
-
-        <div>
-          <label>
-            Moved To
-            <select class="group-area-select" data-id="${ro.id}">
-              <option value="">Select area...</option>
-              ${Object.keys(groupedLocations)
-                .map(
-                  (area) =>
-                    `<option value="${area}">${formatAreaLabel(area)}</option>`,
-                )
-                .join("")}
-            </select>
-          </label>
-
-          <label>
-            Location / Spot
-            <select class="group-location-select" data-id="${ro.id}">
-              <option value="">Select area first...</option>
-            </select>
-          </label>
-
-          <label>
-            Blocking Tag
-            <input
-              class="group-blocking-input"
-              data-id="${ro.id}"
-              type="text"
-              placeholder="Tag this car is blocking"
-            />
-          </label>
-
-          <button
-            type="button"
-            class="small-button group-save-location-button"
-            data-id="${ro.id}"
-          >
-            Save Location
-          </button>
-        </div>
-      </div>
-    `;
-
-    groupFinalLocationList.appendChild(card);
-  });
-
-  groupFinalLocationList
-    .querySelectorAll(".group-area-select")
-    .forEach((select) => {
-      select.addEventListener("change", () => {
-        const roId = select.dataset.id;
-        const locationSelect = groupFinalLocationList.querySelector(
-          `.group-location-select[data-id="${roId}"]`,
-        );
-
-        locationSelect.innerHTML = `<option value="">Select location...</option>`;
-
-        const locations = groupedLocations[select.value] || [];
-
-        locations.forEach((location) => {
-          const option = document.createElement("option");
-
-          option.value = location.label;
-          option.textContent = location.label;
-
-          locationSelect.appendChild(option);
-        });
-      });
-    });
-
-  groupFinalLocationList
-    .querySelectorAll(".group-save-location-button")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const roId = button.dataset.id;
-        const ro = currentMoveGroup.find((item) => item.id === roId);
-
-        const areaSelect = groupFinalLocationList.querySelector(
-          `.group-area-select[data-id="${roId}"]`,
-        );
-        const locationSelect = groupFinalLocationList.querySelector(
-          `.group-location-select[data-id="${roId}"]`,
-        );
-        const blockingInput = groupFinalLocationList.querySelector(
-          `.group-blocking-input[data-id="${roId}"]`,
-        );
-
-        await saveGroupFinalLocation({
-          ro,
-          selectedArea: areaSelect.value,
-          currentLocation: locationSelect.value.trim(),
-          blockingTag: blockingInput.value.trim(),
-        });
-      });
-    });
-}
-
-async function saveGroupFinalLocation({
-  ro,
-  selectedArea,
-  currentLocation,
-  blockingTag,
-}) {
-  clearMessage();
-
-  if (!ro?.id) {
-    showMessage("No vehicle selected.");
-    return;
-  }
-
-  if (!selectedArea) {
-    showMessage("Select area.");
-    return;
-  }
-
-  if (!currentLocation) {
-    showMessage("Select final location.");
-    return;
-  }
-
-  try {
-    await clearCarsBlockedByTag(getROTag(ro));
-    await updateRO(
-      ro.id,
-      {
-        [ROS_FIELDS.currentLocation]: currentLocation,
-        currentLocationArea: selectedArea,
-
-        locationUpdatedAt: Date.now(),
-        moveStatus: "",
-        moveStartedAt: null,
-        moveStartedBy: "",
-        moveStartedByUid: "",
-        moveStartedDeviceId: "",
-
-        moveGroupId: "",
-        moveGroupTargetId: "",
-        moveGroupTargetTag: "",
-        moveGroupOrder: null,
-      },
-      {
-        eventType: "location_updated",
-        module: "move-locate",
-        message: `Vehicle moved to ${currentLocation}`,
-      },
-    );
-
-    if (blockingTag) {
-      await saveBlockingRelationship({
-        blockerRO: ro,
-        blockedTag: blockingTag,
-        location: currentLocation,
-      });
-    }
-
-    currentMoveGroup = currentMoveGroup.filter((item) => item.id !== ro.id);
-
-    if (currentRO?.id === ro.id) {
-      currentRO = {
-        ...currentRO,
-        [ROS_FIELDS.currentLocation]: currentLocation,
-        currentLocation,
-        currentLocationArea: selectedArea,
-        moveStatus: "",
-        moveStartedAt: null,
-        moveStartedBy: "",
-        moveStartedByUid: "",
-        moveStartedDeviceId: "",
-        moveGroupId: "",
-        moveGroupTargetId: "",
-        moveGroupTargetTag: "",
-        moveGroupOrder: null,
-      };
-    }
-
-    lastROs = await getDealerROs();
-
-    renderGroupFinalLocationList();
-    renderMovingVehicles();
-
-    if (!currentMoveGroup.length) {
-      finalLocationPanel.classList.add("hidden");
-      cancelMoveButton.classList.add("hidden");
-      startMoveButton.classList.remove("hidden");
-
-      showMessage("All group locations saved.");
-      setTimeout(resetMoveLocateForm, 2000);
-      return;
-    }
-
-    showMessage("Location saved. Continue with the remaining moving vehicles.");
-  } catch (error) {
-    console.error(error);
-    showMessage(error?.message || "Could not save final location.");
-  }
-}
-
-async function saveFinalLocation() {
+async function takeOverMove() {
   clearMessage();
 
   if (!currentRO?.id) {
@@ -890,89 +1098,69 @@ async function saveFinalLocation() {
     return;
   }
 
-  const selectedArea = moveAreaSelect.value;
-  const currentLocation = finalLocationSelect.value.trim();
-  const blockingTag = blocksTagInput.value.trim();
+  const confirmed = confirm("Take over this move?");
 
-  if (!selectedArea) {
-    showMessage("Select Main Store or Annex.");
+  if (!confirmed) {
     return;
   }
 
-  if (!currentLocation) {
-    showMessage("Select final location.");
-    return;
-  }
+  const session = getSession();
+  const startedBy = getSessionUserName();
+  const startedByUid = session?.uid || "";
+  const deviceId = getDeviceId();
 
   try {
-    await clearCarsBlockedByTag(getROTag(currentRO));
-    await updateRO(
-      currentRO.id,
-      {
-        [ROS_FIELDS.currentLocation]: currentLocation,
-        currentLocationArea: selectedArea,
+    lastROs = await getDealerROs();
 
-        locationUpdatedAt: Date.now(),
-        moveStatus: "",
-        moveStartedAt: null,
-        moveStartedBy: "",
-        moveStartedByUid: "",
-        moveStartedDeviceId: "",
+    const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
 
-        moveGroupId: "",
-        moveGroupTargetId: "",
-        moveGroupTargetTag: "",
-        moveGroupOrder: null,
-      },
-      {
-        eventType: "location_updated",
-        module: "move-locate",
-        message: `Vehicle moved to ${currentLocation}`,
-      },
-    );
-
-    if (blockingTag) {
-      await saveBlockingRelationship({
-        blockerRO: currentRO,
-        blockedTag: blockingTag,
-        location: currentLocation,
-      });
+    if (!freshCurrentRO) {
+      showMessage("Vehicle not found.");
+      return;
     }
 
-    currentRO = {
-      ...currentRO,
-      [ROS_FIELDS.currentLocation]: currentLocation,
-      currentLocation,
-      currentLocationArea: selectedArea,
+    const moveGroup = getCurrentMoveGroup(freshCurrentRO);
 
-      locationUpdatedAt: Date.now(),
-      moveStatus: "",
-      moveStartedAt: null,
-      moveStartedBy: "",
-      moveStartedByUid: "",
-      moveStartedDeviceId: "",
+    for (const ro of moveGroup) {
+      await updateRO(
+        ro.id,
+        {
+          moveStartedBy: startedBy,
+          moveStartedByUid: startedByUid,
+          moveStartedDeviceId: deviceId,
+          moveTakenOverAt: Date.now(),
+        },
+        {
+          eventType: "vehicle_move_taken_over",
+          module: "move-locate",
+          message: `Move taken over by ${startedBy}`,
+        },
+      );
+    }
 
-      moveGroupId: "",
-      moveGroupTargetId: "",
-      moveGroupTargetTag: "",
-      moveGroupOrder: null,
-    };
+    lastROs = await getDealerROs();
 
-    moveAreaSelect.value = "";
-    finalLocationSelect.innerHTML = `<option value="">Select area first...</option>`;
-    blocksTagInput.value = "";
+    currentRO =
+      lastROs.find((ro) => ro.id === freshCurrentRO.id) || freshCurrentRO;
 
-    finalLocationPanel.classList.add("hidden");
-    cancelMoveButton.classList.add("hidden");
+    currentMoveGroup = getCurrentMoveGroup(currentRO);
 
-    await loadMovingVehicles();
+    finalLocationPanel.classList.remove("hidden");
+    cancelMoveButton.classList.remove("hidden");
+    overrideCancelMoveButton.classList.add("hidden");
+
+    if (takeOverMoveButton) {
+      takeOverMoveButton.classList.add("hidden");
+    }
+
+    renderUnifiedMoveCards();
+    renderMovingVehicles();
     renderSelectedVehicle(currentRO);
 
-    showMessage("Final location saved.");
-    setTimeout(resetMoveLocateForm, 2000);
+    showMessage("Move taken over.");
   } catch (error) {
     console.error(error);
-    showMessage(error?.message || "Could not save final location.");
+    showMessage("Could not take over move.");
   }
 }
 
@@ -984,7 +1172,7 @@ function renderMovingVehicles() {
   if (!moving.length) {
     movingVehiclesTableBody.innerHTML = `
       <tr>
-        <td colspan="5">No moving vehicles.</td>
+        <td colspan="6">No moving vehicles.</td>
       </tr>
     `;
     return;
@@ -993,26 +1181,25 @@ function renderMovingVehicles() {
   moving.forEach((ro) => {
     const row = document.createElement("tr");
 
-    const actionHtml =
-      ro.moveStatus === "moving" && !isMoveOwner(ro)
-        ? `
-      <button
-        class="small-button secondary table-override-cancel-button"
-        data-id="${ro.id}"
-      >
-        Override Cancel
-      </button>
-    `
-        : "";
+    const actionHtml = !isMoveOwner(ro)
+      ? `
+        <button
+          class="small-button secondary table-override-cancel-button"
+          data-id="${ro.id}"
+        >
+          Override Cancel
+        </button>
+      `
+      : "";
 
     row.innerHTML = `
-  <td data-label="Tag">${ro[ROS_FIELDS.tagNumber] || ""}</td>
-  <td data-label="RO">${ro[ROS_FIELDS.roNumber] || ""}</td>
-  <td data-label="Current Location">${ro[ROS_FIELDS.currentLocation] || ro.currentLocation || ""}</td>
-  <td data-label="Started By">${ro.moveStartedBy || ""}</td>
-  <td data-label="Started At">${formatDateTime(ro.moveStartedAt)}</td>
-  <td data-label="Action">${actionHtml}</td>
-`;
+      <td data-label="Tag">${getROTag(ro)}</td>
+      <td data-label="RO">${ro[ROS_FIELDS.roNumber] || ""}</td>
+      <td data-label="Current Location">${formatAreaLot(getROArea(ro), getROLot(ro))}</td>
+      <td data-label="Started By">${ro.moveStartedBy || ""}</td>
+      <td data-label="Started At">${formatDateTime(ro.moveStartedAt)}</td>
+      <td data-label="Action">${actionHtml}</td>
+    `;
 
     row.addEventListener("click", () => {
       currentRO = ro;
@@ -1025,14 +1212,13 @@ function renderMovingVehicles() {
     });
 
     movingVehiclesTableBody.appendChild(row);
+
     const overrideButton = row.querySelector(".table-override-cancel-button");
 
     if (overrideButton) {
       overrideButton.addEventListener("click", async (event) => {
         event.stopPropagation();
-
         currentRO = ro;
-
         await overrideCancelMove();
       });
     }
@@ -1047,13 +1233,21 @@ function getROTag(ro) {
   return normalizeTag(ro?.[ROS_FIELDS.tagNumber] || ro?.tagNumber || "");
 }
 
-function getROLocation(ro) {
+function getROArea(ro) {
+  return String(ro?.currentLocationArea || ro?.area || "").trim();
+}
+
+function getROLot(ro) {
   return String(
     ro?.[ROS_FIELDS.currentLocation] ||
       ro?.currentLocation ||
       ro?.location ||
       "",
   ).trim();
+}
+
+function formatAreaLot(area, lot) {
+  return [area, lot].filter(Boolean).join(" / ");
 }
 
 function findROByTag(tag, ros = []) {
@@ -1102,7 +1296,7 @@ function buildBlockedByChain(ro, ros = []) {
   return chain;
 }
 
-async function saveBlockingRelationship({ blockerRO, blockedTag, location }) {
+async function saveBlockingRelationship({ blockerRO, blockedTag, area, lot }) {
   const blockerTag = getROTag(blockerRO);
   const cleanBlockedTag = normalizeTag(blockedTag);
 
@@ -1114,22 +1308,28 @@ async function saveBlockingRelationship({ blockerRO, blockedTag, location }) {
     throw new Error("A vehicle cannot block itself.");
   }
 
-  const blockedRO = findROByTag(cleanBlockedTag, lastROs);
+  const freshROs = await getDealerROs();
+  const blockedRO = findROByTag(cleanBlockedTag, freshROs);
 
   if (!blockedRO?.id) {
-    throw new Error(`Blocked tag ${cleanBlockedTag} was not found.`);
+    throw new Error(`Blocking tag ${cleanBlockedTag} was not found.`);
   }
 
-  const blockedLocation = getROLocation(blockedRO);
+  const blockedArea = getROArea(blockedRO);
+  const blockedLot = getROLot(blockedRO);
 
-  const blockerChain = buildBlockedByChain(blockerRO, lastROs);
+  if (blockedArea && blockedArea !== area) {
+    throw new Error(`Blocking tag ${cleanBlockedTag} is not in the same area.`);
+  }
+
+  if (blockedLot && blockedLot !== lot) {
+    throw new Error(`Blocking tag ${cleanBlockedTag} is not in the same lot.`);
+  }
+
+  const blockerChain = buildBlockedByChain(blockerRO, freshROs);
 
   if (blockerChain.includes(cleanBlockedTag)) {
     throw new Error("This would create a circular blocking chain.");
-  }
-
-  if (blockedLocation && blockedLocation !== location) {
-    throw new Error(`Blocked tag ${cleanBlockedTag} is not in ${location}.`);
   }
 
   await updateRO(
@@ -1152,7 +1352,9 @@ async function clearCarsBlockedByTag(tag) {
     return;
   }
 
-  const blockedCars = lastROs.filter((ro) => {
+  const freshROs = await getDealerROs();
+
+  const blockedCars = freshROs.filter((ro) => {
     return normalizeTag(ro.blockedByTag || "") === currentTag;
   });
 
@@ -1169,10 +1371,12 @@ async function clearCarsBlockedByTag(tag) {
       },
     );
   }
+
+  lastROs = await getDealerROs();
 }
 
 function hasUnsavedOwnedMove() {
-  return currentRO?.moveStatus === "moving" && isMoveOwner(currentRO);
+  return currentMoveGroup.some((ro) => isMoving(ro) && isMoveOwner(ro));
 }
 
 window.addEventListener("beforeunload", (event) => {
@@ -1181,32 +1385,45 @@ window.addEventListener("beforeunload", (event) => {
   }
 
   event.preventDefault();
-
   event.returnValue = "";
 });
 
 function resetMoveLocateForm() {
   currentRO = null;
-  setGroupMoveFocusMode(false);
+  currentMoveGroup = [];
 
   vehicleSearchInput.value = "";
 
   vehicleResultCard.classList.add("hidden");
   vehicleDetailsPanel.classList.add("hidden");
   moveChainPanel.classList.add("hidden");
-
   finalLocationPanel.classList.add("hidden");
 
   cancelMoveButton.classList.add("hidden");
   overrideCancelMoveButton.classList.add("hidden");
 
+  if (takeOverMoveButton) {
+    takeOverMoveButton.classList.add("hidden");
+  }
+
   startMoveButton.classList.remove("hidden");
 
-  moveAreaSelect.value = "";
+  groupFinalLocationList.innerHTML = "";
 
-  finalLocationSelect.innerHTML = `<option value="">Select area first...</option>`;
+  hideOldSingleSaveUi();
+  hideUnifiedSaveButton();
 
-  blocksTagInput.value = "";
+  if (moveAreaSelect) {
+    moveAreaSelect.value = "";
+  }
+
+  if (finalLocationSelect) {
+    finalLocationSelect.innerHTML = `<option value="">Select area first...</option>`;
+  }
+
+  if (blocksTagInput) {
+    blocksTagInput.value = "";
+  }
 }
 
 function formatDateTime(value) {
@@ -1221,6 +1438,15 @@ function formatDateTime(value) {
   }
 
   return date.toLocaleString();
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function showMessage(message) {

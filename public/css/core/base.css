@@ -480,7 +480,7 @@ button:hover {
 
 .tool-message {
   margin: 6px 0 8px;
-  color: #008a2e;
+  color: #b00020;
   font-weight: normal;
   font-size: 14px;
 }
@@ -493,4 +493,9 @@ button:hover {
 
 .tool-details div {
   margin-bottom: 3px;
+}
+
+.move-validation-error {
+  background: #ffd7d7 !important;
+  border: 2px solid #d60000 !important;
 }
