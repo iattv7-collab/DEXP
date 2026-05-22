@@ -326,8 +326,14 @@ async function findVehicle() {
   const match = lastROs.find((ro) => {
     const roNumber = String(ro[ROS_FIELDS.roNumber] || "").toUpperCase();
     const tagNumber = String(ro[ROS_FIELDS.tagNumber] || "").toUpperCase();
-    const vin = String(ro[ROS_FIELDS.vin] || "").toUpperCase();
-    const vinLast8 = String(ro[ROS_FIELDS.vinLast8] || "").toUpperCase();
+
+    const vin = String(
+      ro[ROS_FIELDS.vin] || ro.vin || ro.vehicleVin || ro.fullVin || "",
+    ).toUpperCase();
+
+    const vinLast8 = String(
+      ro[ROS_FIELDS.vinLast8] || ro.vinLast8 || vin.slice(-8) || "",
+    ).toUpperCase();
 
     if (searchMode === "vin") {
       return vin === searchValue || vinLast8 === searchValue;
