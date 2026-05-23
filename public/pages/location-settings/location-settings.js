@@ -16,6 +16,7 @@ import {
 import {
   getAreas,
   createArea,
+  updateArea,
   deleteArea,
 } from "/js/services/firestore/areas-service.js";
 
@@ -128,10 +129,38 @@ function renderAreas(areas = []) {
 
     row.innerHTML = `
       <td>
-        ${area.label || ""}
+        <input
+          class="area-edit-input"
+          data-original="${area.label || ""}"
+          value="${area.label || ""}"
+          disabled
+        />
       </td>
 
       <td>
+        <button
+          class="small-button secondary edit-area-button"
+          data-id="${area.id}"
+        >
+          Edit
+        </button>
+
+        <button
+          class="small-button save-area-button"
+          data-id="${area.id}"
+          disabled
+        >
+          Save
+        </button>
+
+        <button
+          class="small-button secondary cancel-area-button"
+          data-id="${area.id}"
+          disabled
+        >
+          Cancel
+        </button>
+
         <button
           class="small-button secondary delete-area-button"
           data-id="${area.id}"
@@ -144,7 +173,67 @@ function renderAreas(areas = []) {
     areasTableBody.appendChild(row);
   });
 
+  bindAreaEditButtons();
   bindDeleteAreaButtons();
+}
+
+function bindAreaEditButtons() {
+  areasTableBody.querySelectorAll("tr").forEach((row) => {
+    const input = row.querySelector(".area-edit-input");
+
+    const saveButton = row.querySelector(".save-area-button");
+
+    const cancelButton = row.querySelector(".cancel-area-button");
+
+    const editButton = row.querySelector(".edit-area-button");
+
+    if (!input || !saveButton || !cancelButton || !editButton) {
+      return;
+    }
+
+    editButton.addEventListener("click", () => {
+      input.disabled = false;
+
+      cancelButton.disabled = false;
+
+      input.focus();
+    });
+
+    input.addEventListener("input", () => {
+      const changed =
+        input.value.trim() !== input.dataset.original.trim();
+
+      saveButton.disabled = !changed;
+    });
+
+    cancelButton.addEventListener("click", () => {
+      input.value = input.dataset.original;
+
+      input.disabled = true;
+
+      saveButton.disabled = true;
+
+      cancelButton.disabled = true;
+    });
+
+    saveButton.addEventListener("click", async () => {
+      const newLabel = input.value.trim();
+
+      if (!newLabel) {
+        showMessage("Area name cannot be empty.");
+
+        return;
+      }
+
+      await updateArea(saveButton.dataset.id, {
+        label: newLabel,
+      });
+
+      await loadAreas();
+
+      showMessage("Area updated.");
+    });
+  });
 }
 
 function bindDeleteAreaButtons() {

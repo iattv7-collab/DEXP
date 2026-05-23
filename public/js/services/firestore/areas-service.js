@@ -5,8 +5,9 @@ import {
   doc,
   getDocs,
   setDoc,
+  updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
@@ -21,10 +22,7 @@ function getDealerId() {
 }
 
 function makeAreaId(label = "") {
-  return String(label)
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-");
+  return String(label).trim().toLowerCase().replace(/\s+/g, "-");
 }
 
 export async function getAreas() {
@@ -34,14 +32,12 @@ export async function getAreas() {
     return [];
   }
 
-  const snapshot = await getDocs(
-    collection(db, COLLECTION_NAME)
-  );
+  const snapshot = await getDocs(collection(db, COLLECTION_NAME));
 
   return snapshot.docs
     .map((docItem) => ({
       id: docItem.id,
-      ...docItem.data()
+      ...docItem.data(),
     }))
     .filter((area) => area.dealerId === dealerId);
 }
@@ -66,6 +62,15 @@ export async function createArea(label) {
     label: cleanLabel,
     value: makeAreaId(cleanLabel),
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  return true;
+}
+
+export async function updateArea(areaId, updates = {}) {
+  await updateDoc(doc(db, COLLECTION_NAME, areaId), {
+    ...updates,
     updatedAt: serverTimestamp()
   });
 
@@ -73,9 +78,7 @@ export async function createArea(label) {
 }
 
 export async function deleteArea(areaId) {
-  await deleteDoc(
-    doc(db, COLLECTION_NAME, areaId)
-  );
+  await deleteDoc(doc(db, COLLECTION_NAME, areaId));
 
   return true;
 }

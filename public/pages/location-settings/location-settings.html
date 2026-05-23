@@ -4,9 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Location Settings</title>
 
     <link rel="stylesheet" href="/css/core/base.css" />
@@ -17,21 +15,73 @@
       <div class="page-title-row">
         <div>
           <h2>Location Settings</h2>
+          <p class="tool-help">
+            Manage parking areas and lots used by Move & Locate.
+          </p>
         </div>
       </div>
 
       <section class="tool-card">
-        <h3>Areas</h3>
+        <h3>Add Area</h3>
+
+        <p class="tool-help">Create your main parking areas first.</p>
 
         <div class="tool-row">
           <input
             id="areaNameInput"
             type="text"
-            placeholder="Example: Main Store"
+            placeholder="Example: Main, Annex, Shop"
           />
 
           <button id="addAreaButton" type="button">Add Area</button>
         </div>
+
+        <p id="locationSettingsMessage" class="tool-message"></p>
+      </section>
+
+      <section class="tool-card">
+        <h3>Add Parking Lot</h3>
+
+        <p class="tool-help">Add parking lots under an existing area.</p>
+
+        <div class="tool-row">
+          <label>
+            Area
+
+            <select id="locationAreaSelect">
+              <option value="">Select area...</option>
+            </select>
+          </label>
+
+          <label>
+            Lot Name
+
+            <input
+              id="locationNameInput"
+              type="text"
+              placeholder="Example: Lot 1"
+            />
+          </label>
+
+          <label>
+            Capacity
+
+            <input
+              id="locationCapacityInput"
+              type="number"
+              min="0"
+              placeholder="Example: 12"
+            />
+          </label>
+
+          <button id="addLocationButton" type="button">Add Parking Lot</button>
+        </div>
+      </section>
+
+      <section class="tool-card">
+        <h3>Manage Areas</h3>
+
+        <p class="tool-help">Existing parking areas currently in use.</p>
 
         <div class="table-wrap">
           <table class="data-table">
@@ -52,47 +102,11 @@
       </section>
 
       <section class="tool-card">
-        <h3>Add Location</h3>
+        <h3>Active Parking Lots</h3>
 
-        <div class="tool-details-grid">
-          <label>
-            Location Name
-            <input
-              id="locationNameInput"
-              type="text"
-              placeholder="Example: Main Lot A"
-            />
-          </label>
-
-          <label>
-            Area
-            <select id="locationAreaSelect">
-              <option value="">Select area...</option>
-            </select>
-          </label>
-
-          <label>
-            Capacity
-            <input
-              id="locationCapacityInput"
-              type="number"
-              min="0"
-              placeholder="Example: 12"
-            />
-          </label>
-        </div>
-
-        <div class="tool-row">
-          <button id="addLocationButton" type="button">
-            Add Location
-          </button>
-        </div>
-
-        <p id="locationSettingsMessage" class="tool-message"></p>
-      </section>
-
-      <section class="tool-card">
-        <h3>Active Locations</h3>
+        <p class="tool-help">
+          Locations currently available for vehicle parking.
+        </p>
 
         <div class="table-wrap">
           <table class="data-table">
@@ -116,7 +130,11 @@
       </section>
 
       <section class="tool-card">
-        <h3>Inactive Locations</h3>
+        <h3>Inactive Parking Lots</h3>
+
+        <p class="tool-help">
+          Disabled lots kept for history and future reuse.
+        </p>
 
         <div class="table-wrap">
           <table class="data-table">
