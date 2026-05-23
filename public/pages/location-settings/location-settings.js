@@ -200,8 +200,7 @@ function bindAreaEditButtons() {
     });
 
     input.addEventListener("input", () => {
-      const changed =
-        input.value.trim() !== input.dataset.original.trim();
+      const changed = input.value.trim() !== input.dataset.original.trim();
 
       saveButton.disabled = !changed;
     });
@@ -240,6 +239,12 @@ function bindDeleteAreaButtons() {
   document.querySelectorAll(".delete-area-button").forEach((button) => {
     button.addEventListener("click", async () => {
       const id = button.dataset.id;
+
+      const confirmed = confirm("Delete this area?");
+
+      if (!confirmed) {
+        return;
+      }
 
       await deleteArea(id);
 
@@ -346,7 +351,12 @@ function renderActiveLocations(locations = []) {
 
     row.innerHTML = `
       <td data-label="Location">
-        ${location.label || ""}
+        <input
+          class="location-label-edit-input"
+          data-original="${location.label || ""}"
+          value="${location.label || ""}"
+          disabled
+        />
       </td>
 
       <td data-label="Area">
@@ -354,7 +364,14 @@ function renderActiveLocations(locations = []) {
       </td>
 
       <td data-label="Capacity">
-        ${location.capacity || 0}
+        <input
+          class="location-capacity-edit-input"
+          type="number"
+          min="0"
+          data-original="${location.capacity || 0}"
+          value="${location.capacity || 0}"
+          disabled
+        />
       </td>
 
       <td data-label="Status">
@@ -362,6 +379,29 @@ function renderActiveLocations(locations = []) {
       </td>
 
       <td data-label="Actions">
+        <button
+          class="small-button secondary edit-location-button"
+          data-id="${location.id}"
+        >
+          Edit
+        </button>
+
+        <button
+          class="small-button save-location-button"
+          data-id="${location.id}"
+          disabled
+        >
+          Save
+        </button>
+
+        <button
+          class="small-button secondary cancel-location-button"
+          data-id="${location.id}"
+          disabled
+        >
+          Cancel
+        </button>
+
         <button
           class="small-button secondary deactivate-location-button"
           data-id="${location.id}"
@@ -374,6 +414,7 @@ function renderActiveLocations(locations = []) {
     activeLocationsTableBody.appendChild(row);
   });
 
+  bindLocationEditButtons(activeLocationsTableBody);
   bindDeactivateButtons();
 }
 
@@ -397,7 +438,12 @@ function renderInactiveLocations(locations = []) {
 
     row.innerHTML = `
       <td data-label="Location">
-        ${location.label || ""}
+        <input
+          class="location-label-edit-input"
+          data-original="${location.label || ""}"
+          value="${location.label || ""}"
+          disabled
+        />
       </td>
 
       <td data-label="Area">
@@ -405,7 +451,14 @@ function renderInactiveLocations(locations = []) {
       </td>
 
       <td data-label="Capacity">
-        ${location.capacity || 0}
+        <input
+          class="location-capacity-edit-input"
+          type="number"
+          min="0"
+          data-original="${location.capacity || 0}"
+          value="${location.capacity || 0}"
+          disabled
+        />
       </td>
 
       <td data-label="Status">
@@ -413,6 +466,29 @@ function renderInactiveLocations(locations = []) {
       </td>
 
       <td data-label="Actions">
+        <button
+          class="small-button secondary edit-location-button"
+          data-id="${location.id}"
+        >
+          Edit
+        </button>
+
+        <button
+          class="small-button save-location-button"
+          data-id="${location.id}"
+          disabled
+        >
+          Save
+        </button>
+
+        <button
+          class="small-button secondary cancel-location-button"
+          data-id="${location.id}"
+          disabled
+        >
+          Cancel
+        </button>
+
         <button
           class="small-button reactivate-location-button"
           data-id="${location.id}"
@@ -432,8 +508,80 @@ function renderInactiveLocations(locations = []) {
     inactiveLocationsTableBody.appendChild(row);
   });
 
+  bindLocationEditButtons(inactiveLocationsTableBody);
   bindReactivateButtons();
   bindDeleteLocationButtons();
+}
+
+function bindLocationEditButtons(tableBody) {
+  tableBody.querySelectorAll("tr").forEach((row) => {
+    const labelInput = row.querySelector(".location-label-edit-input");
+    const capacityInput = row.querySelector(".location-capacity-edit-input");
+    const editButton = row.querySelector(".edit-location-button");
+    const saveButton = row.querySelector(".save-location-button");
+    const cancelButton = row.querySelector(".cancel-location-button");
+
+    if (
+      !labelInput ||
+      !capacityInput ||
+      !editButton ||
+      !saveButton ||
+      !cancelButton
+    ) {
+      return;
+    }
+
+    function checkForChanges() {
+      const labelChanged =
+        labelInput.value.trim() !== labelInput.dataset.original.trim();
+
+      const capacityChanged =
+        Number(capacityInput.value || 0) !==
+        Number(capacityInput.dataset.original || 0);
+
+      saveButton.disabled = !labelChanged && !capacityChanged;
+    }
+
+    editButton.addEventListener("click", () => {
+      labelInput.disabled = false;
+      capacityInput.disabled = false;
+      cancelButton.disabled = false;
+
+      labelInput.focus();
+    });
+
+    labelInput.addEventListener("input", checkForChanges);
+    capacityInput.addEventListener("input", checkForChanges);
+
+    cancelButton.addEventListener("click", () => {
+      labelInput.value = labelInput.dataset.original;
+      capacityInput.value = capacityInput.dataset.original;
+
+      labelInput.disabled = true;
+      capacityInput.disabled = true;
+      saveButton.disabled = true;
+      cancelButton.disabled = true;
+    });
+
+    saveButton.addEventListener("click", async () => {
+      const newLabel = labelInput.value.trim();
+      const newCapacity = Number(capacityInput.value || 0);
+
+      if (!newLabel) {
+        showMessage("Location name cannot be empty.");
+        return;
+      }
+
+      await updateLocation(saveButton.dataset.id, {
+        label: newLabel,
+        capacity: newCapacity,
+      });
+
+      await loadLocations();
+
+      showMessage("Location updated.");
+    });
+  });
 }
 
 function bindDeactivateButtons() {
@@ -476,6 +624,12 @@ function bindDeleteLocationButtons() {
     .forEach((button) => {
       button.addEventListener("click", async () => {
         const id = button.dataset.id;
+
+        const confirmed = confirm("Delete this parking lot?");
+
+        if (!confirmed) {
+          return;
+        }
 
         await deleteLocation(id);
 
