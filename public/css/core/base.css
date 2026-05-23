@@ -1,13 +1,13 @@
 /* public/css/core/base.css */
 
 :root {
-  --blue: #0b3d91;
-  --teal: #1d4ed8;
-  --bg: #f4f7fb;
-  --card: #ffffff;
-  --text: #102033;
-  --muted: #5f6b7a;
-  --border: #d9e2ec;
+  --blue: #1E40AF;
+  --teal: #0031c6;
+  --bg: #dae8f8;
+  --card: #FFFFFF;
+  --text: #1E293B;
+  --muted: #64748B;
+  --border: #a0bcdf;
 }
 
 * {
@@ -553,4 +553,76 @@ button:disabled {
 
 .parking-availability-item.parking-full .parking-availability-count {
   color: #b00020;
+}
+
+/* APP HEADER */
+
+#appHeader {
+  background: #0b3d91;
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 14px;
+
+  box-sizing: border-box;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  padding: 0;
+  margin: 0;
+
+  display: flex;
+  align-items: center;
+}
+
+.app-header-logo-image {
+  height: 58px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.app-logo-button:hover {
+  opacity: 0.9;
+}
+
+.app-header-divider {
+  font-size: 28px;
+  font-weight: bold;
+  opacity: 0.85;
+}
+
+.app-header-info h1 {
+  margin: 0;
+  padding: 0;
+
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.app-header-info p {
+  margin: 2px 0 0 0;
+  padding: 0;
+
+  font-size: 14px;
+  opacity: 0.92;
+}
+
+.app-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }

@@ -1,7 +1,6 @@
 // public/pages/ro-tracker/ro-tracker-page.js
 
 import { protectRoute } from "/js/core/router.js";
-
 import { renderAppHeader } from "/js/shared/app-header.js";
 
 import { watchDealerROs } from "/js/services/firestore/ros-service.js";
@@ -20,6 +19,10 @@ import {
   loadROTrackerColumnSettings,
   saveROTrackerColumnSettings
 } from "/js/modules/ro-tracker/ro-tracker-settings.js";
+
+import {
+  setupROTrackerActions
+} from "/js/modules/ro-tracker/ro-tracker-actions.js";
 
 protectRoute();
 
@@ -44,13 +47,18 @@ async function initializeROTracker() {
 
   buildColumns();
 
+  setupROTrackerActions({
+    tableBody,
+    getROById,
+    showMessage,
+  });
+
   watchDealerROs((rows) => {
     allRows = Array.isArray(rows) ? rows : [];
-    renderRows(allRows);
+    renderRows(getCurrentRows());
   });
 
   searchInput?.addEventListener("input", handleSearch);
-
   columnSettingsButton?.addEventListener("click", openColumnSettingsModal);
 }
 
@@ -86,33 +94,8 @@ function renderRows(rows = []) {
   });
 }
 
-function handleSearch(event) {
-  const value = String(event.target.value || "")
-    .trim()
-    .toLowerCase();
-
-  if (!value) {
-    renderRows(allRows);
-    return;
-  }
-
-  const filtered = allRows.filter((ro) => {
-    return [
-      ro.roNumber,
-      ro.tagNumber,
-      ro.customerName,
-      ro.customerPhone,
-      ro.model,
-      ro.concern,
-      ro.currentLocation,
-      ro.status,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(value);
-  });
-
-  renderRows(filtered);
+function handleSearch() {
+  renderRows(getCurrentRows());
 }
 
 function openColumnSettingsModal() {
@@ -147,7 +130,6 @@ function openColumnSettingsModal() {
 
     label.appendChild(checkbox);
     label.appendChild(span);
-
     list.appendChild(label);
 
     checkboxRefs.push(checkbox);
@@ -223,4 +205,14 @@ function getCurrentRows() {
       .toLowerCase()
       .includes(value);
   });
+}
+
+function getROById(roId) {
+  return allRows.find((ro) => {
+    return ro.id === roId || ro.roNumber === roId;
+  });
+}
+
+function showMessage(message = "") {
+  return;
 }
