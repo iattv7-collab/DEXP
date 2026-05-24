@@ -1,18 +1,25 @@
 // public/js/core/session.js
 
+import {
+  getPermissionsForRole
+} from "../config/role-permissions.js";
+
 const SESSION_KEY = "dexp_session";
 
 let currentSession = null;
 
 export function setSession({ user, profile, dealer, modules }) {
+  const role = profile?.role || "pending";
+
   currentSession = {
     uid: user?.uid || null,
     email: user?.email || profile?.email || "",
     displayName: user?.displayName || profile?.displayName || "",
-    role: profile?.role || "pending",
+    role,
     dealerId: profile?.dealerId || "",
     dealerName: dealer?.name || "",
     modules: Array.isArray(modules) ? modules : [],
+    permissions: getPermissionsForRole(role),
     profile,
     dealer
   };
@@ -52,4 +59,9 @@ export function hasAnyRole(roles = []) {
 export function hasModule(moduleKey) {
   const session = getSession();
   return session?.modules?.includes(moduleKey);
+}
+
+export function hasPermission(permission) {
+  const session = getSession();
+  return session?.permissions?.includes(permission);
 }
