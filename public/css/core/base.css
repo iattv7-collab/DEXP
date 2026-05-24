@@ -626,3 +626,43 @@ button:disabled {
   align-items: center;
   gap: 10px;
 }
+
+/* =========================
+   ADMIN
+========================= */
+
+.page-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.page-section {
+  margin-bottom: 24px;
+}
+
+.dexp-admin-card {
+  background: #ffffff;
+  border: 1px solid #cfd6df;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.dexp-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.dexp-admin-table th,
+.dexp-admin-table td {
+  border: 1px solid #cfd6df;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.dexp-admin-table th {
+  background: #0b3d91;
+  color: white;
+}

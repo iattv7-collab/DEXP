@@ -2,39 +2,30 @@
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEXP Dashboard</title>
 
-    <title>DEXP Dashboard</title>
-
-    <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
 </head>
 
 <body>
+  <div id="appHeader"></div>
 
-    <main id="dashboardPage">
+  <main id="dashboardPage" class="page-shell">
+    <section id="dashboardContent" class="page-section">
+      <p id="welcomeText">
+        Loading session...
+      </p>
 
-        <section id="dashboardContent">
+      <section id="modulesContainer"></section>
+    </section>
+  </main>
 
-            <p id="welcomeText">
-                Loading session...
-            </p>
-
-            <section id="modulesContainer"></section>
-
-        </section>
-
-        <section id="modulesContainer"></section>
-
-    </main>
-
-    <script type="module" src="/js/core/app.js"></script>
-
-    <script type="module" src="/pages/dashboard/dashboard.js"></script>
-
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/dashboard/dashboard.js?v=2"></script>
 </body>
-
 </html>

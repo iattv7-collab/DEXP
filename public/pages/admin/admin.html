@@ -1,0 +1,45 @@
+<!-- public/pages/admin/admin.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>DEXP Admin</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+
+    <link rel="stylesheet" href="/css/core/base.css" />
+  </head>
+
+  <body>
+    <div id="appHeader"></div>
+
+    <main class="page-shell">
+      <section class="page-section">
+        <h1>Admin</h1>
+
+        <p>
+          User management, role approval, active/inactive access control, dealer
+          assignment, and platform administration.
+        </p>
+      </section>
+
+      <section class="page-section">
+        <h2>Pending Users</h2>
+
+        <div id="pendingUsersContainer">Loading pending users...</div>
+      </section>
+
+      <section class="page-section">
+        <div id="allUsersContainer">Loading users...</div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+
+    <script type="module" src="/pages/admin/admin-page.js?v=12"></script>
+  </body>
+</html>
