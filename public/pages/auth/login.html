@@ -1,36 +1,157 @@
+<!-- public/pages/auth/login.html -->
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
     <title>DEXP Sign In</title>
 
-    <link rel="stylesheet" href="/css/core/reset.css" />
-    <link rel="stylesheet" href="/css/core/base.css" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/assets/logo-v2.png" />
-    <meta name="theme-color" content="#0b3d91" />
+    <link
+      rel="stylesheet"
+      href="/css/core/reset.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="/css/core/base.css"
+    />
+
+    <link
+      rel="manifest"
+      href="/manifest.json"
+    />
+
+    <link
+      rel="icon"
+      type="image/png"
+      href="/assets/logo-v2.png"
+    />
+
+    <meta
+      name="theme-color"
+      content="#0b3d91"
+    />
   </head>
 
   <body>
-    <main class="app-shell" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
-      <section class="tool-card" style="width:100%; max-width:420px; text-align:center; padding:32px;">
+
+    <main
+      class="app-shell"
+      style="
+        min-height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:24px;
+      "
+    >
+
+      <section
+        class="tool-card"
+        style="
+          width:100%;
+          max-width:420px;
+          text-align:center;
+          padding:32px;
+        "
+      >
+
         <img
           src="/assets/logo-v2.png"
           alt="DEXP"
-          style="width:180px; max-width:70%; margin-bottom:18px;"
+          style="
+            width:180px;
+            max-width:70%;
+            margin-bottom:18px;
+          "
         />
 
         <h1>DEXP</h1>
-        <p class="tool-help">Dealer Execution Platform</p>
 
-        <button id="btn-login" type="button" style="width:100%; margin-top:20px;">
+        <p class="tool-help">
+          Dealer Execution Platform
+        </p>
+
+        <div
+          style="
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+            margin-top:24px;
+          "
+        >
+
+          <input
+            id="emailInput"
+            type="email"
+            placeholder="Company Email"
+            style="
+              width:100%;
+              padding:10px;
+            "
+          />
+
+          <input
+            id="passwordInput"
+            type="password"
+            placeholder="Password"
+            style="
+              width:100%;
+              padding:10px;
+            "
+          />
+
+          <button
+            id="btn-email-login"
+            type="button"
+          >
+            Sign In
+          </button>
+
+          <button
+            id="btn-register"
+            type="button"
+            class="secondary"
+          >
+            Register New Account
+          </button>
+
+          <button
+            id="btn-reset-password"
+            type="button"
+            class="secondary"
+          >
+            Forgot Password
+          </button>
+
+        </div>
+
+        <hr style="margin:24px 0;" />
+
+        <button
+          id="btn-login"
+          type="button"
+          style="
+            width:100%;
+          "
+        >
           Sign In with Google
         </button>
+
       </section>
+
     </main>
 
-    <script type="module" src="/js/pages/auth/login-page.js"></script>
+    <script
+      type="module"
+      src="/js/pages/auth/login-page.js?v=4"
+    ></script>
+
   </body>
 </html>

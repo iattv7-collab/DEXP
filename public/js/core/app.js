@@ -19,6 +19,18 @@ async function loadUserSession(user) {
   try {
     const profile = await ensureUserProfile(user);
 
+    if (profile.role === "pending" || profile.active === false) {
+      clearSession();
+
+      alert(
+        "Your account is pending admin approval. Please contact your manager."
+      );
+
+      window.location.href = "/pages/auth/login.html";
+
+      return;
+    }
+
     if (!profile?.dealerId) {
       throw new Error("Missing dealer assignment");
     }
@@ -35,14 +47,13 @@ async function loadUserSession(user) {
       user,
       profile,
       dealer,
-      modules
+      modules,
     });
 
     console.log("Logged in:", profile.email);
     console.log("Role:", profile.role);
     console.log("Dealer:", profile.dealerId);
     console.log("Modules:", modules);
-
   } catch (error) {
     console.error("Session initialization failed:", error);
 
@@ -53,7 +64,6 @@ async function loadUserSession(user) {
 }
 
 watchAuthState(async (user) => {
-
   if (user) {
     await loadUserSession(user);
   } else {
@@ -64,7 +74,5 @@ watchAuthState(async (user) => {
 
   initializeApp();
 
-  window.dispatchEvent(
-    new CustomEvent("dexp-session-ready")
-  );
+  window.dispatchEvent(new CustomEvent("dexp-session-ready"));
 });

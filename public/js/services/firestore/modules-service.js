@@ -15,12 +15,7 @@ import {
   CORE_MODULES
 } from "../../config/modules.js";
 
-const DEFAULT_ENABLED_MODULES = [
-  ...CORE_MODULES,
-  MODULES.SCANNER_RO,
-  MODULES.MOVE_LOCATE,
-  MODULES.LOCATION_SETTINGS
-];
+const DEFAULT_ENABLED_MODULES = Object.values(MODULES);
 
 export async function getDealerModules(dealerId) {
   if (!dealerId) {
