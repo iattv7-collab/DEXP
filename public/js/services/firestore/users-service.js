@@ -19,6 +19,8 @@ import {
   SETUP_ADMIN_EMAILS
 } from "../../config/roles.js";
 
+import { MODULES } from "../../config/modules.js";
+
 export async function ensureUserProfile(user) {
   const userRef = doc(db, "users", user.uid);
 
@@ -30,32 +32,112 @@ export async function ensureUserProfile(user) {
     return existingProfile;
   }
 
+  const email =
+    (user.email || "").trim().toLowerCase();
+
   const isSetupAdmin =
-    SETUP_ADMIN_EMAILS.includes(user.email);
+    SETUP_ADMIN_EMAILS.includes(email);
+
+  if (isSetupAdmin) {
+    const newProfile = {
+      uid: user.uid,
+      email,
+      displayName: user.displayName || "",
+
+      role: ROLES.PLATFORM_ADMIN,
+      dealerId: "platform",
+
+      active: true,
+
+      assignedModules: [
+        MODULES.PLATFORM_ADMIN,
+        MODULES.ADMIN,
+        MODULES.COMPANY_PROFILE,
+        MODULES.NOTIFICATIONS
+      ],
+
+      createdAt: serverTimestamp(),
+      approvalRequestedAt: serverTimestamp(),
+      approvedAt: serverTimestamp(),
+      approvedBy: "setup",
+
+      inactiveAt: null,
+      inactiveBy: ""
+    };
+
+    await setDoc(userRef, newProfile);
+
+    return newProfile;
+  }
+
+  const invite =
+    await getDealerAdminInvite(email);
+
+  if (invite) {
+    const newProfile = {
+      uid: user.uid,
+      email,
+      displayName:
+        user.displayName ||
+        invite.displayName ||
+        "",
+
+      phone: invite.phone || "",
+
+      role: ROLES.ADMIN,
+      dealerId: invite.dealerId,
+
+      active: true,
+
+      assignedModules: [
+        MODULES.ADMIN,
+        MODULES.COMPANY_PROFILE,
+        MODULES.RO_TRACKER,
+        MODULES.NOTIFICATIONS
+      ],
+
+      createdAt: serverTimestamp(),
+      approvalRequestedAt: serverTimestamp(),
+      approvedAt: serverTimestamp(),
+      approvedBy: "dealer-admin-invite",
+
+      inactiveAt: null,
+      inactiveBy: ""
+    };
+
+    await setDoc(userRef, newProfile);
+
+    await setDoc(
+      doc(db, "dealerAdminInvites", email),
+      {
+        status: "accepted",
+        acceptedAt: serverTimestamp(),
+        acceptedBy: user.uid,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    return newProfile;
+  }
 
   const newProfile = {
     uid: user.uid,
-    email: user.email || "",
+    email,
     displayName: user.displayName || "",
 
-    role: isSetupAdmin
-      ? ROLES.ADMIN
-      : DEFAULT_ROLE,
+    role: DEFAULT_ROLE,
+    dealerId: "",
 
-    dealerId: "default-dealer",
+    active: false,
 
-    active: isSetupAdmin,
+    assignedModules: [],
 
     createdAt: serverTimestamp(),
     approvalRequestedAt: serverTimestamp(),
 
-    approvedAt: isSetupAdmin
-      ? serverTimestamp()
-      : null,
-
-    approvedBy: isSetupAdmin
-      ? "setup"
-      : "",
+    approvedAt: null,
+    approvedBy: "",
 
     inactiveAt: null,
     inactiveBy: ""
@@ -64,6 +146,32 @@ export async function ensureUserProfile(user) {
   await setDoc(userRef, newProfile);
 
   return newProfile;
+}
+
+async function getDealerAdminInvite(email) {
+  if (!email) {
+    return null;
+  }
+
+  const inviteRef = doc(
+    db,
+    "dealerAdminInvites",
+    email
+  );
+
+  const snapshot = await getDoc(inviteRef);
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  const invite = snapshot.data();
+
+  if (invite.status === "accepted") {
+    return null;
+  }
+
+  return invite;
 }
 
 export async function getAllUsers() {

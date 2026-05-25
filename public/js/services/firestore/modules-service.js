@@ -3,19 +3,15 @@
 import {
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
 
 import {
-  MODULES,
-  CORE_MODULES
+  CORE_REQUIRED_MODULES
 } from "../../config/modules.js";
-
-const DEFAULT_ENABLED_MODULES = Object.values(MODULES);
 
 export async function getDealerModules(dealerId) {
   if (!dealerId) {
@@ -23,37 +19,54 @@ export async function getDealerModules(dealerId) {
   }
 
   const moduleRef = doc(db, "moduleRegistry", dealerId);
-
   const snapshot = await getDoc(moduleRef);
 
   if (snapshot.exists()) {
-    const existingModules =
+    const enabledModules =
       snapshot.data().enabledModules || [];
 
-    const mergedModules = Array.from(
+    return Array.from(
       new Set([
-        ...existingModules,
-        ...DEFAULT_ENABLED_MODULES
+        ...CORE_REQUIRED_MODULES,
+        ...enabledModules
       ])
     );
-
-    if (mergedModules.length !== existingModules.length) {
-      await updateDoc(moduleRef, {
-        enabledModules: mergedModules,
-        updatedAt: serverTimestamp()
-      });
-    }
-
-    return mergedModules;
   }
 
   const newModuleRegistry = {
     dealerId,
-    enabledModules: DEFAULT_ENABLED_MODULES,
-    createdAt: serverTimestamp()
+    enabledModules: CORE_REQUIRED_MODULES,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   };
 
   await setDoc(moduleRef, newModuleRegistry);
 
-  return DEFAULT_ENABLED_MODULES;
+  return CORE_REQUIRED_MODULES;
+}
+
+export async function updateDealerEnabledModules(
+  dealerId,
+  enabledModules
+) {
+  if (!dealerId) {
+    throw new Error("Missing dealerId");
+  }
+
+  const moduleRef = doc(db, "moduleRegistry", dealerId);
+
+  await setDoc(
+    moduleRef,
+    {
+      dealerId,
+      enabledModules: Array.from(
+        new Set([
+          ...CORE_REQUIRED_MODULES,
+          ...enabledModules
+        ])
+      ),
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 }

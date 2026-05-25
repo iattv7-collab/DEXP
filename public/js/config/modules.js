@@ -3,6 +3,8 @@
 import { PERMISSIONS } from "./permissions.js";
 
 export const MODULES = {
+  PLATFORM_ADMIN: "platform-admin",
+
   SCANNER_RO: "scanner-ro",
   MASTER_RO: "master-ro",
   RO_TRACKER: "ro-tracker",
@@ -15,6 +17,7 @@ export const MODULES = {
   LOANER_RETURNS: "loaner-returns",
   MANAGER: "manager",
   ADMIN: "admin",
+  COMPANY_PROFILE: "company-profile",
   SEND_TO_WASH: "send-to-wash",
   WASH_SETTINGS: "wash-settings",
   LOCATION_SETTINGS: "location-settings",
@@ -29,6 +32,13 @@ export const MODULES = {
 };
 
 export const MODULE_CONFIG = {
+  [MODULES.PLATFORM_ADMIN]: {
+    label: "Platform Admin",
+    route: "/pages/platform-admin/platform-admin.html",
+    icon: "shield",
+    permission: PERMISSIONS.ADMIN_USERS_VIEW
+  },
+
   [MODULES.SCANNER_RO]: {
     label: "Scanner RO",
     route: "/pages/scanner-ro/index.html",
@@ -96,8 +106,14 @@ export const MODULE_CONFIG = {
     label: "Admin",
     route: "/pages/admin/admin.html",
     icon: "admin_panel_settings",
-    adminOnly: true,
     permission: PERMISSIONS.ADMIN_USERS_VIEW
+  },
+
+  [MODULES.COMPANY_PROFILE]: {
+    label: "Company Profile",
+    route: "/pages/company-profile/company-profile.html",
+    icon: "business",
+    permission: PERMISSIONS.DEALER_PROFILE_EDIT
   },
 
   [MODULES.SEND_TO_WASH]: {
@@ -139,7 +155,6 @@ export const MODULE_CONFIG = {
     label: "Master RO",
     route: "/pages/master-ro/index.html",
     icon: "table_chart",
-    adminOnly: true,
     permission: PERMISSIONS.MASTER_RO_VIEW
   },
 
@@ -193,9 +208,101 @@ export const MODULE_CONFIG = {
   }
 };
 
-export const CORE_MODULES = [
+export const CORE_REQUIRED_MODULES = [
+  MODULES.ADMIN,
+  MODULES.COMPANY_PROFILE,
   MODULES.MASTER_RO,
-  MODULES.RO_TRACKER,
-  MODULES.NOTIFICATIONS,
-  MODULES.ADMIN
+  MODULES.ARCHIVE,
+  MODULES.SCANNER_RO
+];
+
+export const SELLABLE_MODULE_GROUPS = [
+  {
+    id: "ro-tracker",
+    label: "RO Tracker",
+    modules: [
+      MODULES.RO_TRACKER,
+      MODULES.ADVISOR,
+      MODULES.MANAGER
+    ]
+  },
+
+  {
+    id: "booker",
+    label: "Booker",
+    modules: [
+      MODULES.BOOKER
+    ]
+  },
+
+  {
+    id: "qc",
+    label: "QC",
+    modules: [
+      MODULES.QC
+    ]
+  },
+
+  {
+    id: "dispatch",
+    label: "Dispatch",
+    modules: [
+      MODULES.FOREMAN,
+      MODULES.TECH
+    ]
+  },
+
+  {
+    id: "move-locate",
+    label: "Move & Locate",
+    modules: [
+      MODULES.MOVE_LOCATE,
+      MODULES.REQUESTS,
+      MODULES.VALET,
+      MODULES.LOCATION_SETTINGS
+    ]
+  },
+
+  {
+    id: "wash",
+    label: "Wash",
+    modules: [
+      MODULES.WASH,
+      MODULES.SEND_TO_WASH,
+      MODULES.WASH_SETTINGS
+    ]
+  },
+
+  {
+    id: "loaners",
+    label: "Loaners",
+    modules: [
+      MODULES.LOANER_FLEET,
+      MODULES.LOANER_RETURNS
+    ]
+  },
+
+  {
+    id: "details",
+    label: "Details",
+    modules: [
+      MODULES.DETAILS
+    ]
+  },
+
+  {
+    id: "shop",
+    label: "Shop",
+    modules: [
+      MODULES.SHOP
+    ]
+  },
+
+  {
+    id: "notifications",
+    label: "Notifications",
+    modules: [
+      MODULES.NOTIFICATIONS
+    ]
+  }
 ];

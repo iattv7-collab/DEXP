@@ -29,6 +29,7 @@ const visionClient =
   new vision.ImageAnnotatorClient();
 
 const ALLOWED_ROLES = [
+  "platform-admin",
   "admin",
   "manager",
   "advisor",
@@ -141,7 +142,7 @@ exports.bootstrapAdmin =
     await setClaims(
       request.auth.uid,
       {
-        role: "admin",
+        role: "platform-admin",
         active: true
       }
     );
@@ -149,7 +150,7 @@ exports.bootstrapAdmin =
     await admin.firestore()
       .doc(`users/${request.auth.uid}`)
       .set({
-        role: "admin",
+        role: "platform-admin",
         active: true,
         updatedAt:
           admin.firestore.FieldValue.serverTimestamp()
@@ -168,7 +169,7 @@ exports.approveUser =
 
     requireRole(
       request,
-      ["admin", "manager"]
+      ['platform-admin', 'admin', 'manager']
     );
 
     const {
@@ -244,7 +245,7 @@ exports.setUserRole =
 
     requireRole(
       request,
-      ["admin"]
+      ["platform-admin","admin"]
     );
 
     const {
@@ -331,7 +332,7 @@ exports.setUserActive =
 
     requireRole(
       request,
-      ["admin"]
+      ["platform-admin", "admin"]
     );
 
     const {
@@ -424,7 +425,7 @@ exports.setUserAssignedModules =
 
     requireRole(
       request,
-      ["admin"]
+      ["platform-admin", "admin"]
     );
 
     const {
@@ -457,6 +458,79 @@ exports.setUserAssignedModules =
         updatedAt:
           admin.firestore.FieldValue.serverTimestamp()
 
+      }, { merge: true });
+
+    return {
+      ok: true
+    };
+  });
+
+exports.assignDealerAdmin =
+  onCall(async (request) => {
+
+    requireAuth(request);
+    requireActive(request);
+
+    requireRole(
+      request,
+      ["platform-admin"]
+    );
+
+    const {
+      uid,
+      dealerId,
+      assignedModules
+    } = request.data || {};
+
+    if (
+      !uid ||
+      typeof uid !== "string"
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "uid required."
+      );
+    }
+
+    if (
+      !dealerId ||
+      typeof dealerId !== "string"
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "dealerId required."
+      );
+    }
+
+    const safeAssignedModules =
+      Array.isArray(assignedModules)
+        ? assignedModules
+        : [];
+
+    await setClaims(uid, {
+      role: "admin",
+      active: true
+    });
+
+    await admin.firestore()
+      .doc(`users/${uid}`)
+      .set({
+        dealerId,
+        role: "admin",
+        active: true,
+        assignedModules: safeAssignedModules,
+
+        approvedAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+
+        approvedBy:
+          request.auth.uid,
+
+        inactiveAt: null,
+        inactiveBy: "",
+
+        updatedAt:
+          admin.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
 
     return {

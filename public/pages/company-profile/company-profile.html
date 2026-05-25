@@ -1,0 +1,170 @@
+<!-- public/pages/company-profile/company-profile.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>DEXP Company Profile</title>
+
+  <link
+    rel="stylesheet"
+    href="/css/core/reset.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="/css/core/base.css"
+  />
+</head>
+
+<body>
+
+  <div id="appHeader"></div>
+
+  <main class="page-shell">
+
+    <section class="page-section">
+      <h1>Company Profile</h1>
+
+      <p>
+        Dealer/company information,
+        branding, departments,
+        and platform settings.
+      </p>
+    </section>
+
+    <section class="page-section">
+
+      <div class="dexp-admin-card">
+
+        <form id="companyProfileForm">
+
+          <div style="display:grid; gap:16px;">
+
+            <div>
+              <label>Company Name</label>
+
+              <input
+                id="dealerName"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Company Code</label>
+
+              <input
+                id="companyCode"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Phone</label>
+
+              <input
+                id="dealerPhone"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Website</label>
+
+              <input
+                id="dealerWebsite"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Address 1</label>
+
+              <input
+                id="address1"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Address 2</label>
+
+              <input
+                id="address2"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>City</label>
+
+              <input
+                id="city"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>State</label>
+
+              <input
+                id="state"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>ZIP</label>
+
+              <input
+                id="zip"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <label>Timezone</label>
+
+              <input
+                id="timezone"
+                type="text"
+              />
+            </div>
+
+            <div>
+              <button
+                id="saveCompanyProfileBtn"
+                type="submit"
+              >
+                Save Company Profile
+              </button>
+            </div>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="/js/core/app.js"
+  ></script>
+
+  <script
+  type="module"
+  src="/pages/company-profile/company-profile.js"
+  ></script>
+
+ </body>
+</html>

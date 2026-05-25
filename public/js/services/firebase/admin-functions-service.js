@@ -24,6 +24,9 @@ const setUserActiveCallable =
 const setUserAssignedModulesCallable =
   httpsCallable(functions, "setUserAssignedModules");
 
+const assignDealerAdminCallable =
+  httpsCallable(functions, "assignDealerAdmin");
+
 export async function bootstrapAdmin() {
   return bootstrapAdminCallable();
 }
@@ -64,6 +67,18 @@ export async function setUserAssignedModules({
 }) {
   return setUserAssignedModulesCallable({
     uid,
+    assignedModules
+  });
+}
+
+export async function assignDealerAdmin({
+  uid,
+  dealerId,
+  assignedModules
+}) {
+  return assignDealerAdminCallable({
+    uid,
+    dealerId,
     assignedModules
   });
 }

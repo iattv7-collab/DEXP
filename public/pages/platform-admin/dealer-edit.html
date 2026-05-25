@@ -1,0 +1,92 @@
+<!-- public/pages/platform-admin/dealer-edit.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>DEXP Edit Dealer</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <div id="appHeader"></div>
+
+  <main class="page-shell">
+
+    <section class="page-section">
+      <h1>Edit Dealer</h1>
+      <p>Platform-level dealer information and sellable module access.</p>
+    </section>
+
+    <section class="page-section">
+      <div class="dexp-admin-card">
+
+        <form id="dealerEditForm">
+
+          <div style="display:grid; gap:12px;">
+
+            <div>
+              <label>System Code</label>
+              <input id="systemCodeInput" type="text" disabled />
+            </div>
+
+            <div>
+              <label>Dealer Slug</label>
+              <input id="dealerIdInput" type="text" disabled />
+            </div>
+
+            <div>
+              <label>Dealer Name</label>
+              <input id="dealerNameInput" type="text" />
+            </div>
+
+            <div>
+              <label>Display Short Name</label>
+              <input id="displayShortNameInput" type="text" />
+            </div>
+
+            <div>
+              <label>Status</label>
+
+              <select id="dealerActiveInput">
+                <option value="true">Active</option>
+                <option value="false">Suspended</option>
+              </select>
+            </div>
+
+            <h2>Sellable Modules</h2>
+
+            <div id="sellableModulesContainer">
+              Loading modules...
+            </div>
+
+            <div style="display:flex; gap:10px;">
+              <button type="submit">
+                Save Dealer
+              </button>
+
+              <button
+                id="backButton"
+                type="button"
+              >
+                Back
+              </button>
+            </div>
+
+          </div>
+
+        </form>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/platform-admin/dealer-edit.js"></script>
+</body>
+</html>

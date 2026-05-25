@@ -92,7 +92,10 @@ export function canAccessModule(moduleKey) {
     return false;
   }
 
-  if (session.role === "admin") {
+  if (
+    session.role === "platform-admin" ||
+    session.role === "admin"
+  ) {
     return true;
   }
 

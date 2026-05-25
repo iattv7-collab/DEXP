@@ -1,6 +1,7 @@
 // public/js/config/roles.js
 
 export const ROLES = {
+  PLATFORM_ADMIN: "platform-admin",
   ADMIN: "admin",
   MANAGER: "manager",
   ADVISOR: "advisor",

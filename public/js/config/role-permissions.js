@@ -6,6 +6,8 @@ import { ROLES } from "./roles.js";
 import { PERMISSIONS } from "./permissions.js";
 
 export const ROLE_PERMISSIONS = {
+  [ROLES.PLATFORM_ADMIN]: Object.values(PERMISSIONS),
+
   [ROLES.ADMIN]: Object.values(PERMISSIONS),
 
   [ROLES.MANAGER]: [

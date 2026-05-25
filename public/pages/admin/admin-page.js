@@ -17,7 +17,11 @@ import {
 let currentAdminUsers = [];
 
 protectRoute({
-  allowedRoles: [ROLES.ADMIN, ROLES.MANAGER],
+  allowedRoles: [
+    ROLES.PLATFORM_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER
+  ],
 });
 
 renderAppHeader({
