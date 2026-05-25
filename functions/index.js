@@ -416,6 +416,54 @@ exports.setUserActive =
     };
   });
 
+exports.setUserAssignedModules =
+  onCall(async (request) => {
+
+    requireAuth(request);
+    requireActive(request);
+
+    requireRole(
+      request,
+      ["admin"]
+    );
+
+    const {
+      uid,
+      assignedModules
+    } = request.data || {};
+
+    if (
+      !uid ||
+      typeof uid !== "string"
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "uid required."
+      );
+    }
+
+    if (!Array.isArray(assignedModules)) {
+      throw new HttpsError(
+        "invalid-argument",
+        "assignedModules must be an array."
+      );
+    }
+
+    await admin.firestore()
+      .doc(`users/${uid}`)
+      .set({
+        assignedModules,
+
+        updatedAt:
+          admin.firestore.FieldValue.serverTimestamp()
+
+      }, { merge: true });
+
+    return {
+      ok: true
+    };
+  });
+
 exports.scanRO =
   onRequest(async (req, res) => {
 

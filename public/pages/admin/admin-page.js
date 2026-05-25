@@ -1,39 +1,31 @@
 // public/pages/admin/admin-page.js
 
 import { protectRoute } from "../../js/core/router.js";
-
 import { ROLES } from "../../js/config/roles.js";
-
-import { renderAppHeader }
-  from "../../js/shared/app-header.js";
-
-import {
-  getAdminUserGroups
-} from "../../js/services/firestore/users-service.js";
+import { MODULE_CONFIG } from "../../js/config/modules.js";
+import { renderAppHeader } from "../../js/shared/app-header.js";
+import { getAdminUserGroups } from "../../js/services/firestore/users-service.js";
 
 import {
   approveUser,
   bootstrapAdmin,
   setUserActive,
-  setUserRole
+  setUserAssignedModules,
+  setUserRole,
 } from "../../js/services/firebase/admin-functions-service.js";
 
+let currentAdminUsers = [];
+
 protectRoute({
-  allowedRoles: [
-    ROLES.ADMIN,
-    ROLES.MANAGER
-  ]
+  allowedRoles: [ROLES.ADMIN, ROLES.MANAGER],
 });
 
 renderAppHeader({
-  pageTitle: "Admin"
+  pageTitle: "Admin",
 });
 
-const pendingUsersContainer =
-  document.getElementById("pendingUsersContainer");
-
-const allUsersContainer =
-  document.getElementById("allUsersContainer");
+const pendingUsersContainer = document.getElementById("pendingUsersContainer");
+const allUsersContainer = document.getElementById("allUsersContainer");
 
 initializeAdminPage();
 
@@ -56,14 +48,16 @@ async function loadAdminUsers() {
     <div class="dexp-admin-card">Loading users...</div>
   `;
 
-  const {
-    pendingUsers,
-    activeUsers,
-    inactiveUsers
-  } = await getAdminUserGroups();
+  const { pendingUsers, activeUsers, inactiveUsers } =
+    await getAdminUserGroups();
 
-  pendingUsersContainer.innerHTML =
-    renderUsersTable(pendingUsers, "pending");
+  currentAdminUsers = [
+    ...pendingUsers,
+    ...activeUsers,
+    ...inactiveUsers,
+  ];
+
+  pendingUsersContainer.innerHTML = renderUsersTable(pendingUsers, "pending");
 
   allUsersContainer.innerHTML = `
     <h2>Active Users</h2>
@@ -90,30 +84,51 @@ function renderUsersTable(users, tableType) {
     .map((role) => `<option value="${role}">${role}</option>`)
     .join("");
 
-  const rows = users.map((user) => `
-    <tr>
-      <td>${user.displayName || ""}</td>
-      <td>${user.email || ""}</td>
-      <td>
-        <select class="admin-role-select" data-user-id="${user.id}">
-          <option value="${ROLES.PENDING}" ${user.role === ROLES.PENDING ? "selected" : ""}>
-            pending
-          </option>
-          ${roleOptions.replace(
-            `value="${user.role}"`,
-            `value="${user.role}" selected`
-          )}
-        </select>
-      </td>
-      <td>${user.dealerId || ""}</td>
-      <td>${formatDate(user.createdAt)}</td>
-      <td>${formatDate(user.approvedAt)}</td>
-      <td>${formatDate(user.inactiveAt)}</td>
-      <td>
-        ${renderActionButton(user, tableType)}
-      </td>
-    </tr>
-  `).join("");
+  const rows = users
+    .map(
+      (user) => `
+        <tr>
+          <td>${user.displayName || ""}</td>
+          <td>${user.email || ""}</td>
+          <td>
+            <select class="admin-role-select" data-user-id="${user.id}">
+              <option value="${ROLES.PENDING}" ${
+                user.role === ROLES.PENDING ? "selected" : ""
+              }>
+                pending
+              </option>
+              ${roleOptions.replace(
+                `value="${user.role}"`,
+                `value="${user.role}" selected`,
+              )}
+            </select>
+          </td>
+          <td>${user.dealerId || ""}</td>
+          <td>${formatDate(user.createdAt)}</td>
+          <td>${formatDate(user.approvedAt)}</td>
+          <td>${formatDate(user.inactiveAt)}</td>
+          <td>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${renderActionButton(user, tableType)}
+
+              ${
+                tableType !== "pending"
+                  ? `
+                    <button
+                      class="admin-modules-btn"
+                      data-user-id="${user.id}"
+                    >
+                      Manage Modules
+                    </button>
+                  `
+                  : ""
+              }
+            </div>
+          </td>
+        </tr>
+      `,
+    )
+    .join("");
 
   return `
     <div class="dexp-admin-card">
@@ -167,66 +182,192 @@ function renderActionButton(user, tableType) {
 }
 
 function attachAdminUserEvents() {
-  document.querySelectorAll(
-    "#allUsersContainer .admin-role-select"
-  )
+  document
+    .querySelectorAll("#allUsersContainer .admin-role-select")
     .forEach((select) => {
       select.addEventListener("change", async () => {
         await setUserRole({
           uid: select.dataset.userId,
-          role: select.value
+          role: select.value,
         });
 
         await loadAdminUsers();
       });
     });
 
-  document.querySelectorAll(".admin-approve-btn")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const row = button.closest("tr");
-        const roleSelect =
-          row.querySelector(".admin-role-select");
+  document.querySelectorAll(".admin-approve-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("tr");
+      const roleSelect = row.querySelector(".admin-role-select");
 
-        const selectedRole =
-          roleSelect?.value || ROLES.ADVISOR;
+      const selectedRole = roleSelect?.value || ROLES.ADVISOR;
 
-        if (selectedRole === ROLES.PENDING) {
-          alert("Select a role before approving.");
-          return;
-        }
+      if (selectedRole === ROLES.PENDING) {
+        alert("Select a role before approving.");
+        return;
+      }
 
-        await approveUser({
-          uid: button.dataset.userId,
-          role: selectedRole
-        });
-
-        await loadAdminUsers();
+      await approveUser({
+        uid: button.dataset.userId,
+        role: selectedRole,
       });
+
+      await loadAdminUsers();
+    });
+  });
+
+  document.querySelectorAll(".admin-deactivate-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await setUserActive({
+        uid: button.dataset.userId,
+        active: false,
+      });
+
+      await loadAdminUsers();
+    });
+  });
+
+  document.querySelectorAll(".admin-reactivate-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await setUserActive({
+        uid: button.dataset.userId,
+        active: true,
+      });
+
+      await loadAdminUsers();
+    });
+  });
+
+  document.querySelectorAll(".admin-modules-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      openModulesModal(button.dataset.userId);
+    });
+  });
+}
+
+function openModulesModal(uid) {
+  const user = currentAdminUsers.find((item) => item.id === uid);
+
+  if (!user) {
+    alert("User not found.");
+    return;
+  }
+
+  const assignedModules = Array.isArray(user.assignedModules)
+    ? user.assignedModules
+    : [];
+
+  const existingModal = document.getElementById("adminModulesModal");
+
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const moduleCheckboxes = Object.entries(MODULE_CONFIG)
+    .map(([moduleKey, config]) => {
+      const checked = assignedModules.includes(moduleKey)
+        ? "checked"
+        : "";
+
+      return `
+        <label style="display:flex; gap:8px; align-items:center;">
+          <input
+            type="checkbox"
+            class="admin-module-checkbox"
+            value="${moduleKey}"
+            ${checked}
+          />
+          <span>${config.label}</span>
+        </label>
+      `;
+    })
+    .join("");
+
+  const modal = document.createElement("div");
+  modal.id = "adminModulesModal";
+
+  modal.innerHTML = `
+    <div
+      style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.45);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:9999;
+      "
+    >
+      <div
+        style="
+          background:white;
+          width:min(700px, 94vw);
+          max-height:85vh;
+          overflow:auto;
+          border-radius:10px;
+          padding:18px;
+          border:1px solid #cfd6df;
+        "
+      >
+        <h2 style="margin-top:0;">Manage Modules</h2>
+
+        <p style="margin-top:0;">
+          ${user.displayName || user.email || uid}
+        </p>
+
+        <div
+          style="
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+            gap:10px;
+            margin:16px 0;
+          "
+        >
+          ${moduleCheckboxes}
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            gap:10px;
+          "
+        >
+          <button id="adminModulesCancelBtn" type="button">
+            Cancel
+          </button>
+
+          <button id="adminModulesSaveBtn" type="button">
+            Save Modules
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document
+    .getElementById("adminModulesCancelBtn")
+    .addEventListener("click", () => {
+      modal.remove();
     });
 
-  document.querySelectorAll(".admin-deactivate-btn")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        await setUserActive({
-          uid: button.dataset.userId,
-          active: false
-        });
+  document
+    .getElementById("adminModulesSaveBtn")
+    .addEventListener("click", async () => {
+      const selectedModules = Array.from(
+        modal.querySelectorAll(".admin-module-checkbox:checked"),
+      ).map((checkbox) => checkbox.value);
 
-        await loadAdminUsers();
+      await setUserAssignedModules({
+        uid,
+        assignedModules: selectedModules,
       });
-    });
 
-  document.querySelectorAll(".admin-reactivate-btn")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        await setUserActive({
-          uid: button.dataset.userId,
-          active: true
-        });
+      modal.remove();
 
-        await loadAdminUsers();
-      });
+      await loadAdminUsers();
     });
 }
 

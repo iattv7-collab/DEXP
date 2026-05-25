@@ -21,6 +21,9 @@ const setUserRoleCallable =
 const setUserActiveCallable =
   httpsCallable(functions, "setUserActive");
 
+const setUserAssignedModulesCallable =
+  httpsCallable(functions, "setUserAssignedModules");
+
 export async function bootstrapAdmin() {
   return bootstrapAdminCallable();
 }
@@ -52,5 +55,15 @@ export async function setUserActive({
   return setUserActiveCallable({
     uid,
     active
+  });
+}
+
+export async function setUserAssignedModules({
+  uid,
+  assignedModules
+}) {
+  return setUserAssignedModulesCallable({
+    uid,
+    assignedModules
   });
 }

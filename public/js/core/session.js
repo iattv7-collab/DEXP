@@ -19,7 +19,15 @@ export function setSession({ user, profile, dealer, modules }) {
     dealerId: profile?.dealerId || "",
     dealerName: dealer?.name || "",
     modules: Array.isArray(modules) ? modules : [],
+
+    // Dashboard access is controlled by admin-selected user modules.
+    assignedModules: Array.isArray(profile?.assignedModules)
+      ? profile.assignedModules
+      : [],
+
+    // Permissions are role-based and should control actions inside modules.
     permissions: getPermissionsForRole(role),
+
     profile,
     dealer
   };
@@ -48,20 +56,51 @@ export function clearSession() {
 
 export function hasRole(role) {
   const session = getSession();
+
   return session?.role === role;
 }
 
 export function hasAnyRole(roles = []) {
   const session = getSession();
+
   return roles.includes(session?.role);
 }
 
-export function hasModule(moduleKey) {
+export function hasDealerModule(moduleKey) {
   const session = getSession();
+
   return session?.modules?.includes(moduleKey);
+}
+
+export function hasAssignedModule(moduleKey) {
+  const session = getSession();
+
+  return session?.assignedModules?.includes(moduleKey);
+}
+
+export function canAccessModule(moduleKey) {
+  const session = getSession();
+
+  if (!session) {
+    return false;
+  }
+
+  const dealerHasModule =
+    session.modules?.includes(moduleKey);
+
+  if (!dealerHasModule) {
+    return false;
+  }
+
+  if (session.role === "admin") {
+    return true;
+  }
+
+  return session.assignedModules?.includes(moduleKey);
 }
 
 export function hasPermission(permission) {
   const session = getSession();
+
   return session?.permissions?.includes(permission);
 }

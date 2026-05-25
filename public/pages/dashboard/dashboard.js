@@ -1,9 +1,8 @@
 // public/pages/dashboard/dashboard.js
 
 import {
-  getSession,
-  hasModule,
-  hasPermission
+  canAccessModule,
+  getSession
 } from "/js/core/session.js";
 
 import { renderAppHeader } from "/js/shared/app-header.js";
@@ -39,7 +38,7 @@ function initializeDashboard() {
   });
 
   renderWelcome(session);
-  renderModules(session);
+  renderModules();
 }
 
 function renderWelcome(session) {
@@ -52,25 +51,11 @@ function renderWelcome(session) {
     dealer ? dealer : "";
 }
 
-function renderModules(session) {
+function renderModules() {
   modulesContainer.innerHTML = "";
 
   Object.entries(MODULE_CONFIG).forEach(([moduleKey, config]) => {
-    if (!hasModule(moduleKey)) {
-      return;
-    }
-
-    if (
-      config.permission &&
-      !hasPermission(config.permission)
-    ) {
-      return;
-    }
-
-    if (
-      config.adminOnly &&
-      session.role !== "admin"
-    ) {
+    if (!canAccessModule(moduleKey)) {
       return;
     }
 
