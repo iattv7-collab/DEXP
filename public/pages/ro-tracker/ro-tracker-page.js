@@ -3,26 +3,25 @@
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 
-import { watchDealerROs } from "/js/services/firestore/ros-service.js";
-
 import {
-  RO_TRACKER_COLUMNS
-} from "/js/modules/ro-tracker/ro-tracker-columns.js";
+  watchDealerROs,
+  watchAdvisorROs,
+} from "/js/services/firestore/ros-service.js";
 
-import {
-  buildROTrackerRow
-} from "/js/modules/ro-tracker/ro-tracker-render.js";
+import { getSession } from "/js/core/session.js";
+
+import { RO_TRACKER_COLUMNS } from "/js/modules/ro-tracker/ro-tracker-columns.js";
+
+import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js";
 
 import {
   getDefaultVisibleColumnKeys,
   getColumnsByKeys,
   loadROTrackerColumnSettings,
-  saveROTrackerColumnSettings
+  saveROTrackerColumnSettings,
 } from "/js/modules/ro-tracker/ro-tracker-settings.js";
 
-import {
-  setupROTrackerActions
-} from "/js/modules/ro-tracker/ro-tracker-actions.js";
+import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js";
 
 protectRoute();
 
@@ -53,7 +52,12 @@ async function initializeROTracker() {
     showMessage,
   });
 
-  watchDealerROs((rows) => {
+  const session = getSession();
+
+  const watchFunction =
+    session?.role === "advisor" ? watchAdvisorROs : watchDealerROs;
+
+  watchFunction((rows) => {
     allRows = Array.isArray(rows) ? rows : [];
     renderRows(getCurrentRows());
   });
@@ -88,9 +92,7 @@ function renderRows(rows = []) {
   }
 
   rows.forEach((ro) => {
-    tableBody.appendChild(
-      buildROTrackerRow(ro, visibleColumns)
-    );
+    tableBody.appendChild(buildROTrackerRow(ro, visibleColumns));
   });
 }
 

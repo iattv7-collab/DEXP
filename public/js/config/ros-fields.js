@@ -23,15 +23,27 @@ export const ROS_FIELDS = {
   // Advisor / Staff
   advisorId: "advisorId",
   advisorName: "advisorName",
+  advisorCompanyId: "advisorCompanyId",
 
   foremanId: "foremanId",
   foremanName: "foremanName",
+  foremanCompanyId: "foremanCompanyId",
 
   techId: "techId",
   techName: "techName",
+  techCompanyId: "techCompanyId",
 
-  // advisor  
-  advisorNumber: "advisorNumber",
+  movedById: "movedById",
+  movedByName: "movedByName",
+  movedByCompanyId: "movedByCompanyId",
+
+  washedById: "washedById",
+  washedByName: "washedByName",
+  washedByCompanyId: "washedByCompanyId",
+
+  // Shared advisor coverage
+  sharedWithAdvisorIds: "sharedWithAdvisorIds",
+  sharedWithCompanyIds: "sharedWithCompanyIds",
 
   // Status
   status: "status",

@@ -11,6 +11,32 @@
   --rt-edit-pad-y: 0px;
 }
 
+/* RO TRACKER PAGE LAYOUT */
+
+.ro-tracker-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px;
+  box-sizing: border-box;
+}
+
+#roTrackerPage .page-card {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+#roTrackerPage .toolbar-row {
+  width: 100%;
+}
+
+#roTrackerPage #searchActive {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* TABLE WRAP */
 
 .ro-tracker-table-wrap {

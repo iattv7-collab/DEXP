@@ -13,26 +13,54 @@ export function setSession({ user, profile, dealer, modules }) {
 
   currentSession = {
     uid: user?.uid || null,
-    email: user?.email || profile?.email || "",
-    displayName: user?.displayName || profile?.displayName || "",
+
+    companyId:
+      profile?.companyId || "",
+
+    email:
+      user?.email ||
+      profile?.email ||
+      "",
+
+    displayName:
+      user?.displayName ||
+      profile?.displayName ||
+      "",
+
+    phone:
+      profile?.phone || "",
+
     role,
-    dealerId: profile?.dealerId || "",
-    dealerName: dealer?.name || "",
-    modules: Array.isArray(modules) ? modules : [],
+
+    dealerId:
+      profile?.dealerId || "",
+
+    dealerName:
+      dealer?.name || "",
+
+    modules:
+      Array.isArray(modules)
+        ? modules
+        : [],
 
     // Dashboard access is controlled by admin-selected user modules.
-    assignedModules: Array.isArray(profile?.assignedModules)
-      ? profile.assignedModules
-      : [],
+    assignedModules:
+      Array.isArray(profile?.assignedModules)
+        ? profile.assignedModules
+        : [],
 
     // Permissions are role-based and should control actions inside modules.
-    permissions: getPermissionsForRole(role),
+    permissions:
+      getPermissionsForRole(role),
 
     profile,
     dealer
   };
 
-  localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
+  localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify(currentSession)
+  );
 }
 
 export function getSession() {
@@ -41,7 +69,9 @@ export function getSession() {
   }
 
   try {
-    currentSession = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    currentSession = JSON.parse(
+      localStorage.getItem(SESSION_KEY) || "null"
+    );
   } catch (error) {
     currentSession = null;
   }
@@ -51,6 +81,7 @@ export function getSession() {
 
 export function clearSession() {
   currentSession = null;
+
   localStorage.removeItem(SESSION_KEY);
 }
 

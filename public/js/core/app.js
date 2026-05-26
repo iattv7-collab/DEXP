@@ -9,15 +9,47 @@ import { getDealerModules } from "../services/firestore/modules-service.js";
 
 import { setSession, clearSession } from "./session.js";
 
+const PENDING_REGISTRATION_KEY = "dexp_pending_registration";
+
 function initializeApp() {
   document.title = LABELS.appName;
 
   console.log(`${LABELS.appName} initialized`);
 }
 
+function getDealerIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return String(params.get("dealerId") || "").trim();
+}
+
+function getPendingRegistration() {
+  try {
+    return JSON.parse(
+      sessionStorage.getItem(PENDING_REGISTRATION_KEY) || "null"
+    );
+  } catch (error) {
+    return null;
+  }
+}
+
+function clearPendingRegistration() {
+  sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
+}
+
 async function loadUserSession(user) {
   try {
-    const profile = await ensureUserProfile(user);
+    const pendingRegistration = getPendingRegistration();
+
+    const requestedDealerId =
+      pendingRegistration?.dealerId ||
+      getDealerIdFromUrl();
+
+    const profile = await ensureUserProfile(user, {
+      requestedDealerId,
+      pendingRegistration
+    });
+
+    clearPendingRegistration();
 
     if (profile.role === "pending" || profile.active === false) {
       clearSession();
@@ -58,6 +90,7 @@ async function loadUserSession(user) {
     console.error("Session initialization failed:", error);
 
     clearSession();
+    clearPendingRegistration();
 
     window.location.href = "/pages/auth/login.html";
   }
