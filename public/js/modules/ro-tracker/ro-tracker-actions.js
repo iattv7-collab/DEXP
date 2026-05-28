@@ -1,6 +1,6 @@
 // public/js/modules/ro-tracker/ro-tracker-actions.js
 
-import { updateRO } from "/js/services/firestore/ros-service.js";
+import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js";
 
 import {
   dateInputToMMDDYYYY,
@@ -279,7 +279,18 @@ async function handleButtonClick(button, getROById) {
   }
 
   if (action === "archive") {
-    alert("Archive workflow will be wired next.");
+    const confirmed = confirm("Archive this RO?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    await archiveRO(roId, {
+      module: "ro-tracker",
+      archiveReason: "Archived from RO Tracker",
+    });
+
+    return;
   }
 }
 

@@ -83,6 +83,25 @@ async function initializeROTracker() {
 
   searchInput?.addEventListener("input", handleSearch);
   columnSettingsButton?.addEventListener("click", openColumnSettingsModal);
+
+  document.getElementById("btnArchiveView")?.addEventListener("click", () => {
+    window.location.href = "/pages/ro-archive/index.html";
+  });
+    
+      document
+    .getElementById("btnFollowUp")
+    ?.addEventListener("click", () => {
+      window.location.href =
+        "/pages/ro-followup/index.html";
+    });
+
+    document
+    .getElementById("btnSettings")
+    ?.addEventListener("click", () => {
+      window.location.href =
+        "/pages/ro-tracker-settings/index.html";
+    });
+
 }
 
 function startROTrackerWatch(advisorId = null) {

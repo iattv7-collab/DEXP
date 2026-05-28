@@ -12,6 +12,7 @@ import {
   limit,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
@@ -19,6 +20,7 @@ import { getSession } from "../../core/session.js";
 import { ROS_FIELDS } from "../../config/ros-fields.js";
 import { ROS_STATUS } from "../../config/ros-statuses.js";
 import { ROLES } from "../../config/roles.js";
+import { loadROTrackerFollowupSettings } from "../../modules/ro-tracker/ro-tracker-followup-settings.js";
 
 const ROS_COLLECTION = "ros";
 const ACTIVITY_LOG_COLLECTION = "activityLog";
@@ -133,6 +135,78 @@ export async function updateRO(roId, updates = {}, options = {}) {
   });
 }
 
+export async function archiveRO(roId, options = {}) {
+  const session = requireDealerSession();
+
+  const archiveReason = String(options.archiveReason || "").trim();
+  const archivedAtMs = Date.now();
+  const settings = loadROTrackerFollowupSettings();
+
+  const followUpDelayDays = Number(settings.followUpDelayDays || 3);
+
+  const followUpTime = String(settings.followUpTime || "10:00");
+
+  const followupDueAtMs = buildFollowupDueAtMs(
+    archivedAtMs,
+    followUpDelayDays,
+    followUpTime,
+  );
+
+  await updateRO(
+    roId,
+    {
+      [ROS_FIELDS.status]: ROS_STATUS.ARCHIVED,
+      [ROS_FIELDS.archivedAt]: Timestamp.fromMillis(archivedAtMs),
+      [ROS_FIELDS.archivedAtMs]: archivedAtMs,
+      [ROS_FIELDS.archivedBy]: session.uid,
+      [ROS_FIELDS.archivedByName]: session.displayName || session.email || "",
+      [ROS_FIELDS.archivedByCompanyId]: session.companyId || "",
+      [ROS_FIELDS.archiveReason]: archiveReason,
+      [ROS_FIELDS.followupStatus]: "pending",
+      [ROS_FIELDS.followupDueAtMs]: followupDueAtMs,
+      [ROS_FIELDS.followupCompletedAtMs]: null,
+      [ROS_FIELDS.followupCompletedBy]: "",
+      [ROS_FIELDS.followupCompletedByName]: "",
+      [ROS_FIELDS.followupTextSentAtMs]: null,
+    },
+    {
+      module: options.module || "ro-tracker",
+      eventType: "ro_archived",
+      message: archiveReason ? `RO archived: ${archiveReason}` : "RO archived",
+    },
+  );
+}
+
+export async function restoreArchivedRO(roId, options = {}) {
+  const session = requireDealerSession();
+
+  const restoredAtMs = Date.now();
+
+  await updateRO(
+    roId,
+    {
+      [ROS_FIELDS.status]: ROS_STATUS.NEW,
+      [ROS_FIELDS.archivedAt]: null,
+      [ROS_FIELDS.archivedAtMs]: null,
+      [ROS_FIELDS.archivedBy]: "",
+      [ROS_FIELDS.archivedByName]: "",
+      [ROS_FIELDS.archivedByCompanyId]: "",
+      [ROS_FIELDS.archiveReason]: "",
+
+      restoredAt: Timestamp.fromMillis(restoredAtMs),
+      restoredAtMs,
+      restoredBy: session.uid,
+      restoredByName: session.displayName || session.email || "",
+      restoredByCompanyId: session.companyId || "",
+    },
+    {
+      module: options.module || "ro-archive",
+      eventType: "ro_restored",
+      message: "RO restored from archive",
+    },
+  );
+}
+
 export async function getRO(roId) {
   const session = requireDealerSession();
 
@@ -167,6 +241,26 @@ export async function getDealerROs() {
   return snapshot.docs.map((doc) => doc.data());
 }
 
+export function watchArchivedROs(callback) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    callback([]);
+    return () => {};
+  }
+
+  const rosRef = collection(db, ROS_COLLECTION);
+
+  const q = buildROVisibilityQuery(rosRef, session, {
+    includeArchived: true,
+  });
+
+  return onSnapshot(q, (snapshot) => {
+    const ros = snapshot.docs.map((doc) => doc.data());
+    callback(ros);
+  });
+}
+
 export function watchDealerROs(callback) {
   const session = getSession();
 
@@ -179,7 +273,10 @@ export function watchDealerROs(callback) {
   const q = buildROVisibilityQuery(rosRef, session);
 
   return onSnapshot(q, (snapshot) => {
-    const ros = snapshot.docs.map((doc) => doc.data());
+    const ros = snapshot.docs
+      .map((doc) => doc.data())
+      .filter((ro) => ro[ROS_FIELDS.status] !== ROS_STATUS.ARCHIVED);
+
     callback(ros);
   });
 }
@@ -204,64 +301,42 @@ export function watchAdvisorROs(callback) {
   );
 
   return onSnapshot(q, (snapshot) => {
-    const ros = snapshot.docs.map((doc) => doc.data());
+    const ros = snapshot.docs
+      .map((doc) => doc.data())
+      .filter((ro) => ro[ROS_FIELDS.status] !== ROS_STATUS.ARCHIVED);
 
     callback(ros);
   });
 }
 
-export function watchROsByAdvisorId(
-  advisorId,
-  callback
-) {
-  const session =
-    getSession();
+export function watchROsByAdvisorId(advisorId, callback) {
+  const session = getSession();
 
-  if (
-    !session?.dealerId ||
-    !advisorId
-  ) {
+  if (!session?.dealerId || !advisorId) {
     callback([]);
 
     return () => {};
   }
 
-  const rosRef =
-    collection(
-      db,
-      ROS_COLLECTION
-    );
+  const rosRef = collection(db, ROS_COLLECTION);
 
   const q = query(
     rosRef,
 
-    where(
-      ROS_FIELDS.dealerId,
-      "==",
-      session.dealerId
-    ),
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
 
-    where(
-      ROS_FIELDS.advisorId,
-      "==",
-      advisorId
-    ),
+    where(ROS_FIELDS.advisorId, "==", advisorId),
 
-    limit(100)
+    limit(100),
   );
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const ros =
-        snapshot.docs.map(
-          (doc) =>
-            doc.data()
-        );
+  return onSnapshot(q, (snapshot) => {
+    const ros = snapshot.docs
+      .map((doc) => doc.data())
+      .filter((ro) => ro[ROS_FIELDS.status] !== ROS_STATUS.ARCHIVED);
 
-      callback(ros);
-    }
-  );
+    callback(ros);
+  });
 }
 
 export async function findActiveROByNumber(roNumber = "") {
@@ -333,7 +408,18 @@ export async function addROActivity(roId, activity = {}) {
   return activityData;
 }
 
-function buildROVisibilityQuery(rosRef, session) {
+function buildROVisibilityQuery(rosRef, session, options = {}) {
+  const includeArchived = options.includeArchived === true;
+
+  if (includeArchived) {
+    return query(
+      rosRef,
+      where(ROS_FIELDS.dealerId, "==", session.dealerId),
+      where(ROS_FIELDS.status, "==", ROS_STATUS.ARCHIVED),
+      limit(100),
+    );
+  }
+
   return query(
     rosRef,
     where(ROS_FIELDS.dealerId, "==", session.dealerId),
@@ -394,4 +480,21 @@ function requireDealerSession() {
 
 function buildVinLast8(vin = "") {
   return String(vin).trim().slice(-8).toUpperCase();
+}
+
+function buildFollowupDueAtMs(archivedAtMs, delayDays, timeString) {
+  const due = new Date(archivedAtMs);
+
+  due.setDate(due.getDate() + delayDays);
+
+  const [hours, minutes] = String(timeString || "10:00")
+    .split(":")
+    .map(Number);
+
+  due.setHours(hours || 10);
+  due.setMinutes(minutes || 0);
+  due.setSeconds(0);
+  due.setMilliseconds(0);
+
+  return due.getTime();
 }

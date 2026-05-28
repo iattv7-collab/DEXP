@@ -45,8 +45,24 @@ export const ROS_FIELDS = {
   sharedWithAdvisorIds: "sharedWithAdvisorIds",
   sharedWithCompanyIds: "sharedWithCompanyIds",
 
-  // Status
+    // Status
   status: "status",
+
+  // Archive / lifecycle
+  archivedAt: "archivedAt",
+  archivedAtMs: "archivedAtMs",
+  archivedBy: "archivedBy",
+  archivedByName: "archivedByName",
+  archivedByCompanyId: "archivedByCompanyId",
+  archiveReason: "archiveReason",
+
+    // Follow up
+  followupStatus: "followupStatus",
+  followupDueAtMs: "followupDueAtMs",
+  followupCompletedAtMs: "followupCompletedAtMs",
+  followupCompletedBy: "followupCompletedBy",
+  followupCompletedByName: "followupCompletedByName",
+  followupTextSentAtMs: "followupTextSentAtMs",
 
   // Location
   currentLocation: "currentLocation",

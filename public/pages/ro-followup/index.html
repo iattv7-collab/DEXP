@@ -1,0 +1,92 @@
+<!-- public/pages/ro-followup/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>RO Follow Up</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/ro-tracker.css" />
+</head>
+
+<body>
+
+  <main class="ro-tracker-shell">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+
+        <div>
+          <h2>RO Follow Up</h2>
+
+          <p>
+            Pending customer follow-up queue.
+          </p>
+        </div>
+
+        <button
+          id="btnBackToROTracker"
+          type="button"
+        >
+          Back to RO Tracker
+        </button>
+
+      </div>
+
+      <div class="toolbar-row">
+
+        <input
+          id="searchFollowup"
+          type="search"
+          placeholder="Search RO, customer, phone, or model"
+        />
+
+      </div>
+
+      <section class="ro-tracker-table-wrap">
+
+        <table class="ro-tracker-table">
+
+          <thead>
+
+            <tr>
+              <th>RO #</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Model</th>
+              <th>Text</th>
+              <th>Done</th>
+            </tr>
+
+          </thead>
+
+          <tbody id="roFollowupTableBody"></tbody>
+
+        </table>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="/js/core/app.js"
+  ></script>
+
+  <script
+    type="module"
+    src="/pages/ro-followup/ro-followup-page.js?v=1"
+  ></script>
+
+</body>
+</html>

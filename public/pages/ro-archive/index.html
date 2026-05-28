@@ -1,0 +1,97 @@
+<!-- public/pages/ro-archive/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>RO Archive</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/ro-tracker.css" />
+</head>
+
+<body>
+  <main id="roArchivePage" class="ro-tracker-shell">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+
+        <div>
+          <h2>RO Archive</h2>
+
+          <p>
+            Archived repair orders and completed follow-up records.
+          </p>
+        </div>
+
+        <button
+          id="btnBackToROTracker"
+          type="button"
+        >
+          Back to RO Tracker
+        </button>
+
+      </div>
+
+      <div class="toolbar-row">
+
+        <input
+          id="searchArchive"
+          type="search"
+          placeholder="Search RO, tag, customer, phone, or model"
+        />
+
+      </div>
+
+      <div
+        id="roArchiveMessage"
+        class="tool-message"
+      ></div>
+
+      <section class="ro-tracker-table-wrap">
+
+        <table
+          id="roArchiveTable"
+          class="ro-tracker-table"
+        >
+
+          <thead>
+            <tr>
+              <th>RO #</th>
+              <th>Tag #</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Model</th>
+              <th>Archived</th>
+              <th>Archived By</th>
+              <th>Reason</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="roArchiveTableBody"></tbody>
+
+        </table>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+
+  <script
+    type="module"
+    src="/pages/ro-archive/ro-archive-page.js?v=1"
+  ></script>
+
+</body>
+</html>

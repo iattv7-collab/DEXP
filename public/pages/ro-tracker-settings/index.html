@@ -1,0 +1,159 @@
+<!-- public/pages/ro-tracker-settings/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>RO Tracker Settings</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/ro-tracker.css" />
+</head>
+
+<body>
+
+  <main class="ro-tracker-shell">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+
+        <div>
+          <h2>RO Tracker Settings</h2>
+
+          <p>
+            Follow-up timing and SMS settings.
+          </p>
+        </div>
+
+        <button
+          id="btnBackToROTracker"
+          type="button"
+        >
+          Back to RO Tracker
+        </button>
+
+      </div>
+
+      <section
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:24px;
+          max-width:700px;
+        "
+      >
+
+        <div>
+
+          <label
+            for="followUpDelayDays"
+            style="
+              display:block;
+              margin-bottom:6px;
+              font-weight:bold;
+            "
+          >
+            Follow Up Delay (Days)
+          </label>
+
+          <input
+            id="followUpDelayDays"
+            type="number"
+            min="0"
+            max="30"
+            style="width:100%;"
+          />
+
+        </div>
+
+        <div>
+
+          <label
+            for="followUpTime"
+            style="
+              display:block;
+              margin-bottom:6px;
+              font-weight:bold;
+            "
+          >
+            Follow Up Time
+          </label>
+
+          <input
+            id="followUpTime"
+            type="time"
+            style="width:100%;"
+          />
+
+        </div>
+
+        <div>
+
+          <label
+            for="smsTemplate"
+            style="
+              display:block;
+              margin-bottom:6px;
+              font-weight:bold;
+            "
+          >
+            SMS Template
+          </label>
+
+          <textarea
+            id="smsTemplate"
+            rows="8"
+            style="width:100%;"
+          ></textarea>
+
+          <div
+            style="
+              margin-top:8px;
+              font-size:12px;
+            "
+          >
+            Available variables:
+            {firstName}
+            {name}
+            {ro}
+            {model}
+          </div>
+
+        </div>
+
+        <div>
+
+          <button
+            id="btnSaveSettings"
+            type="button"
+          >
+            Save Settings
+          </button>
+
+        </div>
+
+      </section>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="/js/core/app.js"
+  ></script>
+
+  <script
+    type="module"
+    src="/pages/ro-tracker-settings/ro-tracker-settings-page.js?v=1"
+  ></script>
+
+</body>
+</html>
