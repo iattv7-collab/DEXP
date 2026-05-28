@@ -210,6 +210,60 @@ export function watchAdvisorROs(callback) {
   });
 }
 
+export function watchROsByAdvisorId(
+  advisorId,
+  callback
+) {
+  const session =
+    getSession();
+
+  if (
+    !session?.dealerId ||
+    !advisorId
+  ) {
+    callback([]);
+
+    return () => {};
+  }
+
+  const rosRef =
+    collection(
+      db,
+      ROS_COLLECTION
+    );
+
+  const q = query(
+    rosRef,
+
+    where(
+      ROS_FIELDS.dealerId,
+      "==",
+      session.dealerId
+    ),
+
+    where(
+      ROS_FIELDS.advisorId,
+      "==",
+      advisorId
+    ),
+
+    limit(100)
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const ros =
+        snapshot.docs.map(
+          (doc) =>
+            doc.data()
+        );
+
+      callback(ros);
+    }
+  );
+}
+
 export async function findActiveROByNumber(roNumber = "") {
   const session = getSession();
 
