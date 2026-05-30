@@ -23,6 +23,7 @@ import { ROLES } from "../../config/roles.js";
 import { loadROTrackerFollowupSettings } from "../../modules/ro-tracker/ro-tracker-followup-settings.js";
 
 const ROS_COLLECTION = "ros";
+const USERS_COLLECTION = "users";
 const ACTIVITY_LOG_COLLECTION = "activityLog";
 
 const DEALER_WIDE_ROLES = [ROLES.PLATFORM_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
@@ -49,6 +50,20 @@ export async function createRO(data = {}, options = {}) {
     }
   }
 
+  const advisorCompanyId = String(
+    data[ROS_FIELDS.advisorCompanyId] || "",
+  ).trim();
+
+  if (!advisorCompanyId) {
+    throw new Error("Advisor number is required.");
+  }
+
+  const assignedAdvisor = await findActiveAdvisorByCompanyId(advisorCompanyId);
+
+  if (!assignedAdvisor) {
+    throw new Error(`Advisor number ${advisorCompanyId} was not found.`);
+  }
+
   const normalizedRONumber = roNumber.replace(/\s+/g, "").toUpperCase();
   const normalizedTagNumber = tagNumber.replace(/\s+/g, "").toUpperCase();
 
@@ -73,9 +88,9 @@ export async function createRO(data = {}, options = {}) {
     [ROS_FIELDS.customerPhone]: data[ROS_FIELDS.customerPhone] || "",
     [ROS_FIELDS.customerEmail]: data[ROS_FIELDS.customerEmail] || "",
 
-    [ROS_FIELDS.advisorId]: session.uid,
-    [ROS_FIELDS.advisorName]: session.displayName || "",
-    [ROS_FIELDS.advisorCompanyId]: session.companyId || "",
+    [ROS_FIELDS.advisorId]: assignedAdvisor.uid,
+    [ROS_FIELDS.advisorName]: assignedAdvisor.displayName || "",
+    [ROS_FIELDS.advisorCompanyId]: assignedAdvisor.companyId || "",
 
     [ROS_FIELDS.status]: ROS_STATUS.NEW,
     [ROS_FIELDS.dealerId]: session.dealerId,
@@ -87,6 +102,9 @@ export async function createRO(data = {}, options = {}) {
     [ROS_FIELDS.rawOcrText]: data[ROS_FIELDS.rawOcrText] || "",
 
     [ROS_FIELDS.createdBy]: session.uid,
+    createdByName: session.displayName || session.email || "",
+    createdByCompanyId: session.companyId || "",
+
     [ROS_FIELDS.updatedBy]: session.uid,
     [ROS_FIELDS.createdAt]: serverTimestamp(),
     [ROS_FIELDS.updatedAt]: serverTimestamp(),
@@ -406,6 +424,33 @@ export async function addROActivity(roId, activity = {}) {
   await setDoc(activityRef, activityData);
 
   return activityData;
+}
+
+async function findActiveAdvisorByCompanyId(companyId = "") {
+  const session = requireDealerSession();
+
+  const cleanCompanyId = String(companyId || "").trim();
+
+  if (!cleanCompanyId) {
+    return null;
+  }
+
+  const q = query(
+    collection(db, USERS_COLLECTION),
+    where("dealerId", "==", session.dealerId),
+    where("companyId", "==", cleanCompanyId),
+    where("role", "==", ROLES.ADVISOR),
+    where("active", "==", true),
+    limit(1),
+  );
+
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return snapshot.docs[0].data();
 }
 
 function buildROVisibilityQuery(rosRef, session, options = {}) {

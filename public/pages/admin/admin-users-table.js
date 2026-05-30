@@ -13,25 +13,36 @@ export function renderUsersTable(users, tableType) {
     `;
   }
 
-  const rows = users.map((user) => `
+  const rows = users
+    .map(
+      (user) => `
     <tr>
       <td>${user.displayName || ""}</td>
+
       <td>${user.email || ""}</td>
+
       <td>
         <select class="admin-role-select" data-user-id="${user.id}">
           ${renderPendingOption(user)}
           ${buildAdminRoleOptions(user.role)}
         </select>
       </td>
+
       <td>${user.dealerId || ""}</td>
+
       <td>${formatAdminDate(user.createdAt)}</td>
+
       <td>${formatAdminDate(user.approvedAt)}</td>
+
       <td>${formatAdminDate(user.inactiveAt)}</td>
+
       <td>
         ${renderActionButton(user, tableType)}
       </td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 
   return `
     <div class="dexp-admin-card">
@@ -48,6 +59,7 @@ export function renderUsersTable(users, tableType) {
             <th>Actions</th>
           </tr>
         </thead>
+
         <tbody>
           ${rows}
         </tbody>

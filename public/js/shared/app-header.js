@@ -16,6 +16,23 @@ export function renderAppHeader(options = {}) {
 
   const userName = session?.displayName || session?.email || "";
 
+const roleMap = {
+  advisor: "Advisor",
+  admin: "Admin",
+  "platform-admin": "Platform Admin",
+  manager: "Manager",
+  foreman: "Foreman",
+  tech: "Technician",
+  wash: "Wash",
+  valet: "Valet",
+  qc: "QC",
+  booker: "Booker",
+  pending: "Pending",
+};
+
+const roleLabel =
+  roleMap[session?.role] || session?.role || "";
+
   const header = document.createElement("header");
   header.id = "appHeader";
 
@@ -38,7 +55,7 @@ export function renderAppHeader(options = {}) {
 
       <div class="app-header-info">
         <h1>${dealerName}</h1>
-        <p>${userName}</p>
+        <p>${userName}${roleLabel ? ` • ${roleLabel}` : ""}</p>
       </div>
 
     </div>
