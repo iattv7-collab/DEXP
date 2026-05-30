@@ -5,6 +5,11 @@ import { ROLES } from "../../js/config/roles.js";
 import { MODULE_CONFIG } from "../../js/config/modules.js";
 import { renderAppHeader } from "../../js/shared/app-header.js";
 import { getAdminUserGroups } from "../../js/services/firestore/users-service.js";
+import {
+  createNotificationGroup,
+  getNotificationGroups,
+  updateNotificationGroupMembers,
+} from "../../js/services/firestore/notification-groups-service.js";
 
 import {
   approveUser,
@@ -15,13 +20,10 @@ import {
 } from "../../js/services/firebase/admin-functions-service.js";
 
 let currentAdminUsers = [];
+let currentNotificationGroups = [];
 
 protectRoute({
-  allowedRoles: [
-    ROLES.PLATFORM_ADMIN,
-    ROLES.ADMIN,
-    ROLES.MANAGER
-  ],
+  allowedRoles: [ROLES.PLATFORM_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
 });
 
 renderAppHeader({
@@ -30,6 +32,9 @@ renderAppHeader({
 
 const pendingUsersContainer = document.getElementById("pendingUsersContainer");
 const allUsersContainer = document.getElementById("allUsersContainer");
+const notificationGroupsContainer = document.getElementById(
+  "notificationGroupsContainer",
+);
 
 initializeAdminPage();
 
@@ -41,6 +46,7 @@ async function initializeAdminPage() {
   }
 
   await loadAdminUsers();
+  await loadNotificationGroups();
 }
 
 async function loadAdminUsers() {
@@ -55,11 +61,7 @@ async function loadAdminUsers() {
   const { pendingUsers, activeUsers, inactiveUsers } =
     await getAdminUserGroups();
 
-  currentAdminUsers = [
-    ...pendingUsers,
-    ...activeUsers,
-    ...inactiveUsers,
-  ];
+  currentAdminUsers = [...pendingUsers, ...activeUsers, ...inactiveUsers];
 
   pendingUsersContainer.innerHTML = renderUsersTable(pendingUsers, "pending");
 
@@ -72,6 +74,131 @@ async function loadAdminUsers() {
   `;
 
   attachAdminUserEvents();
+}
+
+async function loadNotificationGroups() {
+  notificationGroupsContainer.innerHTML = `
+    <div class="dexp-admin-card">Loading notification groups...</div>
+  `;
+
+  const groups = await getNotificationGroups();
+  currentNotificationGroups = groups;
+
+  notificationGroupsContainer.innerHTML = renderNotificationGroups(groups);
+
+  attachNotificationGroupEvents();
+}
+
+function renderNotificationGroups(groups = []) {
+  const groupRows = groups.length
+    ? groups
+        .map(
+          (group) => `
+            <tr>
+              <td>${group.name || ""}</td>
+              <td>${group.groupType || ""}</td>
+              <td>${Array.isArray(group.memberUids) ? group.memberUids.length : 0}</td>
+              <td>
+                <button
+                  class="notification-group-members-btn"
+                  data-group-id="${group.id}"
+                >
+                  Manage Members
+                </button>
+              </td>
+            </tr>
+          `,
+        )
+        .join("")
+    : `
+        <tr>
+          <td colspan="4">No notification groups found.</td>
+        </tr>
+      `;
+
+  return `
+    <div class="dexp-admin-card">
+      <div style="display:flex; gap:10px; margin-bottom:12px;">
+        <input
+          id="notificationGroupNameInput"
+          type="text"
+          placeholder="Group name"
+        />
+
+        <select id="notificationGroupTypeInput">
+          <option value="custom">Custom</option>
+          <option value="advisor">Advisor</option>
+          <option value="valet">Valet</option>
+          <option value="technician">Technician</option>
+          <option value="foreman">Foreman</option>
+          <option value="wash">Wash</option>
+          <option value="qc">QC</option>
+          <option value="booker">Booker</option>
+        </select>
+
+        <button id="createNotificationGroupBtn" type="button">
+          Create Group
+        </button>
+      </div>
+
+      <table class="dexp-admin-table">
+        <thead>
+          <tr>
+            <th>Group Name</th>
+            <th>Type</th>
+            <th>Members</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${groupRows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function attachNotificationGroupEvents() {
+  document
+    .getElementById("createNotificationGroupBtn")
+    ?.addEventListener("click", async () => {
+      const nameInput = document.getElementById("notificationGroupNameInput");
+      const typeInput = document.getElementById("notificationGroupTypeInput");
+
+      const name = String(nameInput?.value || "").trim();
+      const groupType = String(typeInput?.value || "custom").trim();
+
+      if (!name) {
+        alert("Enter a group name.");
+        return;
+      }
+
+      await createNotificationGroup({
+        name,
+        groupType,
+      });
+
+      await loadNotificationGroups();
+    });
+
+  document
+    .querySelectorAll(".notification-group-members-btn")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        openNotificationGroupMembersModal(button.dataset.groupId);
+      });
+    });
+}
+
+function openNotificationGroupMembersModal(groupId) {
+  if (!groupId) {
+    alert("Notification group not found.");
+    return;
+  }
+
+  window.location.href =
+    `/pages/notification-groups/index.html?groupId=${encodeURIComponent(groupId)}`;
 }
 
 function renderUsersTable(users, tableType) {
@@ -269,9 +396,7 @@ function openModulesModal(uid) {
 
   const moduleCheckboxes = Object.entries(MODULE_CONFIG)
     .map(([moduleKey, config]) => {
-      const checked = assignedModules.includes(moduleKey)
-        ? "checked"
-        : "";
+      const checked = assignedModules.includes(moduleKey) ? "checked" : "";
 
       return `
         <label style="display:flex; gap:8px; align-items:center;">
