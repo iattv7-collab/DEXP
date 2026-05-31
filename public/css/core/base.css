@@ -666,3 +666,73 @@ button:disabled {
   background: #0b3d91;
   color: white;
 }
+
+.dexp-notification-tray {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+}
+
+.dexp-notification-card {
+  background: #ffffff;
+  border: 1px solid #d7dee8;
+  border-left: 5px solid #1d4ed8;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.dexp-notification-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.dexp-notification-message {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.dexp-notification-dismiss {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.dexp-notification-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dexp-notification-open,
+.dexp-notification-dismiss {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dexp-notification-open {
+  font-weight: 600;
+}
+
+.dexp-notification-dismiss {
+  opacity: 0.85;
+}
+
+.dexp-notification-card-opened {
+  opacity: 0.65;
+  filter: grayscale(1);
+}
+
+.dexp-notification-opened-label {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}

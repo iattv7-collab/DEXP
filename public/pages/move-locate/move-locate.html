@@ -16,9 +16,7 @@
     <main id="moveLocatePage" class="full-page">
       <section class="page-shell full-page">
         <div class="parking-availability-wrap">
-          <div class="parking-availability-title">
-            Available Parking
-          </div>
+          <div class="parking-availability-title">Available Parking</div>
 
           <div
             id="parkingAvailabilityList"
@@ -135,6 +133,14 @@
             <button id="startMoveButton" type="button">Start Move</button>
 
             <button
+              id="releaseRequestButton"
+              type="button"
+              class="small-button secondary hidden"
+            >
+              Release Request
+            </button>
+
+            <button
               id="cancelMoveButton"
               type="button"
               class="small-button secondary hidden"
@@ -152,9 +158,6 @@
           </div>
 
           <div id="finalLocationPanel" class="hidden">
-
-      
-
             <div id="groupFinalLocationList"></div>
 
             <div id="groupSaveLocationRow" class="tool-row hidden">
@@ -162,6 +165,7 @@
                 Save
               </button>
             </div>
+          </div>
         </section>
 
         <section class="tool-card">
@@ -197,6 +201,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate.js"></script>
+    <script type="module" src="/pages/move-locate/move-locate.js?v=9"></script>
   </body>
 </html>

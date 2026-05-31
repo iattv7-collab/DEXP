@@ -3,6 +3,8 @@
 import { watchAuthState } from "../services/firebase/auth-service.js";
 import { LABELS } from "../config/labels.js";
 
+import { startNotificationEngine } from "../modules/notifications/notification-engine.js";
+
 import { ensureUserProfile } from "../services/firestore/users-service.js";
 import { getDealer } from "../services/firestore/dealers-service.js";
 import { getDealerModules } from "../services/firestore/modules-service.js";
@@ -25,7 +27,7 @@ function getDealerIdFromUrl() {
 function getPendingRegistration() {
   try {
     return JSON.parse(
-      sessionStorage.getItem(PENDING_REGISTRATION_KEY) || "null"
+      sessionStorage.getItem(PENDING_REGISTRATION_KEY) || "null",
     );
   } catch (error) {
     return null;
@@ -41,12 +43,11 @@ async function loadUserSession(user) {
     const pendingRegistration = getPendingRegistration();
 
     const requestedDealerId =
-      pendingRegistration?.dealerId ||
-      getDealerIdFromUrl();
+      pendingRegistration?.dealerId || getDealerIdFromUrl();
 
     const profile = await ensureUserProfile(user, {
       requestedDealerId,
-      pendingRegistration
+      pendingRegistration,
     });
 
     clearPendingRegistration();
@@ -55,7 +56,7 @@ async function loadUserSession(user) {
       clearSession();
 
       alert(
-        "Your account is pending admin approval. Please contact your manager."
+        "Your account is pending admin approval. Please contact your manager.",
       );
 
       window.location.href = "/pages/auth/login.html";
@@ -81,6 +82,8 @@ async function loadUserSession(user) {
       dealer,
       modules,
     });
+
+    await startNotificationEngine();
 
     console.log("Logged in:", profile.email);
     console.log("Role:", profile.role);

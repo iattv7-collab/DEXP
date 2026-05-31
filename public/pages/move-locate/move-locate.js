@@ -18,6 +18,12 @@ import {
   groupLocationsByArea,
 } from "/js/services/firestore/locations-service.js";
 
+import {
+  releaseNotificationRequest,
+  markNotificationInProgress,
+  resolveNotificationRequest,
+} from "/js/services/firestore/notification-requests-service.js";
+
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
 });
@@ -50,6 +56,7 @@ const detailVehicle = document.getElementById("detailVehicle");
 const detailAdvisor = document.getElementById("detailAdvisor");
 
 const startMoveButton = document.getElementById("startMoveButton");
+const releaseRequestButton = document.getElementById("releaseRequestButton");
 const cancelMoveButton = document.getElementById("cancelMoveButton");
 const overrideCancelMoveButton = document.getElementById(
   "overrideCancelMoveButton",
@@ -89,6 +96,7 @@ let currentMoveGroup = [];
 let lastROs = [];
 let searchMode = "tag";
 let groupedLocations = {};
+let activeNotificationId = "";
 
 const DEVICE_ID_KEY = "dexp_device_id";
 
@@ -132,6 +140,12 @@ function initializeMoveLocate() {
     await startMove();
   });
 
+  if (releaseRequestButton) {
+  releaseRequestButton.addEventListener("click", async () => {
+    await releaseOpenedRequest();
+  });
+}
+
   cancelMoveButton.addEventListener("click", async () => {
     await cancelMove();
   });
@@ -160,6 +174,33 @@ function initializeMoveLocate() {
 
   loadLocationCatalog();
   loadMovingVehicles();
+
+  loadNotificationRouteParams();
+}
+
+function loadNotificationRouteParams() {
+  const params = new URLSearchParams(window.location.search);
+
+  const tagNumber = String(params.get("tagNumber") || "").trim();
+  activeNotificationId = String(params.get("notificationId") || "").trim();
+
+  if (!tagNumber) {
+    return;
+  }
+
+  searchMode = "tag";
+
+  vehicleSearchInput.value = tagNumber;
+
+  if (activeNotificationId && releaseRequestButton) {
+  releaseRequestButton.classList.remove("hidden");
+}
+
+  searchModeToggleButton.textContent = "By Tag";
+
+  setTimeout(() => {
+    findVehicle();
+  }, 500);
 }
 
 function hideInitialPanels() {
@@ -560,8 +601,15 @@ async function startMove() {
       freshCurrentRO;
 
     startMoveButton.classList.add("hidden");
+    if (releaseRequestButton) {
+  releaseRequestButton.classList.add("hidden");
+}
     cancelMoveButton.classList.remove("hidden");
     finalLocationPanel.classList.remove("hidden");
+
+    if (activeNotificationId) {
+      await markNotificationInProgress(activeNotificationId);
+    }
 
     renderUnifiedMoveCards();
     renderMovingVehicles();
@@ -822,6 +870,11 @@ async function saveAllLocations() {
 
     renderMovingVehicles();
 
+    if (activeNotificationId) {
+      await resolveNotificationRequest(activeNotificationId);
+      activeNotificationId = "";
+    }
+
     showMessage("All locations saved.");
     setTimeout(resetMoveLocateForm, 2000);
   } catch (error) {
@@ -941,6 +994,28 @@ async function saveOneMovedVehicle({ ro, finalArea, finalLot, blockingTag }) {
   lastROs = await getDealerROs();
 }
 
+async function releaseOpenedRequest() {
+  clearMessage();
+
+  if (!activeNotificationId) {
+    showMessage("No request to release.");
+    return;
+  }
+
+  try {
+    await releaseNotificationRequest(activeNotificationId);
+
+    activeNotificationId = "";
+
+    resetMoveLocateForm();
+
+    showMessage("Request released.");
+  } catch (error) {
+    console.error(error);
+    showMessage("Could not release request.");
+  }
+}
+
 async function cancelMove() {
   clearMessage();
 
@@ -989,7 +1064,9 @@ async function cancelMove() {
         },
       );
     }
-
+    if (activeNotificationId) {
+      await releaseNotificationRequest(activeNotificationId);
+    }
     currentMoveGroup = [];
     currentRO = {
       ...freshCurrentRO,
@@ -1418,6 +1495,10 @@ function resetMoveLocateForm() {
   }
 
   startMoveButton.classList.remove("hidden");
+
+  if (releaseRequestButton) {
+  releaseRequestButton.classList.add("hidden");
+}
 
   groupFinalLocationList.innerHTML = "";
 

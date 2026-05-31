@@ -92,12 +92,41 @@ async function loadNotificationGroups() {
 function renderNotificationGroups(groups = []) {
   const groupRows = groups.length
     ? groups
-        .map(
-          (group) => `
+        .map((group) => {
+          const memberUids = Array.isArray(group.memberUids)
+            ? group.memberUids
+            : [];
+
+          const memberNames = memberUids.map((uid) => {
+            const user = currentAdminUsers.find(
+              (item) => item.uid === uid || item.id === uid,
+            );
+
+            return user?.displayName || user?.email || uid;
+          });
+
+          const membersCell = memberNames.length
+            ? `
+              <details>
+                <summary>${memberNames.length} members</summary>
+                <div style="margin-top:6px;">
+                  ${memberNames
+                    .map(
+                      (name) => `
+                        <div>${name}</div>
+                      `,
+                    )
+                    .join("")}
+                </div>
+              </details>
+            `
+            : "0 members";
+
+          return `
             <tr>
               <td>${group.name || ""}</td>
               <td>${group.groupType || ""}</td>
-              <td>${Array.isArray(group.memberUids) ? group.memberUids.length : 0}</td>
+              <td>${membersCell}</td>
               <td>
                 <button
                   class="notification-group-members-btn"
@@ -107,8 +136,8 @@ function renderNotificationGroups(groups = []) {
                 </button>
               </td>
             </tr>
-          `,
-        )
+          `;
+        })
         .join("")
     : `
         <tr>
@@ -197,8 +226,7 @@ function openNotificationGroupMembersModal(groupId) {
     return;
   }
 
-  window.location.href =
-    `/pages/notification-groups/index.html?groupId=${encodeURIComponent(groupId)}`;
+  window.location.href = `/pages/notification-groups/index.html?groupId=${encodeURIComponent(groupId)}`;
 }
 
 function renderUsersTable(users, tableType) {
