@@ -1468,6 +1468,12 @@ function hasUnsavedOwnedMove() {
 }
 
 window.addEventListener("beforeunload", (event) => {
+  if (activeNotificationId && !currentMoveGroup.length) {
+    event.preventDefault();
+    event.returnValue = "";
+    return;
+  }
+
   if (!hasUnsavedOwnedMove()) {
     return;
   }
