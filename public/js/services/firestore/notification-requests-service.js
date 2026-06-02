@@ -159,6 +159,29 @@ export function listenToActiveNotificationRequests(callback) {
   });
 }
 
+export function watchDealerNotifications(callback) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    throw new Error("Missing dealer session.");
+  }
+
+  const notificationQuery = query(
+    collection(db, NOTIFICATION_REQUESTS_COLLECTION),
+    where("dealerId", "==", session.dealerId),
+    orderBy("createdAtMs", "desc"),
+  );
+
+  return onSnapshot(notificationQuery, (snapshot) => {
+    const rows = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    callback(rows);
+  });
+}
+
 export async function resolveNotificationRequest(notificationId) {
   const session = getSession();
 

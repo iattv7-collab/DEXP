@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Notifications</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+
+  <main class="page-shell">
+
+    <section class="page-section">
+
+      <h2>Notifications</h2>
+
+      <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
+
+        <button
+          type="button"
+          class="small-button js-filter"
+          data-filter="all"
+        >
+          All
+        </button>
+
+        <button
+          type="button"
+          class="small-button js-filter"
+          data-filter="active"
+        >
+          Active
+        </button>
+
+        <button
+          type="button"
+          class="small-button js-filter"
+          data-filter="opened"
+        >
+          Opened
+        </button>
+
+        <button
+          type="button"
+          class="small-button js-filter"
+          data-filter="in_progress"
+        >
+          In Progress
+        </button>
+
+        <button
+          type="button"
+          class="small-button js-filter"
+          data-filter="resolved"
+        >
+          Resolved
+        </button>
+
+      </div>
+
+      <input
+        id="notificationSearchInput"
+        type="text"
+        placeholder="Search notifications..."
+      />
+
+    </section>
+
+    <section class="page-section">
+
+      <table class="data-table">
+
+        <thead>
+          <tr id="notificationsTableHead"></tr>
+        </thead>
+
+        <tbody id="notificationsList"></tbody>
+
+      </table>
+
+    </section>
+
+  </main>
+
+  <script
+    type="module"
+    src="/js/core/app.js"
+  ></script>
+
+  <script
+    type="module"
+    src="/pages/notifications/notifications-page.js"
+  ></script>
+
+</body>
+</html>
