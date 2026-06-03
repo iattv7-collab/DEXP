@@ -1,0 +1,90 @@
+<!-- FILE: /public/pages/send-to-wash/send-to-wash.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Send to Wash</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <div id="appHeader"></div>
+
+  <main class="page-shell">
+    <section class="page-section">
+      <h1>Send to Wash</h1>
+      <p>Find an RO or tag, verify the vehicle, then send it to the wash queue.</p>
+    </section>
+
+    <section class="page-section">
+      <h2>Find RO and Send to Wash</h2>
+
+      <div class="form-row">
+        <input id="searchInput" placeholder="Enter RO # or Tag #" />
+        <button id="findBtn" type="button">Find Ticket</button>
+      </div>
+
+      <div id="previewCard" class="page-section" style="display:none; margin-top:14px;">
+        <h2>Ticket Preview</h2>
+
+        <p><b>RO:</b> <span id="pRo"></span></p>
+        <p><b>Tag:</b> <span id="pTag"></span></p>
+        <p><b>Model:</b> <span id="pModel"></span></p>
+        <p><b>Current Wash Status:</b> <span id="pWashStatus"></span></p>
+        <p><b>Location:</b> <span id="pLocation"></span></p>
+        <p><b>Waiter:</b> <span id="pWaiter"></span></p>
+
+        <div class="form-row">
+          <label>
+            Waiter?
+            <select id="waiter">
+              <option value="false" selected>No</option>
+              <option value="true">Yes (Waiter)</option>
+            </select>
+          </label>
+        </div>
+
+        <textarea id="notes" rows="3" placeholder="Anything wash team should know..."></textarea>
+
+        <div id="alreadyInWashMsg" style="display:none; margin-top:10px; color:crimson;">
+          This vehicle is already in the wash flow and cannot be sent again.
+        </div>
+
+        <div style="margin-top:12px;">
+          <button id="sendBtn" type="button">Send to Wash</button>
+        </div>
+      </div>
+
+      <div id="msg" class="small-muted"></div>
+    </section>
+
+    <section class="page-section">
+      <h2>Queue Live</h2>
+      <p>Shows tickets in queued status.</p>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>RO</th>
+              <th>Waiter</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/modules/wash/send-to-wash-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!-- FILE: /public/pages/wash/wash.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Wash</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <div id="appHeader"></div>
+
+  <main class="page-shell">
+    <section class="page-section">
+      <h1>Wash Team</h1>
+      <p>Work queue: queued and washing. Wash team can start, complete, or remove vehicles from wash.</p>
+    </section>
+
+    <section class="page-section">
+      <h2>Wash Day Control</h2>
+
+      <div class="form-row">
+        <button id="openWashBtn">Open Wash Day</button>
+        <button id="closeWashBtn">Close Wash Day</button>
+        <strong>Current:</strong>
+        <span id="isOpenBadge">Loading...</span>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div id="msg" class="small-muted"></div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>RO</th>
+              <th>Model</th>
+              <th>Location</th>
+              <th>Priority</th>
+              <th>Need By</th>
+              <th>Status</th>
+              <th>Queued</th>
+              <th>Started</th>
+              <th>Notes</th>
+              <th>Start</th>
+              <th>Done</th>
+              <th>Remove</th>
+            </tr>
+          </thead>
+
+          <tbody id="washRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/modules/wash/wash-page.js"></script>
+</body>
+</html>
