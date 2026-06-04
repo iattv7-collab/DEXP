@@ -16,12 +16,14 @@ import {
   collection,
   onSnapshot,
   query,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
   startQc,
-  markQcComplete
+  releaseQc,
+  markQcComplete,
+  reopenQc,
 } from "/js/modules/shared/qc-actions-service.js";
 
 const $ = (id) => document.getElementById(id);
@@ -62,7 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       month: "numeric",
       day: "numeric",
       hour: "numeric",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   }
 
@@ -80,25 +82,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[c],
+    );
   }
 
   function render() {
     const search = clean(searchEl.value).toLowerCase();
 
     const activeRows = rows.filter((t) =>
-      ["requested", "working"].includes(clean(t.qcStatus).toLowerCase())
+      ["requested", "working"].includes(clean(t.qcStatus).toLowerCase()),
     );
 
-    const completedTodayRows = rows.filter((t) =>
-      clean(t.qcStatus).toLowerCase() === "complete" &&
-      isToday(t.qcDoneAtMs)
+    const completedTodayRows = rows.filter(
+      (t) =>
+        clean(t.qcStatus).toLowerCase() === "complete" && isToday(t.qcDoneAtMs),
     );
 
     const filterBySearch = (list) =>
@@ -148,24 +154,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       `;
     }
 
-    return list.map((t) => {
-      const status = clean(t.qcStatus).toLowerCase();
+    return list
+      .map((t) => {
+        const status = clean(t.qcStatus).toLowerCase();
 
-      let actionHtml = "";
+        let actionHtml = "";
 
-      if (activeSection && status === "requested") {
-        actionHtml = `<button class="startQcBtn">Start QC</button>`;
-      }
+        if (activeSection && status === "requested") {
+          actionHtml = `<button class="startQcBtn">Start QC</button>`;
+        }
 
-      if (activeSection && status === "working") {
-        actionHtml = `<button class="completeQcBtn">Complete QC</button>`;
-      }
+        if (activeSection && status === "working") {
+          actionHtml = `
+          <button class="releaseQcBtn">Release</button>
+          <button class="completeQcBtn">Complete QC</button>
+        `;
+        }
 
-      if (!activeSection) {
-        actionHtml = "Completed";
-      }
+        if (!activeSection) {
+          actionHtml = `
+          <button class="reopenQcBtn">Reopen</button>
+        `;
+        }
 
-      return `
+        return `
         <tr data-id="${escapeHtml(t.id)}">
           <td>${escapeHtml(sectionName)}</td>
           <td><b>${escapeHtml(tagValue(t))}</b></td>
@@ -180,7 +192,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>${actionHtml}</td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   tableEl.addEventListener("click", async (e) => {
@@ -197,9 +210,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         setMsg("QC started.");
       }
 
+      if (btn.classList.contains("releaseQcBtn")) {
+        await releaseQc(id);
+        setMsg("QC released back to active queue.");
+      }
+
       if (btn.classList.contains("completeQcBtn")) {
         await markQcComplete(id);
         setMsg("QC completed.");
+      }
+
+      if (btn.classList.contains("reopenQcBtn")) {
+        await reopenQc(id);
+        setMsg("QC reopened.");
       }
     } catch (err) {
       console.error(err);
@@ -212,18 +235,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   const q = query(
     collection(db, "ros"),
     where("dealerId", "==", dealerId),
-    where("qcRequired", "==", true)
+    where("qcRequired", "==", true),
   );
 
   onSnapshot(q, (snap) => {
     rows = snap.docs.map((d) => ({
       id: d.id,
-      ...d.data()
+      ...d.data(),
     }));
 
-    rows.sort((a, b) =>
-      Number(b.qcRequestedAtMs || b.qcDoneAtMs || 0) -
-      Number(a.qcRequestedAtMs || a.qcDoneAtMs || 0)
+    rows.sort(
+      (a, b) =>
+        Number(b.qcRequestedAtMs || b.qcDoneAtMs || 0) -
+        Number(a.qcRequestedAtMs || a.qcDoneAtMs || 0),
     );
 
     render();
@@ -239,10 +263,8 @@ function waitForSession() {
       return;
     }
 
-    window.addEventListener(
-      "dexp-session-ready",
-      () => resolve(getSession()),
-      { once: true }
-    );
+    window.addEventListener("dexp-session-ready", () => resolve(getSession()), {
+      once: true,
+    });
   });
 }

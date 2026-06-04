@@ -10,7 +10,12 @@
 
 import { auth } from "/js/services/firebase/auth-service.js";
 import { db } from "/js/services/firebase/firestore.js";
-import { getSession } from "/js/core/session.js";
+import {
+  getSession,
+  hasPermission
+} from "/js/core/session.js";
+
+import { PERMISSIONS } from "/js/config/permissions.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 
@@ -43,6 +48,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const session = await waitForSession();
   const dealerId = session?.dealerId || "";
+  const canRequestPickup =
+  hasPermission(PERMISSIONS.PICKUP_REQUEST);
+
+const canRequestRewash =
+  hasPermission(PERMISSIONS.WASH_REWASH_REQUEST);
+
+const canMarkCp =
+  hasPermission(PERMISSIONS.BOOKING_CP_MARK);
+
+const canMarkWty =
+  hasPermission(PERMISSIONS.BOOKING_WTY_MARK);
+
+const canRequestQc =
+  hasPermission(PERMISSIONS.QC_REQUEST);
+
+const canMarkNoQc =
+  hasPermission(PERMISSIONS.QC_NO_QC);
 
   const tableEl = $("ticketsTable");
   const msgEl = $("msg");
@@ -227,35 +249,35 @@ document.addEventListener("DOMContentLoaded", async () => {
                   <td>${escapeHtml(qcLabel(t))}</td>
 
                   <td>
-                    <button class="pickupBtn" ${pickupRequested ? "disabled" : ""}>
+                    <button class="pickupBtn" ${(!canRequestPickup || pickupRequested) ? "disabled" : ""}>
                       ${pickupRequested ? "Pickup Requested" : "Request Pickup"}
                     </button>
                   </td>
 
                   <td>
-                    <button class="rewashBtn">Request Rewash</button>
+                    <button class="rewashBtn" ${!canRequestRewash ? "disabled" : ""}>Request Rewash</button>
                   </td>
 
                   <td>
-                    <button class="cpBookedBtn" ${cpDone ? "disabled" : ""}>
+                    <button class="cpBookedBtn" ${(!canMarkCp || cpDone) ? "disabled" : ""}>
                       ${cpDone ? "CP Booked" : "CP Booked"}
                     </button>
                   </td>
 
                   <td>
-                    <button class="wtyBookedBtn" ${wtyDone ? "disabled" : ""}>
+                    <button class="wtyBookedBtn" ${(!canMarkWty || wtyDone) ? "disabled" : ""}>
                       ${wtyDone ? "WTY Booked" : "WTY Booked"}
                     </button>
                   </td>
 
                   <td>
-                    <button class="requestQcBtn" ${qcLocked ? "disabled" : ""}>
+                    <button class="requestQcBtn" ${(!canRequestQc || qcLocked) ? "disabled" : ""}>
                       Request QC
                     </button>
                   </td>
 
                   <td>
-                    <button class="noQcBtn" ${qcLocked ? "disabled" : ""}>
+                    <button class="noQcBtn" ${(!canMarkNoQc || qcLocked) ? "disabled" : ""}>
                       No QC Required
                     </button>
                   </td>

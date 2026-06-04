@@ -12,7 +12,7 @@ import { getSession } from "/js/core/session.js";
 import {
   doc,
   serverTimestamp,
-  updateDoc
+  updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 function auditPatch(fields = []) {
@@ -27,7 +27,7 @@ function auditPatch(fields = []) {
     lastEditedAtMs: Date.now(),
     lastEditedBy: user?.uid || "",
     lastEditedRole: session?.role || "unknown",
-    lastEditedFields: fields
+    lastEditedFields: fields,
   };
 }
 
@@ -58,8 +58,8 @@ export async function requestQc(roId) {
       "qcStartedBy",
       "qcDoneAt",
       "qcDoneAtMs",
-      "qcDoneBy"
-    ])
+      "qcDoneBy",
+    ]),
   });
 }
 
@@ -90,8 +90,8 @@ export async function markNoQcRequired(roId) {
       "qcStartedBy",
       "qcDoneAt",
       "qcDoneAtMs",
-      "qcDoneBy"
-    ])
+      "qcDoneBy",
+    ]),
   });
 }
 
@@ -110,8 +110,8 @@ export async function startQc(roId) {
       "qcStatus",
       "qcStartedAt",
       "qcStartedAtMs",
-      "qcStartedBy"
-    ])
+      "qcStartedBy",
+    ]),
   });
 }
 
@@ -130,7 +130,57 @@ export async function markQcComplete(roId) {
       "qcStatus",
       "qcDoneAt",
       "qcDoneAtMs",
-      "qcDoneBy"
-    ])
+      "qcDoneBy",
+    ]),
+  });
+}
+
+export async function releaseQc(roId) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in.");
+
+  await updateDoc(doc(db, "ros", roId), {
+    qcStatus: "requested",
+    qcStartedAt: null,
+    qcStartedAtMs: null,
+    qcStartedBy: null,
+    qcReleasedAt: serverTimestamp(),
+    qcReleasedAtMs: Date.now(),
+    qcReleasedBy: user.uid,
+    ...auditPatch([
+      "qcStatus",
+      "qcStartedAt",
+      "qcStartedAtMs",
+      "qcStartedBy",
+      "qcReleasedAt",
+      "qcReleasedAtMs",
+      "qcReleasedBy",
+    ]),
+  });
+}
+
+export async function reopenQc(roId) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in.");
+
+  await updateDoc(doc(db, "ros", roId), {
+    qcRequired: true,
+    qcStatus: "requested",
+    qcDoneAt: null,
+    qcDoneAtMs: null,
+    qcDoneBy: null,
+    qcReopenedAt: serverTimestamp(),
+    qcReopenedAtMs: Date.now(),
+    qcReopenedBy: user.uid,
+    ...auditPatch([
+      "qcRequired",
+      "qcStatus",
+      "qcDoneAt",
+      "qcDoneAtMs",
+      "qcDoneBy",
+      "qcReopenedAt",
+      "qcReopenedAtMs",
+      "qcReopenedBy",
+    ]),
   });
 }
