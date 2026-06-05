@@ -5,10 +5,9 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   runTransaction,
   serverTimestamp,
-  setDoc
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
@@ -26,14 +25,13 @@ export async function getDealer(dealerId) {
     return snapshot.data();
   }
 
-  const generatedCode =
-    await generateDealerSystemCode();
+  const generatedCode = await generateDealerSystemCode();
 
   const newDealer = buildNewDealer({
     dealerId,
     name: "DEXP Demo Dealer",
     displayShortName: "DEMO",
-    systemCode: generatedCode
+    systemCode: generatedCode,
   });
 
   await setDoc(dealerRef, newDealer);
@@ -42,13 +40,11 @@ export async function getDealer(dealerId) {
 }
 
 export async function getAllDealers() {
-  const snapshot = await getDocs(
-    collection(db, "dealers")
-  );
+  const snapshot = await getDocs(collection(db, "dealers"));
 
   return snapshot.docs.map((docSnap) => ({
     id: docSnap.id,
-    ...docSnap.data()
+    ...docSnap.data(),
   }));
 }
 
@@ -58,59 +54,37 @@ export async function createDealerWithPrimaryAdmin({
   displayShortName,
   adminName,
   adminEmail,
-  adminPhone
+  adminPhone,
 }) {
-  if (
-    !dealerId ||
-    !name ||
-    !adminName ||
-    !adminEmail
-  ) {
-    throw new Error(
-      "Dealer and primary admin information are required."
-    );
+  if (!dealerId || !name || !adminName || !adminEmail) {
+    throw new Error("Dealer and primary admin information are required.");
   }
 
-  const dealerRef =
-    doc(db, "dealers", dealerId);
+  const dealerRef = doc(db, "dealers", dealerId);
 
-  const dealerSnapshot =
-    await getDoc(dealerRef);
+  const dealerSnapshot = await getDoc(dealerRef);
 
   if (dealerSnapshot.exists()) {
-    throw new Error(
-      "Dealer already exists."
-    );
+    throw new Error("Dealer already exists.");
   }
 
-  const normalizedEmail =
-    adminEmail
-      .trim()
-      .toLowerCase();
+  const normalizedEmail = adminEmail.trim().toLowerCase();
 
-  const inviteRef = doc(
-    db,
-    "dealerAdminInvites",
-    normalizedEmail
-  );
+  const inviteRef = doc(db, "dealerAdminInvites", normalizedEmail);
 
-  const inviteSnapshot =
-    await getDoc(inviteRef);
+  const inviteSnapshot = await getDoc(inviteRef);
 
   if (inviteSnapshot.exists()) {
-    throw new Error(
-      "An admin invite already exists for this email."
-    );
+    throw new Error("An admin invite already exists for this email.");
   }
 
-  const generatedCode =
-    await generateDealerSystemCode();
+  const generatedCode = await generateDealerSystemCode();
 
   const newDealer = buildNewDealer({
     dealerId,
     name,
     displayShortName,
-    systemCode: generatedCode
+    systemCode: generatedCode,
   });
 
   await setDoc(dealerRef, newDealer);
@@ -128,22 +102,18 @@ export async function createDealerWithPrimaryAdmin({
     status: "pending-login",
 
     createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 
   return newDealer;
 }
 
-export async function updateDealerProfile(
-  dealerId,
-  dealerData
-) {
+export async function updateDealerProfile(dealerId, dealerData) {
   if (!dealerId) {
     throw new Error("Missing dealerId");
   }
 
-  const dealerRef =
-    doc(db, "dealers", dealerId);
+  const dealerRef = doc(db, "dealers", dealerId);
 
   await setDoc(
     dealerRef,
@@ -151,53 +121,130 @@ export async function updateDealerProfile(
       ...dealerData,
       id: dealerId,
 
-      updatedAt:
-        serverTimestamp()
+      updatedAt: serverTimestamp(),
     },
-    { merge: true }
+    { merge: true },
+  );
+}
+
+export async function updateDealerSettings(dealerId, settingsPatch) {
+  if (!dealerId) {
+    throw new Error("Missing dealerId");
+  }
+
+  if (
+    !settingsPatch ||
+    typeof settingsPatch !== "object" ||
+    Array.isArray(settingsPatch)
+  ) {
+    throw new Error("Missing settings data");
+  }
+
+  const dealerRef = doc(db, "dealers", dealerId);
+
+  await setDoc(
+    dealerRef,
+    {
+      settings: settingsPatch,
+
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function updateDealerPermissionOverrides(dealerId, roleOverrides) {
+  if (!dealerId) {
+    throw new Error("Missing dealerId");
+  }
+
+  if (
+    !roleOverrides ||
+    typeof roleOverrides !== "object" ||
+    Array.isArray(roleOverrides)
+  ) {
+    throw new Error("Missing role permission overrides");
+  }
+
+  const dealerRef = doc(db, "dealers", dealerId);
+
+  await setDoc(
+    dealerRef,
+    {
+      settings: {
+        permissions: {
+          roleOverrides,
+        },
+      },
+
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function updateDealerRolePermissionOverride({
+  dealerId,
+  role,
+  allow,
+  deny,
+}) {
+  if (!dealerId) {
+    throw new Error("Missing dealerId");
+  }
+
+  if (!role) {
+    throw new Error("Missing role");
+  }
+
+  const dealerRef = doc(db, "dealers", dealerId);
+
+  await setDoc(
+    dealerRef,
+    {
+      settings: {
+        permissions: {
+          roleOverrides: {
+            [role]: {
+              allow: Array.isArray(allow) ? allow : [],
+              deny: Array.isArray(deny) ? deny : [],
+            },
+          },
+        },
+      },
+
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
   );
 }
 
 async function generateDealerSystemCode() {
-  const counterRef = doc(
-    db,
-    "system",
-    "dealerCounters"
-  );
+  const counterRef = doc(db, "system", "dealerCounters");
 
-  const nextNumber =
-    await runTransaction(
-      db,
-      async (transaction) => {
+  const nextNumber = await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(counterRef);
 
-        const snapshot =
-          await transaction.get(counterRef);
+    let currentNumber = 0;
 
-        let currentNumber = 0;
+    if (snapshot.exists()) {
+      currentNumber = snapshot.data().nextDealerNumber || 0;
+    }
 
-        if (snapshot.exists()) {
-          currentNumber =
-            snapshot.data().nextDealerNumber || 0;
-        }
+    const newNumber = currentNumber + 1;
 
-        const newNumber =
-          currentNumber + 1;
+    transaction.set(
+      counterRef,
+      {
+        nextDealerNumber: newNumber,
 
-        transaction.set(
-          counterRef,
-          {
-            nextDealerNumber:
-              newNumber,
-
-            updatedAt:
-              serverTimestamp()
-          },
-          { merge: true }
-        );
-
-        return newNumber;
-      }
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
     );
+
+    return newNumber;
+  });
 
   return formatDealerCode(nextNumber);
 }
@@ -206,12 +253,7 @@ function formatDealerCode(number) {
   return `DX${String(number).padStart(4, "0")}`;
 }
 
-function buildNewDealer({
-  dealerId,
-  name,
-  displayShortName,
-  systemCode
-}) {
+function buildNewDealer({ dealerId, name, displayShortName, systemCode }) {
   return {
     id: dealerId,
 
@@ -219,8 +261,7 @@ function buildNewDealer({
 
     name,
 
-    displayShortName:
-      displayShortName || "",
+    displayShortName: displayShortName || "",
 
     active: true,
 
@@ -234,8 +275,7 @@ function buildNewDealer({
     state: "",
     zip: "",
 
-    timezone:
-      "America/New_York",
+    timezone: "America/New_York",
 
     logoUrl: "",
 
@@ -246,13 +286,11 @@ function buildNewDealer({
       loaners: {},
       notifications: {},
       scanner: {},
-      branding: {}
+      branding: {},
     },
 
-    createdAt:
-      serverTimestamp(),
+    createdAt: serverTimestamp(),
 
-    updatedAt:
-      serverTimestamp()
+    updatedAt: serverTimestamp(),
   };
 }

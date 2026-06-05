@@ -11,6 +11,11 @@ let currentSession = null;
 export function setSession({ user, profile, dealer, modules }) {
   const role = profile?.role || "pending";
 
+  const permissions = buildSessionPermissions({
+    role,
+    dealer
+  });
+
   currentSession = {
     uid: user?.uid || null,
 
@@ -49,9 +54,8 @@ export function setSession({ user, profile, dealer, modules }) {
         ? profile.assignedModules
         : [],
 
-    // Permissions are role-based and should control actions inside modules.
-    permissions:
-      getPermissionsForRole(role),
+    // Permissions are built from role defaults plus dealer-level settings.
+    permissions,
 
     profile,
     dealer
@@ -61,6 +65,44 @@ export function setSession({ user, profile, dealer, modules }) {
     SESSION_KEY,
     JSON.stringify(currentSession)
   );
+}
+
+function buildSessionPermissions({
+  role,
+  dealer
+}) {
+  const defaultPermissions =
+    getPermissionsForRole(role);
+
+  const permissionSettings =
+    dealer?.settings?.permissions || {};
+
+  const roleOverrides =
+    permissionSettings.roleOverrides || {};
+
+  const roleOverride =
+    roleOverrides[role] || {};
+
+  const allowedPermissions =
+    Array.isArray(roleOverride.allow)
+      ? roleOverride.allow
+      : [];
+
+  const deniedPermissions =
+    Array.isArray(roleOverride.deny)
+      ? roleOverride.deny
+      : [];
+
+  const mergedPermissions = new Set([
+    ...defaultPermissions,
+    ...allowedPermissions
+  ]);
+
+  deniedPermissions.forEach((permission) => {
+    mergedPermissions.delete(permission);
+  });
+
+  return Array.from(mergedPermissions);
 }
 
 export function getSession() {
