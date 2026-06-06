@@ -1,0 +1,74 @@
+/* FILE: /public/pages/foreman/foreman.css */
+/* Shop Foreman desktop-first dispatch view */
+
+.foreman-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.foreman-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.foreman-controls select {
+  min-width: 150px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: "Times New Roman", Times, serif;
+}
+
+.foreman-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+}
+
+.foreman-tab {
+  min-width: 130px;
+  background: #e5e7eb;
+  color: #333;
+  border: 1px solid #cbd5e1;
+}
+
+.foreman-tab.active {
+  background: #0b4ea2;
+  color: #fff;
+  border-color: #0b4ea2;
+  font-weight: bold;
+}
+
+.foreman-table td,
+.foreman-table th {
+  white-space: nowrap;
+}
+
+.priority-badge {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.priority-badge.waiter {
+  background: #ffe0e0;
+  color: #a40000;
+}
+
+.priority-badge.due {
+  background: #fff4cc;
+  color: #7a5200;
+}
+
+.priority-badge.waiting {
+  background: #e6efff;
+  color: #0b4ea2;
+}

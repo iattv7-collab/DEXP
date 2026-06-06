@@ -1,0 +1,88 @@
+<!-- FILE: /public/pages/foreman/foreman.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Foreman</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/pages/foreman/foreman.css" />
+</head>
+
+<body>
+  <div id="appHeader"></div>
+
+  <main class="page-shell full-page">
+    <section class="page-card">
+      <div class="page-title-row">
+        <div>
+          <h2>Shop Foreman</h2>
+          <p>Dispatch, assign techs, and monitor shop workflow.</p>
+        </div>
+      </div>
+
+      <div class="foreman-controls">
+        <label>
+          Team
+          <select>
+            <option>My Team</option>
+            <option>Team 1</option>
+            <option>Team 2</option>
+            <option>All Teams</option>
+          </select>
+        </label>
+
+        <label>
+          Sort
+          <select>
+            <option>Due Time</option>
+            <option>Waiters First</option>
+            <option>Advisor</option>
+            <option>Tech</option>
+            <option>Status</option>
+          </select>
+        </label>
+
+        <button>Waiters</button>
+        <button>Past Due</button>
+        <button>Due Soon</button>
+      </div>
+
+      <div class="foreman-tabs">
+        <button class="foreman-tab active">Unassigned (4)</button>
+        <button class="foreman-tab">Assigned (8)</button>
+        <button class="foreman-tab">Working (6)</button>
+        <button class="foreman-tab">Hold (3)</button>
+        <button class="foreman-tab">Done (12)</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table foreman-table">
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Due</th>
+              <th>RO</th>
+              <th>Tag</th>
+              <th>Vehicle</th>
+              <th>Advisor</th>
+              <th>Tech</th>
+              <th>Status</th>
+              <th>Tech Notes</th>
+              <th>Foreman Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="foremanTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/modules/foreman/foreman-page.js?v=4"></script>
+</body>
+</html>

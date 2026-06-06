@@ -181,7 +181,7 @@ export const MODULE_CONFIG = {
 
   [MODULES.TECH]: {
     label: "Tech",
-    route: "/pages/tech/tech.html",
+    route: "/pages/tech/index.html",
     icon: "build",
     permission: PERMISSIONS.RO_TRACKER_VIEW
   },
