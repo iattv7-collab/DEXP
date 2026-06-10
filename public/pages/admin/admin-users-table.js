@@ -1,5 +1,4 @@
 // public/pages/admin/admin-users-table.js
-// Table rendering helpers for the DEXP admin page.
 
 import { ROLES } from "../../js/config/roles.js";
 import { buildAdminRoleOptions } from "./admin-roles.js";
@@ -16,31 +15,27 @@ export function renderUsersTable(users, tableType) {
   const rows = users
     .map(
       (user) => `
-    <tr>
-      <td>${user.displayName || ""}</td>
+        <tr>
+          <td>${user.displayName || ""}</td>
+          <td>${user.email || ""}</td>
 
-      <td>${user.email || ""}</td>
+          <td>
+            <select class="admin-role-select" data-user-id="${user.id}">
+              ${renderPendingOption(user)}
+              ${buildAdminRoleOptions(user.role)}
+            </select>
+          </td>
 
-      <td>
-        <select class="admin-role-select" data-user-id="${user.id}">
-          ${renderPendingOption(user)}
-          ${buildAdminRoleOptions(user.role)}
-        </select>
-      </td>
+          <td>${user.dealerId || ""}</td>
+          <td>${formatAdminDate(user.createdAt)}</td>
+          <td>${formatAdminDate(user.approvedAt)}</td>
+          <td>${formatAdminDate(user.inactiveAt)}</td>
 
-      <td>${user.dealerId || ""}</td>
-
-      <td>${formatAdminDate(user.createdAt)}</td>
-
-      <td>${formatAdminDate(user.approvedAt)}</td>
-
-      <td>${formatAdminDate(user.inactiveAt)}</td>
-
-      <td>
-        ${renderActionButton(user, tableType)}
-      </td>
-    </tr>
-  `,
+          <td>
+            ${renderActionButton(user, tableType)}
+          </td>
+        </tr>
+      `,
     )
     .join("");
 

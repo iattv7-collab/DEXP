@@ -7,40 +7,30 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 
 import {
   createDealerWithPrimaryAdmin,
-  getAllDealers
+  getAllDealers,
 } from "/js/services/firestore/dealers-service.js";
 
 protectRoute({
-  allowedRoles: [
-    ROLES.PLATFORM_ADMIN
-  ]
+  allowedRoles: [ROLES.PLATFORM_ADMIN],
 });
 
 let allDealers = [];
 
-const dealersContainer =
-  document.getElementById("dealersContainer");
+const dealersContainer = document.getElementById("dealersContainer");
 
-const dealerSearchInput =
-  document.getElementById("dealerSearchInput");
+const dealerSearchInput = document.getElementById("dealerSearchInput");
 
-const createDealerForm =
-  document.getElementById("createDealerForm");
+const createDealerForm = document.getElementById("createDealerForm");
 
-const dealerNameInput =
-  document.getElementById("dealerNameInput");
+const dealerNameInput = document.getElementById("dealerNameInput");
 
-const companyCodeInput =
-  document.getElementById("companyCodeInput");
+const companyCodeInput = document.getElementById("companyCodeInput");
 
-const adminNameInput =
-  document.getElementById("adminNameInput");
+const adminNameInput = document.getElementById("adminNameInput");
 
-const adminEmailInput =
-  document.getElementById("adminEmailInput");
+const adminEmailInput = document.getElementById("adminEmailInput");
 
-const adminPhoneInput =
-  document.getElementById("adminPhoneInput");
+const adminPhoneInput = document.getElementById("adminPhoneInput");
 
 window.addEventListener("dexp-session-ready", () => {
   initializePlatformAdminPage();
@@ -54,7 +44,7 @@ async function initializePlatformAdminPage() {
   }
 
   renderAppHeader({
-    pageTitle: "Platform Admin"
+    pageTitle: "Platform Admin",
   });
 
   createDealerForm.addEventListener("submit", async (event) => {
@@ -63,10 +53,7 @@ async function initializePlatformAdminPage() {
     await handleCreateDealer();
   });
 
-  dealerSearchInput.addEventListener(
-    "input",
-    renderFilteredDealers
-  );
+  dealerSearchInput.addEventListener("input", renderFilteredDealers);
 
   await loadDealers();
 }
@@ -84,23 +71,14 @@ async function loadDealers() {
 }
 
 function renderFilteredDealers() {
-  const search =
-    dealerSearchInput.value
-      .trim()
-      .toLowerCase();
+  const search = dealerSearchInput.value.trim().toLowerCase();
 
-  const filteredDealers =
-    allDealers.filter((dealer) => {
-      return [
-        dealer.systemCode,
-        dealer.id,
-        dealer.name,
-        dealer.displayShortName
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(search);
-    });
+  const filteredDealers = allDealers.filter((dealer) => {
+    return [dealer.systemCode, dealer.id, dealer.name, dealer.displayShortName]
+      .join(" ")
+      .toLowerCase()
+      .includes(search);
+  });
 
   if (!filteredDealers.length) {
     dealersContainer.innerHTML = `
@@ -112,7 +90,9 @@ function renderFilteredDealers() {
     return;
   }
 
-  const rows = filteredDealers.map((dealer) => `
+  const rows = filteredDealers
+    .map(
+      (dealer) => `
     <tr>
       <td>${dealer.systemCode || ""}</td>
       <td>${dealer.id || ""}</td>
@@ -122,6 +102,14 @@ function renderFilteredDealers() {
       <td>
         <button
           type="button"
+          class="platform-open-dealer-btn"
+          data-dealer-id="${dealer.id}"
+        >
+          Open Dealer
+        </button>
+
+        <button
+          type="button"
           class="platform-edit-dealer-btn"
           data-dealer-id="${dealer.id}"
         >
@@ -129,7 +117,9 @@ function renderFilteredDealers() {
         </button>
       </td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 
   dealersContainer.innerHTML = `
     <div class="dexp-admin-card">
@@ -161,60 +151,61 @@ function renderFilteredDealers() {
 
 function attachDealerRowEvents() {
   document
-    .querySelectorAll(".platform-edit-dealer-btn")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const dealerId =
-          button.dataset.dealerId;
+  .querySelectorAll(".platform-open-dealer-btn")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      const dealerId = button.dataset.dealerId;
 
-        window.location.href =
-          `/pages/platform-admin/dealer-edit.html?dealer=${encodeURIComponent(dealerId)}`;
-      });
+      sessionStorage.setItem(
+        "dexp_platform_selected_dealer",
+        dealerId,
+      );
+
+      window.location.href =
+        `/pages/platform-admin/open-dealer.html?dealerId=${encodeURIComponent(
+          dealerId,
+        )}`;
     });
+  });
+
+  document.querySelectorAll(".platform-edit-dealer-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const dealerId = button.dataset.dealerId;
+
+      window.location.href = `/pages/platform-admin/dealer-edit.html?dealer=${encodeURIComponent(
+        dealerId,
+      )}`;
+    });
+  });
 }
 
 async function handleCreateDealer() {
-  const dealerName =
-    dealerNameInput.value.trim();
+  const dealerName = dealerNameInput.value.trim();
 
-  const dealerId =
-    buildDealerSlug(dealerName);
+  const dealerId = buildDealerSlug(dealerName);
 
-  const displayShortName =
-    companyCodeInput.value.trim();
+  const displayShortName = companyCodeInput.value.trim();
 
-  const adminName =
-    adminNameInput.value.trim();
+  const adminName = adminNameInput.value.trim();
 
-  const adminEmail =
-    adminEmailInput.value
-      .trim()
-      .toLowerCase();
+  const adminEmail = adminEmailInput.value.trim().toLowerCase();
 
-  const adminPhone =
-    adminPhoneInput.value.trim();
+  const adminPhone = adminPhoneInput.value.trim();
 
-  if (
-    !dealerName ||
-    !adminName ||
-    !adminEmail
-  ) {
-    alert(
-      "Dealer name and primary admin info are required."
-    );
+  if (!dealerName || !adminName || !adminEmail) {
+    alert("Dealer name and primary admin info are required.");
 
     return;
   }
 
   try {
-
     await createDealerWithPrimaryAdmin({
       dealerId,
       name: dealerName,
       displayShortName,
       adminName,
       adminEmail,
-      adminPhone
+      adminPhone,
     });
 
     dealerNameInput.value = "";
@@ -228,18 +219,11 @@ async function handleCreateDealer() {
 
     await loadDealers();
 
-    alert(
-      "Dealer created and admin invite saved."
-    );
-
+    alert("Dealer created and admin invite saved.");
   } catch (error) {
-
     console.error(error);
 
-    alert(
-      error.message ||
-      "Failed to create dealer."
-    );
+    alert(error.message || "Failed to create dealer.");
   }
 }
 

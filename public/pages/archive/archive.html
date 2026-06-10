@@ -1,0 +1,51 @@
+<!-- public/pages/archive/archive.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Archive</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <main id="archivePage" class="page-shell full-page">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+        <div>
+          <h2>Archive</h2>
+          <p>Archived repair orders for this dealer.</p>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <input
+          id="archiveSearchInput"
+          type="search"
+          placeholder="Search RO, tag, customer, advisor, vehicle, or archived by"
+        />
+      </div>
+
+      <section class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr id="archiveTableHead"></tr>
+          </thead>
+
+          <tbody id="archiveList"></tbody>
+        </table>
+      </section>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/archive/archive.js"></script>
+</body>
+</html>

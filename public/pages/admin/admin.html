@@ -10,7 +10,6 @@
     <title>DEXP Admin</title>
 
     <link rel="stylesheet" href="/css/core/reset.css" />
-
     <link rel="stylesheet" href="/css/core/base.css" />
   </head>
 
@@ -19,29 +18,37 @@
 
     <main class="page-shell">
       <section class="page-section">
-        <h2>Pending Users</h2>
-        <div id="pendingUsersContainer">Loading pending users...</div>
-      </section>
+        <h2>Admin</h2>
 
-      <section class="page-section">
-        <div id="allUsersContainer">Loading users...</div>
-      </section>
+        <div class="dashboard-module-grid">
+          <button
+            class="dashboard-module-button"
+            type="button"
+            onclick="window.location.href='/pages/admin/users.html'"
+          >
+            Users
+          </button>
 
-      <section class="page-section">
-        <h2>Role Permissions</h2>
-        <div id="rolePermissionsContainer">Loading role permissions...</div>
-      </section>
+          <button
+            class="dashboard-module-button"
+            type="button"
+            onclick="window.location.href='/pages/admin/roles.html'"
+          >
+            Role Permissions
+          </button>
 
-      <section class="page-section">
-        <h2>Notification Groups</h2>
-        <div id="notificationGroupsContainer">
-          Loading notification groups...
+          <button
+            class="dashboard-module-button"
+            type="button"
+            onclick="window.location.href='/pages/admin/notification-groups.html'"
+          >
+            Notification Groups
+          </button>
         </div>
       </section>
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-
-    <script type="module" src="/pages/admin/admin-page.js?v=14"></script>
+    <script type="module" src="/pages/admin/admin-home-page.js"></script>
   </body>
 </html>

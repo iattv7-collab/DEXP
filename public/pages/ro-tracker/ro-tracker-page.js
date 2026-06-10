@@ -85,7 +85,7 @@ async function initializeROTracker() {
   columnSettingsButton?.addEventListener("click", openColumnSettingsModal);
 
   document.getElementById("btnArchiveView")?.addEventListener("click", () => {
-    window.location.href = "/pages/ro-archive/index.html";
+    window.location.href = "/pages/archive/archive.html";
   });
     
       document

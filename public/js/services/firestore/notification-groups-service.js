@@ -15,8 +15,7 @@ import {
 import { db } from "../firebase/firestore.js";
 import { getSession } from "../../core/session.js";
 
-const NOTIFICATION_GROUPS_COLLECTION =
-  "notificationGroups";
+const NOTIFICATION_GROUPS_COLLECTION = "notificationGroups";
 
 export async function getNotificationGroups() {
   const session = getSession();
@@ -32,10 +31,12 @@ export async function getNotificationGroups() {
 
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  }));
+  return snapshot.docs
+    .map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }))
+    .filter((group) => group.active !== false);
 }
 
 export async function getNotificationGroup(groupId) {
@@ -43,11 +44,7 @@ export async function getNotificationGroup(groupId) {
     throw new Error("Missing group ID.");
   }
 
-  const groupRef = doc(
-    db,
-    NOTIFICATION_GROUPS_COLLECTION,
-    groupId,
-  );
+  const groupRef = doc(db, NOTIFICATION_GROUPS_COLLECTION, groupId);
 
   const snapshot = await getDoc(groupRef);
 
@@ -68,9 +65,7 @@ export async function createNotificationGroup(data = {}) {
     throw new Error("Missing dealer session.");
   }
 
-  const groupRef = doc(
-    collection(db, NOTIFICATION_GROUPS_COLLECTION),
-  );
+  const groupRef = doc(collection(db, NOTIFICATION_GROUPS_COLLECTION));
 
   const groupData = {
     id: groupRef.id,
@@ -94,24 +89,51 @@ export async function createNotificationGroup(data = {}) {
   return groupData;
 }
 
-export async function updateNotificationGroupMembers(
-  groupId,
-  memberUids = [],
-) {
+export async function updateNotificationGroupMembers(groupId, memberUids = []) {
   const session = getSession();
 
   if (!session?.dealerId) {
     throw new Error("Missing dealer session.");
   }
 
-  const groupRef = doc(
-    db,
-    NOTIFICATION_GROUPS_COLLECTION,
-    groupId,
-  );
+  const groupRef = doc(db, NOTIFICATION_GROUPS_COLLECTION, groupId);
 
   await updateDoc(groupRef, {
     memberUids,
+    updatedAt: serverTimestamp(),
+    updatedBy: session.uid || "",
+  });
+}
+
+export async function deleteNotificationGroup(groupId) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    throw new Error("Missing dealer session.");
+  }
+
+  if (!groupId) {
+    throw new Error("Missing group ID.");
+  }
+
+  const groupRef = doc(db, NOTIFICATION_GROUPS_COLLECTION, groupId);
+
+  const snapshot = await getDoc(groupRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Notification group not found.");
+  }
+
+  const group = snapshot.data();
+
+  if (group.dealerId !== session.dealerId) {
+    throw new Error("Cannot delete group from another dealer.");
+  }
+
+  await updateDoc(groupRef, {
+    active: false,
+    deletedAt: serverTimestamp(),
+    deletedBy: session.uid || "",
     updatedAt: serverTimestamp(),
     updatedBy: session.uid || "",
   });

@@ -1,0 +1,34 @@
+<!-- public/pages/platform-admin/open-dealer.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Opening Dealer</title>
+  </head>
+
+  <body>
+    <p>Opening dealer...</p>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const dealerId = String(params.get("dealerId") || "").trim();
+
+      if (dealerId) {
+        sessionStorage.setItem(
+          "dexp_platform_selected_dealer",
+          dealerId,
+        );
+
+        window.location.href =
+          "/pages/dashboard/index.html?dealerId=" +
+          encodeURIComponent(dealerId);
+      } else {
+        window.location.href =
+          "/pages/platform-admin/platform-admin.html";
+      }
+    </script>
+  </body>
+</html>

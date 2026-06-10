@@ -1,0 +1,143 @@
+<!-- public/pages/wash-settings/wash-settings.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Wash Settings</title>
+
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
+
+<body>
+  <main id="washSettingsPage" class="page-shell full-page">
+
+    <section class="page-card">
+
+      <div class="page-title-row">
+        <div>
+          <h2>Wash Settings</h2>
+          <p>Configure wash duration, bays, schedule, and open/closed status.</p>
+        </div>
+      </div>
+
+      <div id="washSettingsMessage" class="tool-message"></div>
+
+      <section class="page-card" style="margin-top:16px;">
+        <h3>Wash Configuration</h3>
+
+        <div class="form-grid">
+          <label>
+            Wash Duration Minutes
+            <input id="washDurationMin" type="number" min="1" max="120" />
+          </label>
+
+          <label>
+            Buffer Minutes
+            <input id="bufferMin" type="number" min="0" max="60" />
+          </label>
+
+          <label>
+            Bays Override
+            <input id="openBays" type="number" min="0" max="50" />
+          </label>
+
+          <label>
+            Auto Start
+            <input id="autoStart" type="checkbox" />
+          </label>
+        </div>
+      </section>
+
+      <section class="page-card" style="margin-top:16px;">
+        <h3>Wash Day Control</h3>
+
+        <p>
+          Current:
+          <strong id="isOpenBadge">Loading...</strong>
+        </p>
+
+        <div class="action-button-row">
+          <button id="openWashBtn" type="button">
+            Open Wash Day
+          </button>
+
+          <button id="closeWashBtn" type="button">
+            Close Wash Day
+          </button>
+        </div>
+      </section>
+
+      <section class="page-card" style="margin-top:16px;">
+        <h3>Bays by Day</h3>
+
+        <div class="form-grid">
+          <label>
+            Mon–Fri Bays
+            <input id="mfBays" type="number" min="0" max="50" />
+          </label>
+
+          <label>
+            Saturday Bays
+            <input id="satBays" type="number" min="0" max="50" />
+          </label>
+
+          <label>
+            Sunday Bays
+            <input id="sunBays" type="number" min="0" max="50" />
+          </label>
+        </div>
+      </section>
+
+      <section class="page-card" style="margin-top:16px;">
+        <h3>Hours</h3>
+
+        <div class="form-grid">
+          <label>
+            Mon–Fri Open
+            <input id="mfOpen" type="time" />
+          </label>
+
+          <label>
+            Mon–Fri Close
+            <input id="mfClose" type="time" />
+          </label>
+
+          <label>
+            Saturday Open
+            <input id="satOpen" type="time" />
+          </label>
+
+          <label>
+            Saturday Close
+            <input id="satClose" type="time" />
+          </label>
+
+          <label>
+            Sunday Open
+            <input id="sunOpen" type="time" />
+          </label>
+
+          <label>
+            Sunday Close
+            <input id="sunClose" type="time" />
+          </label>
+        </div>
+      </section>
+
+      <div class="action-button-row" style="margin-top:18px;">
+        <button id="saveWashSettingsBtn" type="button" disabled>
+          Save
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/wash-settings/wash-settings.js"></script>
+</body>
+</html>

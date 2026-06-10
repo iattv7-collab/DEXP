@@ -1,4 +1,4 @@
-// public/pages/admin/admin-page.js
+// public/pages/admin/admin-home-page.js
 
 import { protectRoute } from "../../js/core/router.js";
 import { ROLES } from "../../js/config/roles.js";
@@ -8,8 +8,6 @@ protectRoute({
   allowedRoles: [ROLES.PLATFORM_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
 });
 
-window.addEventListener("dexp-session-ready", () => {
-  renderAppHeader({
-    pageTitle: "Admin",
-  });
+renderAppHeader({
+  pageTitle: "Admin",
 });

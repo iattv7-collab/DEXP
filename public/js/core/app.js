@@ -19,6 +19,12 @@ function initializeApp() {
   console.log(`${LABELS.appName} initialized`);
 }
 
+function getPlatformSelectedDealerId() {
+  return String(
+    sessionStorage.getItem("dexp_platform_selected_dealer") || "",
+  ).trim();
+}
+
 function getDealerIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return String(params.get("dealerId") || "").trim();
@@ -64,24 +70,68 @@ async function loadUserSession(user) {
       return;
     }
 
-    if (!profile?.dealerId) {
+    const selectedDealerId =
+      getDealerIdFromUrl() || getPlatformSelectedDealerId();
+
+    if (profile.role === "platform-admin" && getDealerIdFromUrl()) {
+      sessionStorage.setItem(
+        "dexp_platform_selected_dealer",
+        getDealerIdFromUrl(),
+      );
+    }
+
+    const effectiveDealerId =
+      profile.role === "platform-admin" && selectedDealerId
+        ? selectedDealerId
+        : profile.dealerId;
+
+    if (!effectiveDealerId) {
       throw new Error("Missing dealer assignment");
     }
 
-    const dealer = await getDealer(profile.dealerId);
+    const dealer = await getDealer(effectiveDealerId);
 
     if (!dealer) {
       throw new Error("Dealer not found");
     }
 
-    const modules = await getDealerModules(profile.dealerId);
+    const modules = await getDealerModules(effectiveDealerId);
 
     setSession({
       user,
-      profile,
+      profile: {
+        ...profile,
+        dealerId: effectiveDealerId,
+      },
       dealer,
       modules,
     });
+
+    const currentPath = window.location.pathname;
+
+    const isPlatformAdmin = profile.role === "platform-admin";
+
+    const isPlatformAdminPage = currentPath.includes("/platform-admin/");
+
+    const isDealerWorkspace =
+      profile.role === "platform-admin" &&
+      selectedDealerId &&
+      !isPlatformAdminPage;
+
+    if (isPlatformAdmin && !isPlatformAdminPage && !isDealerWorkspace) {
+      window.location.href = "/pages/platform-admin/platform-admin.html";
+
+      return;
+    }
+
+    if (
+      profile.role !== "platform-admin" &&
+      currentPath.includes("/platform-admin/")
+    ) {
+      window.location.href = "/pages/dashboard/index.html";
+
+      return;
+    }
 
     await startNotificationEngine();
 

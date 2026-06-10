@@ -467,12 +467,21 @@ function getDealerIdFromUrl() {
 }
 
 function buildRedirectUrl() {
+  const pendingSession =
+    JSON.parse(
+      localStorage.getItem("dexp_session") || "null",
+    );
+
+  if (pendingSession?.role === "platform-admin") {
+    return "/pages/platform-admin/platform-admin.html";
+  }
+
   if (!dealerIdFromUrl) {
     return "/pages/dashboard/index.html";
   }
 
   return `/pages/dashboard/index.html?dealerId=${encodeURIComponent(
-    dealerIdFromUrl
+    dealerIdFromUrl,
   )}`;
 }
 
