@@ -8,17 +8,13 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
 import { getSession } from "../../core/session.js";
 
-import {
-  DEFAULT_ROLE,
-  ROLES,
-  SETUP_ADMIN_EMAILS
-} from "../../config/roles.js";
+import { DEFAULT_ROLE, ROLES, SETUP_ADMIN_EMAILS } from "../../config/roles.js";
 
 import { MODULES } from "../../config/modules.js";
 
@@ -31,14 +27,11 @@ export async function ensureUserProfile(user, options = {}) {
     return snapshot.data();
   }
 
-  const email =
-    (user.email || "").trim().toLowerCase();
+  const email = (user.email || "").trim().toLowerCase();
 
-  const pendingRegistration =
-    options.pendingRegistration || {};
+  const pendingRegistration = options.pendingRegistration || {};
 
-  const isSetupAdmin =
-    SETUP_ADMIN_EMAILS.includes(email);
+  const isSetupAdmin = SETUP_ADMIN_EMAILS.includes(email);
 
   if (isSetupAdmin) {
     const newProfile = {
@@ -46,16 +39,11 @@ export async function ensureUserProfile(user, options = {}) {
 
       email,
 
-      displayName:
-        pendingRegistration.displayName ||
-        user.displayName ||
-        "",
+      displayName: pendingRegistration.displayName || user.displayName || "",
 
-      phone:
-        pendingRegistration.phone || "",
+      phone: pendingRegistration.phone || "",
 
-      companyId:
-        pendingRegistration.companyId || "",
+      companyId: pendingRegistration.companyId || "",
 
       role: ROLES.PLATFORM_ADMIN,
 
@@ -67,21 +55,19 @@ export async function ensureUserProfile(user, options = {}) {
         MODULES.PLATFORM_ADMIN,
         MODULES.ADMIN,
         MODULES.COMPANY_PROFILE,
-        MODULES.NOTIFICATIONS
+        MODULES.NOTIFICATIONS,
       ],
 
       createdAt: serverTimestamp(),
 
-      approvalRequestedAt:
-        serverTimestamp(),
+      approvalRequestedAt: serverTimestamp(),
 
-      approvedAt:
-        serverTimestamp(),
+      approvedAt: serverTimestamp(),
 
       approvedBy: "setup",
 
       inactiveAt: null,
-      inactiveBy: ""
+      inactiveBy: "",
     };
 
     await setDoc(userRef, newProfile);
@@ -89,8 +75,7 @@ export async function ensureUserProfile(user, options = {}) {
     return newProfile;
   }
 
-  const invite =
-    await getDealerAdminInvite(email);
+  const invite = await getDealerAdminInvite(email);
 
   if (invite) {
     const newProfile = {
@@ -104,13 +89,9 @@ export async function ensureUserProfile(user, options = {}) {
         invite.displayName ||
         "",
 
-      phone:
-        pendingRegistration.phone ||
-        invite.phone ||
-        "",
+      phone: pendingRegistration.phone || invite.phone || "",
 
-      companyId:
-        pendingRegistration.companyId || "",
+      companyId: pendingRegistration.companyId || "",
 
       role: ROLES.ADMIN,
 
@@ -122,155 +103,77 @@ export async function ensureUserProfile(user, options = {}) {
         MODULES.ADMIN,
         MODULES.COMPANY_PROFILE,
         MODULES.RO_TRACKER,
-        MODULES.NOTIFICATIONS
+        MODULES.NOTIFICATIONS,
       ],
 
       createdAt: serverTimestamp(),
 
-      approvalRequestedAt:
-        serverTimestamp(),
+      approvalRequestedAt: serverTimestamp(),
 
-      approvedAt:
-        serverTimestamp(),
+      approvedAt: serverTimestamp(),
 
-      approvedBy:
-        "dealer-admin-invite",
+      approvedBy: "dealer-admin-invite",
 
       inactiveAt: null,
-      inactiveBy: ""
+      inactiveBy: "",
     };
 
     await setDoc(userRef, newProfile);
 
     await setDoc(
-      doc(
-        db,
-        "dealerAdminInvites",
-        email
-      ),
+      doc(db, "dealerAdminInvites", email),
       {
         status: "accepted",
 
-        acceptedAt:
-          serverTimestamp(),
+        acceptedAt: serverTimestamp(),
 
         acceptedBy: user.uid,
 
-        updatedAt:
-          serverTimestamp()
+        updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     return newProfile;
   }
 
-  const requestedDealerId =
-    cleanDealerId(
-      options.requestedDealerId
-    );
+  const requestedDealerId = cleanDealerId(options.requestedDealerId);
 
-  const dealerExists =
-    await doesDealerExist(
-      requestedDealerId
-    );
+  const dealerExists = await doesDealerExist(requestedDealerId);
 
   const newProfile = {
     uid: user.uid,
 
     email,
 
-    displayName:
-      pendingRegistration.displayName ||
-      user.displayName ||
-      "",
+    displayName: pendingRegistration.displayName || user.displayName || "",
 
-    phone:
-      pendingRegistration.phone || "",
+    phone: pendingRegistration.phone || "",
 
-    companyId:
-      pendingRegistration.companyId || "",
+    companyId: pendingRegistration.companyId || "",
 
     role: DEFAULT_ROLE,
 
-    dealerId:
-      dealerExists
-        ? requestedDealerId
-        : "",
+    dealerId: dealerExists ? requestedDealerId : "",
 
     active: false,
 
     assignedModules: [],
 
-    createdAt:
-      serverTimestamp(),
+    createdAt: serverTimestamp(),
 
-    approvalRequestedAt:
-      serverTimestamp(),
+    approvalRequestedAt: serverTimestamp(),
 
     approvedAt: null,
     approvedBy: "",
 
     inactiveAt: null,
-    inactiveBy: ""
+    inactiveBy: "",
   };
 
   await setDoc(userRef, newProfile);
 
   return newProfile;
-}
-
-export async function getAllUsers() {
-  const session = getSession();
-
-  if (!session) {
-    return [];
-  }
-
-  if (
-    session.role ===
-    ROLES.PLATFORM_ADMIN
-  ) {
-    const snapshot =
-      await getDocs(
-        collection(db, "users")
-      );
-
-    return snapshot.docs.map(
-      (docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      })
-    );
-  }
-
-  if (!session.dealerId) {
-    return [];
-  }
-
-  const usersQuery = query(
-    collection(db, "users"),
-
-    where(
-      "dealerId",
-      "==",
-      session.dealerId
-    )
-  );
-
-  const snapshot =
-    await getDocs(usersQuery);
-
-  return snapshot.docs
-    .map((docSnap) => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    }))
-    .filter(
-      (user) =>
-        user.role !==
-        ROLES.PLATFORM_ADMIN
-    );
 }
 
 export async function getPendingUsers() {
@@ -280,29 +183,19 @@ export async function getPendingUsers() {
     return [];
   }
 
-  if (
-    session.role ===
-    ROLES.PLATFORM_ADMIN
-  ) {
+  if (session.role === ROLES.PLATFORM_ADMIN) {
     const pendingQuery = query(
       collection(db, "users"),
 
-      where(
-        "role",
-        "==",
-        ROLES.PENDING
-      )
+      where("role", "==", ROLES.PENDING),
     );
 
-    const snapshot =
-      await getDocs(pendingQuery);
+    const snapshot = await getDocs(pendingQuery);
 
-    return snapshot.docs.map(
-      (docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      })
-    );
+    return snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
   }
 
   if (!session.dealerId) {
@@ -312,113 +205,90 @@ export async function getPendingUsers() {
   const pendingQuery = query(
     collection(db, "users"),
 
-    where(
-      "dealerId",
-      "==",
-      session.dealerId
-    ),
+    where("dealerId", "==", session.dealerId),
 
-    where(
-      "role",
-      "==",
-      ROLES.PENDING
-    )
+    where("role", "==", ROLES.PENDING),
   );
 
-  const snapshot =
-    await getDocs(pendingQuery);
+  const snapshot = await getDocs(pendingQuery);
 
-  return snapshot.docs.map(
-    (docSnap) => ({
+  return snapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }));
+}
+
+export async function getAllUsers() {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    return [];
+  }
+
+  const usersQuery = query(
+    collection(db, "users"),
+
+    where("dealerId", "==", session.dealerId),
+  );
+
+  const snapshot = await getDocs(usersQuery);
+
+  return snapshot.docs
+    .map((docSnap) => ({
       id: docSnap.id,
-      ...docSnap.data()
-    })
-  );
+      ...docSnap.data(),
+    }))
+    .filter((user) => user.role !== ROLES.PLATFORM_ADMIN);
 }
 
 export async function getAdminUserGroups() {
-  const users =
-    await getAllUsers();
+  const users = await getAllUsers();
 
   return {
-    pendingUsers:
-      users.filter(
-        (user) =>
-          user.role ===
-          ROLES.PENDING
-      ),
+    pendingUsers: users.filter((user) => user.role === ROLES.PENDING),
 
-    activeUsers:
-      users.filter(
-        (user) =>
-          user.role !==
-            ROLES.PENDING &&
-          user.active !== false
-      ),
+    activeUsers: users.filter(
+      (user) => user.role !== ROLES.PENDING && user.active !== false,
+    ),
 
-    inactiveUsers:
-      users.filter(
-        (user) =>
-          user.role !==
-            ROLES.PENDING &&
-          user.active === false
-      )
+    inactiveUsers: users.filter(
+      (user) => user.role !== ROLES.PENDING && user.active === false,
+    ),
   };
 }
 
-async function doesDealerExist(
-  dealerId
-) {
+async function doesDealerExist(dealerId) {
   if (!dealerId) {
     return false;
   }
 
-  const dealerRef = doc(
-    db,
-    "dealers",
-    dealerId
-  );
+  const dealerRef = doc(db, "dealers", dealerId);
 
-  const snapshot =
-    await getDoc(dealerRef);
+  const snapshot = await getDoc(dealerRef);
 
   return snapshot.exists();
 }
 
-function cleanDealerId(
-  value = ""
-) {
-  return String(value || "")
-    .trim();
+function cleanDealerId(value = "") {
+  return String(value || "").trim();
 }
 
-async function getDealerAdminInvite(
-  email
-) {
+async function getDealerAdminInvite(email) {
   if (!email) {
     return null;
   }
 
-  const inviteRef = doc(
-    db,
-    "dealerAdminInvites",
-    email
-  );
+  const inviteRef = doc(db, "dealerAdminInvites", email);
 
-  const snapshot =
-    await getDoc(inviteRef);
+  const snapshot = await getDoc(inviteRef);
 
   if (!snapshot.exists()) {
     return null;
   }
 
-  const invite =
-    snapshot.data();
+  const invite = snapshot.data();
 
-  if (
-    invite.status ===
-    "accepted"
-  ) {
+  if (invite.status === "accepted") {
     return null;
   }
 
