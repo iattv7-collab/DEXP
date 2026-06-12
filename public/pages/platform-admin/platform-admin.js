@@ -44,8 +44,9 @@ async function initializePlatformAdminPage() {
   }
 
   renderAppHeader({
-    pageTitle: "Platform Admin",
-  });
+  platformMode: true,
+  showHome: false,
+});
 
   createDealerForm.addEventListener("submit", async (event) => {
     event.preventDefault();

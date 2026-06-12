@@ -4,34 +4,40 @@ import { logoutUser } from "/js/services/firebase/auth-service.js";
 import { clearSession, getSession } from "/js/core/session.js";
 
 export function renderAppHeader(options = {}) {
-  const { showHome = true } = options;
+  const {
+    showHome = true,
+    platformMode = false,
+  } = options;
 
   const session = getSession();
 
-  const dealerName =
-    session?.dealerName ||
-    session?.dealer?.name ||
-    session?.dealerId ||
-    "Dealer";
+  const dealerName = platformMode
+    ? "DEXP Platform"
+    : session?.dealerName ||
+      session?.dealer?.name ||
+      session?.dealerId ||
+      "Dealer";
 
   const userName = session?.displayName || session?.email || "";
 
-const roleMap = {
-  advisor: "Advisor",
-  admin: "Admin",
-  "platform-admin": "Platform Admin",
-  manager: "Manager",
-  foreman: "Foreman",
-  tech: "Technician",
-  wash: "Wash",
-  valet: "Valet",
-  qc: "QC",
-  booker: "Booker",
-  pending: "Pending",
-};
+  const roleMap = {
+    advisor: "Advisor",
+    admin: "Admin",
+    "platform-admin": "Platform Admin",
+    manager: "Manager",
+    foreman: "Foreman",
+    tech: "Technician",
+    wash: "Wash",
+    valet: "Valet",
+    qc: "QC",
+    booker: "Booker",
+    pending: "Pending",
+  };
 
-const roleLabel =
-  roleMap[session?.role] || session?.role || "";
+  const roleLabel =
+    platformMode
+      ? "Owner Console"
+      : roleMap[session?.role] || session?.role || "";
 
   const header = document.createElement("header");
   header.id = "appHeader";
@@ -85,12 +91,23 @@ const roleLabel =
     </nav>
   `;
 
-  document.body.prepend(header);
+  const existingHeader = document.getElementById("appHeader");
+
+  if (existingHeader) {
+    existingHeader.replaceWith(header);
+  } else {
+    document.body.prepend(header);
+  }
 
   const dexpLogoButton = document.getElementById("dexpLogoButton");
 
   if (dexpLogoButton) {
     dexpLogoButton.addEventListener("click", () => {
+      if (platformMode) {
+        window.location.href = "/pages/platform-admin/platform-admin.html";
+        return;
+      }
+
       window.location.href = "/pages/dashboard/index.html";
     });
   }
@@ -99,6 +116,11 @@ const roleLabel =
 
   if (homeButton) {
     homeButton.addEventListener("click", () => {
+      if (platformMode) {
+        window.location.href = "/pages/platform-admin/platform-admin.html";
+        return;
+      }
+
       window.location.href = "/pages/dashboard/index.html";
     });
   }
@@ -107,6 +129,8 @@ const roleLabel =
 
   logoutButton.addEventListener("click", async () => {
     clearSession();
+
+    sessionStorage.removeItem("dexp_platform_selected_dealer");
 
     await logoutUser();
 

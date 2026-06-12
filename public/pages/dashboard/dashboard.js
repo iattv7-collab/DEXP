@@ -1,25 +1,17 @@
 // public/pages/dashboard/dashboard.js
 
-import {
-  canAccessModule,
-  getSession
-} from "/js/core/session.js";
+import { canAccessModule, getSession } from "/js/core/session.js";
 
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { MODULE_CONFIG } from "/js/config/modules.js";
 
-import {
-  navigateTo,
-  protectRoute
-} from "/js/core/router.js";
+import { navigateTo, protectRoute } from "/js/core/router.js";
 
 protectRoute();
 
-const welcomeText =
-  document.getElementById("welcomeText");
+const welcomeText = document.getElementById("welcomeText");
 
-const modulesContainer =
-  document.getElementById("modulesContainer");
+const modulesContainer = document.getElementById("modulesContainer");
 
 window.addEventListener("dexp-session-ready", () => {
   initializeDashboard();
@@ -34,21 +26,60 @@ function initializeDashboard() {
 
   renderAppHeader({
     title: "DEXP",
-    showHome: false
+    showHome: false,
   });
+
+  renderDealerWorkspaceBanner(session);
 
   renderWelcome(session);
   renderModules();
 }
 
-function renderWelcome(session) {
-  const dealer =
-    session.dealerName ||
-    session.dealerId ||
-    "";
+function renderDealerWorkspaceBanner(session) {
+  if (session.role !== "platform-admin") {
+    return;
+  }
 
-  welcomeText.textContent =
-    dealer ? dealer : "";
+  const selectedDealer = sessionStorage.getItem(
+    "dexp_platform_selected_dealer",
+  );
+
+  if (!selectedDealer) {
+    return;
+  }
+
+  const banner = document.createElement("div");
+
+  banner.className = "dealer-workspace-banner";
+
+  banner.innerHTML = `
+    <div>
+      Viewing Dealer:
+      <strong>${session.dealerName}</strong>
+    </div>
+
+    <button
+      id="exitDealerButton"
+      type="button"
+      class="small-button"
+    >
+      Exit Dealer
+    </button>
+  `;
+
+  document.getElementById("dashboardContent").prepend(banner);
+
+  document.getElementById("exitDealerButton").addEventListener("click", () => {
+    sessionStorage.removeItem("dexp_platform_selected_dealer");
+
+    window.location.href = "/pages/platform-admin/platform-admin.html";
+  });
+}
+
+function renderWelcome(session) {
+  const dealer = session.dealerName || session.dealerId || "";
+
+  welcomeText.textContent = dealer ? dealer : "";
 }
 
 function renderModules() {
