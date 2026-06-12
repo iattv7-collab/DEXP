@@ -1,95 +1,108 @@
 <!-- public/pages/platform-admin/platform-admin.html -->
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>DEXP Platform Admin</title>
+    <title>DEXP Platform Admin</title>
 
-  <link rel="stylesheet" href="/css/core/reset.css" />
-  <link rel="stylesheet" href="/css/core/base.css" />
-</head>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+  </head>
 
-<body>
-  <div id="appHeader"></div>
+  <body>
+    <div id="appHeader"></div>
 
-  <main class="page-shell">
+    <main class="page-shell">
+      <section class="page-section">
+        <h1>Platform Admin</h1>
+        <p>
+          DEXP owner console for managing dealerships, primary admins, and
+          platform setup.
+        </p>
+      </section>
 
-    <section class="page-section">
-      <h1>Platform Admin</h1>
-      <p>DEXP owner console for managing dealerships, primary admins, and platform setup.</p>
-    </section>
+      <section id="createDealerSection" class="page-section hidden">
+        <h2>Create Dealer</h2>
 
-    <section class="page-section">
-      <h2>Create Dealer</h2>
+        <div class="dexp-admin-card">
+          <form id="createDealerForm">
+            <div style="display: grid; gap: 12px">
+              <h3>Dealer Information</h3>
 
-      <div class="dexp-admin-card">
-        <form id="createDealerForm">
+              <div>
+                <label>Dealer Name</label>
+                <input id="dealerNameInput" type="text" />
+              </div>
 
-          <div style="display:grid; gap:12px;">
+              <div>
+                <label>Display Short Name</label>
+                <input id="companyCodeInput" type="text" />
+              </div>
 
-            <h3>Dealer Information</h3>
+              <h3>Primary Dealer Admin</h3>
 
-            <div>
-              <label>Dealer Name</label>
-              <input id="dealerNameInput" type="text" />
+              <div>
+                <label>Admin Name</label>
+                <input id="adminNameInput" type="text" />
+              </div>
+
+              <div>
+                <label>Admin Email</label>
+                <input id="adminEmailInput" type="email" />
+              </div>
+
+              <div>
+                <label>Admin Phone</label>
+                <input id="adminPhoneInput" type="text" />
+              </div>
+
+              <div class="action-row">
+                <button type="submit">Create Dealer + Admin Invite</button>
+
+                <button
+                  id="cancelCreateDealerButton"
+                  type="button"
+                  class="small-button secondary"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
+          </form>
+        </div>
+      </section>
 
-            <div>
-              <label>Display Short Name</label>
-              <input id="companyCodeInput" type="text" />
-            </div>
-
-            <h3>Primary Dealer Admin</h3>
-
-            <div>
-              <label>Admin Name</label>
-              <input id="adminNameInput" type="text" />
-            </div>
-
-            <div>
-              <label>Admin Email</label>
-              <input id="adminEmailInput" type="email" />
-            </div>
-
-            <div>
-              <label>Admin Phone</label>
-              <input id="adminPhoneInput" type="text" />
-            </div>
-
-            <div>
-              <button type="submit">
-                Create Dealer + Admin Invite
-              </button>
-            </div>
-
+      <section class="page-section">
+        <div class="page-title-row">
+          <div>
+            <h2>Dealers</h2>
+            <p>Open, edit, and manage dealer workspaces.</p>
           </div>
 
-        </form>
-      </div>
-    </section>
+          <button id="toggleCreateDealerButton" type="button">
+            + Create Dealer
+          </button>
+        </div>
 
-    <section class="page-section">
-      <h2>Dealers</h2>
+        <div style="margin-bottom: 12px">
+          <input
+            id="dealerSearchInput"
+            type="text"
+            placeholder="Search dealers..."
+          />
+        </div>
 
-      <div style="margin-bottom:12px;">
-        <input
-          id="dealerSearchInput"
-          type="text"
-          placeholder="Search dealers..."
-        />
-      </div>
+        <div id="dealersContainer">Loading dealers...</div>
+      </section>
+    </main>
 
-      <div id="dealersContainer">
-        Loading dealers...
-      </div>
-    </section>
-
-  </main>
-
-  <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/platform-admin/platform-admin.js?v=5"></script>
-</body>
+    <script type="module" src="/js/core/app.js"></script>
+    <script
+      type="module"
+      src="/pages/platform-admin/platform-admin.js?v=6"
+    ></script>
+  </body>
 </html>

@@ -22,6 +22,16 @@ const dealerSearchInput = document.getElementById("dealerSearchInput");
 
 const createDealerForm = document.getElementById("createDealerForm");
 
+const createDealerSection = document.getElementById("createDealerSection");
+
+const toggleCreateDealerButton = document.getElementById(
+  "toggleCreateDealerButton",
+);
+
+const cancelCreateDealerButton = document.getElementById(
+  "cancelCreateDealerButton",
+);
+
 const dealerNameInput = document.getElementById("dealerNameInput");
 
 const companyCodeInput = document.getElementById("companyCodeInput");
@@ -44,9 +54,26 @@ async function initializePlatformAdminPage() {
   }
 
   renderAppHeader({
-  platformMode: true,
-  showHome: false,
-});
+    platformMode: true,
+    showHome: false,
+  });
+
+  toggleCreateDealerButton.addEventListener("click", () => {
+    createDealerSection.classList.remove("hidden");
+
+    toggleCreateDealerButton.classList.add("hidden");
+
+    createDealerSection.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+
+  cancelCreateDealerButton?.addEventListener("click", () => {
+    createDealerSection.classList.add("hidden");
+
+    toggleCreateDealerButton.classList.remove("hidden");
+  });
 
   createDealerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -151,21 +178,15 @@ function renderFilteredDealers() {
 }
 
 function attachDealerRowEvents() {
-  document
-  .querySelectorAll(".platform-open-dealer-btn")
-  .forEach((button) => {
+  document.querySelectorAll(".platform-open-dealer-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const dealerId = button.dataset.dealerId;
 
-      sessionStorage.setItem(
-        "dexp_platform_selected_dealer",
-        dealerId,
-      );
+      sessionStorage.setItem("dexp_platform_selected_dealer", dealerId);
 
-      window.location.href =
-        `/pages/platform-admin/open-dealer.html?dealerId=${encodeURIComponent(
-          dealerId,
-        )}`;
+      window.location.href = `/pages/platform-admin/open-dealer.html?dealerId=${encodeURIComponent(
+        dealerId,
+      )}`;
     });
   });
 
