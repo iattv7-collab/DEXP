@@ -236,19 +236,13 @@ export async function openNotificationRequest(notificationId) {
 
     const notification = snapshot.data();
 
-    if (
-      notification.openedBy &&
-      notification.openedBy !== session.uid
-    ) {
+    if (notification.openedBy && notification.openedBy !== session.uid) {
       throw new Error("Notification already opened.");
     }
 
     transaction.update(notificationRef, {
       openedBy: session.uid,
-      openedByName:
-        session.displayName ||
-        session.email ||
-        session.uid,
+      openedByName: session.displayName || session.email || session.uid,
 
       openedAtMs: Date.now(),
 
@@ -312,6 +306,62 @@ export async function releaseNotificationRequest(notificationId) {
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
     updatedBy: session.uid,
+  });
+}
+
+export async function releaseStaleOpenedNotificationRequest(
+  notificationId,
+  maxOpenedMs = 5 * 60 * 1000,
+) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!notificationId) {
+    throw new Error("Missing notification ID.");
+  }
+
+  const notificationRef = doc(
+    db,
+    NOTIFICATION_REQUESTS_COLLECTION,
+    notificationId,
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(notificationRef);
+
+    if (!snapshot.exists()) {
+      return;
+    }
+
+    const notification = snapshot.data();
+
+    if (notification.status !== NOTIFICATION_STATUS.ACTIVE) {
+      return;
+    }
+
+    if (!notification.openedBy || !notification.openedAtMs) {
+      return;
+    }
+
+    const openedTooLong =
+      Date.now() - Number(notification.openedAtMs) > maxOpenedMs;
+
+    if (!openedTooLong) {
+      return;
+    }
+
+    transaction.update(notificationRef, {
+      openedBy: "",
+      openedByName: "",
+      openedAtMs: null,
+
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now(),
+      updatedBy: session.uid,
+    });
   });
 }
 

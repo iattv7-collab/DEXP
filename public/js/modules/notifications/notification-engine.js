@@ -7,12 +7,15 @@ import {
   listenToActiveNotificationRequests,
   dismissNotificationRequest,
   openNotificationRequest,
+  releaseStaleOpenedNotificationRequest,
 } from "../../services/firestore/notification-requests-service.js";
 
 import { getNotificationGroups } from "../../services/firestore/notification-groups-service.js";
 
 let unsubscribeNotifications = null;
 let userGroupIds = [];
+
+const OPENED_NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000;
 
 export async function startNotificationEngine() {
   const session = getSession();
@@ -34,6 +37,8 @@ export async function startNotificationEngine() {
     .map((group) => group.id);
 
   unsubscribeNotifications = listenToActiveNotificationRequests((requests) => {
+    releaseStaleOpenedNotifications(requests, session);
+
     const visibleNotifications = getVisibleNotifications(requests, session);
 
     renderNotificationTray(visibleNotifications);
@@ -46,6 +51,42 @@ export function stopNotificationEngine() {
   }
 
   unsubscribeNotifications = null;
+}
+
+function releaseStaleOpenedNotifications(requests = [], session) {
+  requests.forEach((item) => {
+    if (!item || item.status !== "active") {
+      return;
+    }
+
+    if (!item.openedBy || !item.openedAtMs) {
+      return;
+    }
+
+    const belongsToUser =
+      item.targetType === "user" && item.targetUserId === session.uid;
+
+    const belongsToUserGroup =
+      item.targetType === "group" && userGroupIds.includes(item.targetGroupId);
+
+    if (!belongsToUser && !belongsToUserGroup) {
+      return;
+    }
+
+    const openedTooLong =
+      Date.now() - Number(item.openedAtMs) > OPENED_NOTIFICATION_TIMEOUT_MS;
+
+    if (!openedTooLong) {
+      return;
+    }
+
+    releaseStaleOpenedNotificationRequest(
+      item.id,
+      OPENED_NOTIFICATION_TIMEOUT_MS,
+    ).catch((error) => {
+      console.error("Could not release stale notification.", error);
+    });
+  });
 }
 
 function getVisibleNotifications(requests = [], session) {
@@ -145,7 +186,10 @@ function renderNotificationCard(item) {
     hasRoute &&
     [
       "followup_due",
+      "pickup",
       "pickup_request",
+      "bring_to_shop",
+      "move_to_annex",
       "move_request",
       "developer_test",
     ].includes(eventType);

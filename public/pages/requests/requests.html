@@ -1,0 +1,104 @@
+<!-- public/pages/requests/requests.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>DEXP Requests</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+  </head>
+
+  <body>
+    <div id="appHeader"></div>
+
+    <main class="page-shell">
+      <section class="page-section">
+        <div class="page-title-row">
+          <div>
+            <h2>Requests</h2>
+            <p>Create and track interdepartmental requests.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="dexp-admin-card">
+          <h3>Create Request</h3>
+
+          <div class="form-grid">
+            <label>
+              RO Number
+              <input id="requestRoNumberInput" type="text" />
+            </label>
+
+            <label>
+              Tag Number
+              <input id="requestTagNumberInput" type="text" />
+            </label>
+
+            <label>
+              Notes
+              <input
+                id="requestMessageInput"
+                type="text"
+                placeholder="Optional notes..."
+              />
+            </label>
+          </div>
+
+          <div class="action-row">
+            <button
+              id="requestPickupButton"
+              type="button"
+            >
+              Request Pickup
+            </button>
+
+            <button
+              id="requestBringToShopButton"
+              type="button"
+            >
+              Bring Vehicle to Shop
+            </button>
+
+            <button
+              id="requestMoveToAnnexButton"
+              type="button"
+            >
+              Move Vehicle to Annex
+            </button>
+          </div>
+
+          <p id="requestFormMessage" class="page-message"></p>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="dexp-admin-card">
+          <h3>Active Requests</h3>
+
+          <div id="activeRequestsContainer">
+            Loading active requests...
+          </div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="dexp-admin-card">
+          <h3>Completed Requests</h3>
+
+          <div id="completedRequestsContainer">
+            Loading completed requests...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/pages/requests/requests-page.js?v=2"></script>
+  </body>
+</html>

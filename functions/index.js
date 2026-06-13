@@ -12,6 +12,10 @@ const {
   HttpsError
 } = require("firebase-functions/v2/https");
 
+const {
+  onSchedule,
+} = require("firebase-functions/v2/scheduler");
+
 const admin = require("firebase-admin");
 
 const vision = require("@google-cloud/vision");
@@ -600,3 +604,64 @@ exports.scanRO =
       }
     });
   });
+
+exports.releaseStaleNotifications =
+  onSchedule(
+    {
+      schedule: "every 1 minutes",
+      timeZone: "America/New_York",
+    },
+    async () => {
+
+      const now = Date.now();
+
+      const staleCutoff =
+        now - (5 * 60 * 1000);
+
+      const snapshot =
+        await admin.firestore()
+          .collection("notificationRequests")
+          .where("status", "==", "active")
+          .get();
+
+      const updates = [];
+
+      snapshot.forEach((docSnap) => {
+        const notification =
+          docSnap.data();
+
+        if (
+          !notification.openedBy ||
+          !notification.openedAtMs
+        ) {
+          return;
+        }
+
+        if (
+          notification.openedAtMs >
+          staleCutoff
+        ) {
+          return;
+        }
+
+        updates.push(
+          docSnap.ref.update({
+            openedBy: "",
+            openedByName: "",
+            openedAtMs: null,
+
+            updatedAt:
+              admin.firestore.FieldValue.serverTimestamp(),
+
+            updatedAtMs: now,
+          }),
+        );
+      });
+
+      await Promise.all(updates);
+
+      console.log(
+        `Released ${updates.length} stale notifications.`,
+      );
+    },
+  );
