@@ -25,7 +25,7 @@ import {
 
 import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js";
 
-import { openROTrackerSharingModal } from "/js/modules/ro-tracker-sharing/ro-tracker-sharing-ui.js";
+import { openROTrackerSharingModal } from "/js/modules/ro-tracker-sharing/ro-tracker-sharing-ui.js?v=2";
 
 import {
   watchSharedROTrackers,
@@ -46,6 +46,7 @@ let currentTrackerOwnerId = null;
 let stopWatchingROs = null;
 let trackerViewLabel = null;
 let sharingStatusLabel = null;
+let shareButton = null;
 
 window.addEventListener("dexp-session-ready", initializeROTracker);
 
@@ -87,21 +88,14 @@ async function initializeROTracker() {
   document.getElementById("btnArchiveView")?.addEventListener("click", () => {
     window.location.href = "/pages/archive/archive.html";
   });
-    
-      document
-    .getElementById("btnFollowUp")
-    ?.addEventListener("click", () => {
-      window.location.href =
-        "/pages/ro-followup/index.html";
-    });
 
-    document
-    .getElementById("btnSettings")
-    ?.addEventListener("click", () => {
-      window.location.href =
-        "/pages/ro-tracker-settings/index.html";
-    });
+  document.getElementById("btnFollowUp")?.addEventListener("click", () => {
+    window.location.href = "/pages/ro-followup/index.html";
+  });
 
+  document.getElementById("btnSettings")?.addEventListener("click", () => {
+    window.location.href = "/pages/ro-tracker-settings/index.html";
+  });
 }
 
 function startROTrackerWatch(advisorId = null) {
@@ -177,7 +171,7 @@ function buildTrackerTabs() {
   tabsRow.appendChild(myROsButton);
 
   if (session?.role === "advisor") {
-    const shareButton = document.createElement("button");
+    shareButton = document.createElement("button");
 
     shareButton.type = "button";
     shareButton.textContent = "Share";
@@ -253,10 +247,21 @@ function updateSharingStatusLabel(sharing) {
 
   if (sharedWithCompanyIds.length > 0) {
     sharingStatusLabel.textContent = "Sharing RO Tracker";
+
+    if (shareButton) {
+      shareButton.textContent = "Shared";
+      shareButton.style.background = "#c47f00";
+    }
+
     return;
   }
 
   sharingStatusLabel.textContent = "";
+
+  if (shareButton) {
+    shareButton.textContent = "Share";
+    shareButton.style.background = "";
+  }
 }
 
 function buildColumns() {

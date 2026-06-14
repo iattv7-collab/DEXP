@@ -3,7 +3,7 @@
 import {
   getDealerAdvisors,
   getMyROTrackerSharing,
-  saveROTrackerSharing
+  saveROTrackerSharing,
 } from "./ro-tracker-sharing-service.js";
 
 import { getSession } from "/js/core/session.js";
@@ -14,9 +14,7 @@ export async function openROTrackerSharingModal() {
   const advisors = await getDealerAdvisors();
   const currentSharing = await getMyROTrackerSharing();
 
-  const existingCompanyIds = Array.isArray(
-    currentSharing?.sharedWithCompanyIds
-  )
+  const existingCompanyIds = Array.isArray(currentSharing?.sharedWithCompanyIds)
     ? currentSharing.sharedWithCompanyIds
     : [];
 
@@ -60,6 +58,7 @@ export async function openROTrackerSharingModal() {
         margin-top:24px;
       "
     >
+
       <button
         id="btnCloseShareModal"
         type="button"
@@ -109,24 +108,22 @@ export async function openROTrackerSharingModal() {
     advisorList.appendChild(row);
   });
 
-  modal
-    .querySelector("#btnCloseShareModal")
-    ?.addEventListener("click", () => {
-      overlay.remove();
-    });
+    modal.querySelector("#btnCloseShareModal")?.addEventListener("click", () => {
+    overlay.remove();
+  });
 
   modal
     .querySelector("#btnSaveSharing")
     ?.addEventListener("click", async () => {
       try {
         const selectedCompanyIds = Array.from(
-          modal.querySelectorAll('input[type="checkbox"]:checked')
+          modal.querySelectorAll('input[type="checkbox"]:checked'),
         )
           .map((checkbox) => checkbox.value)
           .filter(Boolean);
 
         await saveROTrackerSharing({
-          sharedWithCompanyIds: selectedCompanyIds
+          sharedWithCompanyIds: selectedCompanyIds,
         });
 
         alert("RO Tracker sharing updated.");
