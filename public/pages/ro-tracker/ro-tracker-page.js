@@ -12,6 +12,11 @@ import {
 
 import { getSession } from "/js/core/session.js";
 
+import {
+  setROTrackerViewOwner,
+  clearROTrackerViewOwner,
+} from "/js/modules/ro-tracker/ro-tracker-view-context.js";
+
 import { RO_TRACKER_COLUMNS } from "/js/modules/ro-tracker/ro-tracker-columns.js";
 
 import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js";
@@ -163,6 +168,8 @@ function buildTrackerTabs() {
   myROsButton.addEventListener("click", () => {
     currentTrackerOwnerId = session.uid;
 
+    clearROTrackerViewOwner();
+
     startROTrackerWatch(session.uid);
 
     setTrackerViewLabel("");
@@ -224,6 +231,12 @@ function buildSharedTabs(shares = []) {
 
     button.addEventListener("click", () => {
       currentTrackerOwnerId = share.ownerAdvisorId;
+
+      setROTrackerViewOwner({
+        advisorId: share.ownerAdvisorId,
+        advisorName: share.ownerAdvisorName || "",
+        isSharedView: true,
+      });
 
       startROTrackerWatch(share.ownerAdvisorId);
 

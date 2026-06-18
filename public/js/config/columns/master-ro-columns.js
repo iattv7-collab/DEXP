@@ -3,6 +3,7 @@
 export const MASTER_RO_COLUMNS = [
   { key: "roNumber", label: "RO", width: "130px", mobile: true },
   { key: "tagNumber", label: "Tag", width: "90px", mobile: true },
+  { key: "advisorCompanyId", label: "Advisor #", width: "100px" },
   { key: "customerName", label: "Customer", width: "150px", mobile: true },
   { key: "customerPhone", label: "Phone", width: "120px" },
   { key: "vehicle", label: "Vehicle", width: "180px", mobile: true },

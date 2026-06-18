@@ -259,7 +259,7 @@ export async function getDealerROs() {
   return snapshot.docs.map((doc) => doc.data());
 }
 
-export function watchArchivedROs(callback) {
+export function watchArchivedROs(callback, advisorId = null) {
   const session = getSession();
 
   if (!session?.dealerId) {
@@ -271,6 +271,7 @@ export function watchArchivedROs(callback) {
 
   const q = buildROVisibilityQuery(rosRef, session, {
     includeArchived: true,
+    advisorId,
   });
 
   return onSnapshot(q, (snapshot) => {
@@ -455,15 +456,24 @@ async function findActiveAdvisorByCompanyId(companyId = "") {
 
 function buildROVisibilityQuery(rosRef, session, options = {}) {
   const includeArchived = options.includeArchived === true;
+  const advisorId = options.advisorId || null;
 
   if (includeArchived) {
-    return query(
-      rosRef,
-      where(ROS_FIELDS.dealerId, "==", session.dealerId),
-      where(ROS_FIELDS.status, "==", ROS_STATUS.ARCHIVED),
-      limit(100),
+  const constraints = [
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
+    where(ROS_FIELDS.status, "==", ROS_STATUS.ARCHIVED),
+  ];
+
+  if (advisorId) {
+    constraints.push(
+      where(ROS_FIELDS.advisorId, "==", advisorId),
     );
   }
+
+  constraints.push(limit(100));
+
+  return query(rosRef, ...constraints);
+}
 
   return query(
     rosRef,

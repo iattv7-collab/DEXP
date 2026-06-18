@@ -15,6 +15,8 @@ import { getSession } from "/js/core/session.js";
 
 import { loadROTrackerFollowupSettings } from "/js/modules/ro-tracker/ro-tracker-followup-settings.js";
 
+import { getROTrackerViewOwner } from "/js/modules/ro-tracker/ro-tracker-view-context.js";
+
 protectRoute();
 
 const tableBody = document.getElementById("roFollowupTableBody");
@@ -38,6 +40,10 @@ function initializePage() {
 
   searchInput?.addEventListener("input", renderRows);
 
+  const viewOwner = getROTrackerViewOwner();
+  const advisorId =
+    getSession()?.role === "advisor" ? viewOwner?.advisorId : null;
+
   watchArchivedROs((rows) => {
     const session = getSession();
 
@@ -45,16 +51,10 @@ function initializePage() {
       return ro.followupStatus === "pending";
     });
 
-    if (session?.role === "advisor") {
-      filtered = filtered.filter((ro) => {
-        return ro.advisorId === session.uid;
-      });
-    }
-
     allRows = filtered;
 
     renderRows();
-  });
+  }, advisorId);
 }
 
 function renderRows() {

@@ -5,13 +5,17 @@ import { protectRoute } from "/js/core/router.js";
 
 import {
   watchArchivedROs,
-  restoreArchivedRO
+  restoreArchivedRO,
 } from "/js/services/firestore/ros-service.js";
 
 import { MODULES } from "/js/config/modules.js";
 
+import { getSession } from "/js/core/session.js";
+
+import { getROTrackerViewOwner } from "/js/modules/ro-tracker/ro-tracker-view-context.js";
+
 protectRoute({
-  allowedModules: [MODULES.ARCHIVE]
+  allowedModules: [MODULES.ARCHIVE],
 });
 
 const tableHead = document.getElementById("archiveTableHead");
@@ -28,7 +32,7 @@ const ARCHIVE_COLUMNS = [
   { key: "archivedAtMs", label: "Archived" },
   { key: "archivedByName", label: "Archived By" },
   { key: "followupStatus", label: "Follow Up" },
-  { key: "actions", label: "Actions" }
+  { key: "actions", label: "Actions" },
 ];
 
 let archivedROs = [];
@@ -40,7 +44,7 @@ window.addEventListener("dexp-session-ready", () => {
 
 function initializeArchive() {
   renderAppHeader({
-    title: "Archive"
+    title: "Archive",
   });
 
   buildTableHead();
@@ -63,11 +67,9 @@ function initializeArchive() {
 }
 
 function buildTableHead() {
-  tableHead.innerHTML = ARCHIVE_COLUMNS
-    .map((column) => {
-      return `<th>${column.label}</th>`;
-    })
-    .join("");
+  tableHead.innerHTML = ARCHIVE_COLUMNS.map((column) => {
+    return `<th>${column.label}</th>`;
+  }).join("");
 }
 
 function startArchiveListener() {
@@ -83,15 +85,25 @@ function startArchiveListener() {
     unsubscribeArchivedROs();
   }
 
+  const viewOwner = getROTrackerViewOwner();
+  const advisorId =
+    getSession()?.role === "advisor" ? viewOwner?.advisorId : null;
+
   unsubscribeArchivedROs = watchArchivedROs((ros) => {
-    archivedROs = Array.isArray(ros) ? ros : [];
+    
+
+    let rows = Array.isArray(ros) ? ros : [];
+
+    archivedROs = rows;
 
     renderArchiveRows(filterArchiveRows(archiveSearchInput.value));
-  });
+  }, advisorId);
 }
 
 function filterArchiveRows(searchValue = "") {
-  const search = String(searchValue || "").trim().toLowerCase();
+  const search = String(searchValue || "")
+    .trim()
+    .toLowerCase();
 
   if (!search) {
     return archivedROs;
@@ -110,7 +122,7 @@ function filterArchiveRows(searchValue = "") {
       ro.advisorName,
       ro.archivedByName,
       ro.archiveReason,
-      ro.followupStatus
+      ro.followupStatus,
     ]
       .join(" ")
       .toLowerCase();
@@ -151,12 +163,7 @@ function renderArchiveRows(rows = []) {
 
 function getColumnValue(ro, column) {
   if (column.key === "vehicle") {
-    return [
-      ro.year,
-      ro.make,
-      ro.model,
-      ro.color
-    ].filter(Boolean).join(" ");
+    return [ro.year, ro.make, ro.model, ro.color].filter(Boolean).join(" ");
   }
 
   if (column.key === "archivedAtMs") {
@@ -194,7 +201,7 @@ async function handleRestoreRO(roId) {
   }
 
   await restoreArchivedRO(roId, {
-    module: "archive"
+    module: "archive",
   });
 }
 

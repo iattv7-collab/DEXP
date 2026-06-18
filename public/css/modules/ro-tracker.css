@@ -233,6 +233,11 @@
   width: 60px;
 }
 
+.col-advisor {
+  width: 85px;
+  text-align: center;
+}
+
 .col-customer {
   width: 170px;
 }

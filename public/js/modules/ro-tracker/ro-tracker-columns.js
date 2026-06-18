@@ -1,100 +1,103 @@
 // public/js/modules/ro-tracker/ro-tracker-columns.js
 
 export const RO_TRACKER_COLUMNS = [
-
   {
     key: "roNumber",
-    label: "RO #"
+    label: "RO #",
   },
 
   {
     key: "tagNumber",
-    label: "Tag #"
+    label: "Tag #",
+  },
+
+  {
+    key: "advisorCompanyId",
+    label: "Advisor #",
   },
 
   {
     key: "customerName",
-    label: "Customer"
+    label: "Customer",
   },
 
   {
     key: "customerPhone",
-    label: "Phone"
+    label: "Phone",
   },
 
   {
     key: "roDate",
-    label: "RO Date"
+    label: "RO Date",
   },
 
   {
     key: "promiseTime",
-    label: "Promise Date"
+    label: "Promise Date",
   },
 
   {
     key: "model",
-    label: "Model"
+    label: "Model",
   },
 
   {
     key: "concern",
-    label: "Concern"
+    label: "Concern",
   },
 
   {
     key: "currentLocation",
-    label: "Location"
+    label: "Location",
   },
 
   {
     key: "readyCalled",
-    label: "Ready Called"
+    label: "Ready Called",
   },
 
   {
     key: "notes",
-    label: "Notes"
+    label: "Notes",
   },
 
   {
     key: "techVideo",
-    label: "Tech Video"
+    label: "Tech Video",
   },
 
   {
     key: "calledTime",
-    label: "Called"
+    label: "Called",
   },
 
   {
     key: "nextUpdateTime",
-    label: "Next Update"
+    label: "Next Update",
   },
 
   {
     key: "isWaiter",
-    label: "Waiter"
+    label: "Waiter",
   },
 
   {
     key: "loanerVin",
-    label: "Loaner VIN"
+    label: "Loaner VIN",
   },
 
   {
     key: "techDone",
-    label: "Tech Done"
+    label: "Tech Done",
   },
 
   {
     key: "textSent",
-    label: "Text"
+    label: "Text",
   },
 
   {
     key: "actions",
-    label: "Actions"
-  }
-
+    label: "Actions",
+  },
 ];

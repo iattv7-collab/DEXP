@@ -23,6 +23,7 @@ export function buildROTrackerRow(ro = {}, columns = []) {
 function buildCell(ro, key) {
   if (key === "roNumber") return buildTextInputCell(ro, "roNumber", ro.roNumber);
   if (key === "tagNumber") return buildTextInputCell(ro, "tagNumber", ro.tagNumber);
+  if (key === "advisorCompanyId") return buildPlainCell(ro.advisorCompanyId || ro.advisorNumber || "");
   if (key === "customerName") return buildTextInputCell(ro, "customerName", ro.customerName, { hoverFull: true });
   if (key === "customerPhone") return buildTextInputCell(ro, "customerPhone", ro.customerPhone, { phone: true });
 
