@@ -3,166 +3,211 @@
 
 import {
   loginWithEmail,
-  loginWithGoogle,
   registerWithEmail,
-  sendResetPasswordEmail
+  sendResetPasswordEmail,
 } from "/js/services/firebase/auth-service.js";
 
+import { getDealer } from "/js/services/firestore/dealers-service.js";
+
+import { findUserByEmail } from "/js/services/firestore/users-service.js";
+
 import {
-  getDealer
-} from "/js/services/firestore/dealers-service.js";
+  getFunctions,
+  httpsCallable,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
-const PENDING_REGISTRATION_KEY =
-  "dexp_pending_registration";
+import { app } from "/js/services/firebase/firebase-app.js";
 
-const googleLoginButton =
-  document.getElementById("btn-login");
+const functions = getFunctions(app);
 
-const emailLoginButton =
-  document.getElementById("btn-email-login");
+const checkLoginEmail =
+  httpsCallable(functions, "checkLoginEmail");
 
-const registerButton =
-  document.getElementById("btn-register");
+const PENDING_REGISTRATION_KEY = "dexp_pending_registration";
 
-const resetPasswordButton =
-  document.getElementById("btn-reset-password");
+const emailLoginButton = document.getElementById("btn-email-login");
 
-const emailInput =
-  document.getElementById("emailInput");
+const registerButton = document.getElementById("btn-register");
 
-const passwordInput =
-  document.getElementById("passwordInput");
+const resetPasswordButton = document.getElementById("btn-reset-password");
 
-const dealerLoginName =
-  document.getElementById("dealerLoginName");
+const emailInput = document.getElementById("emailInput");
 
-const dealerIdFromUrl =
-  getDealerIdFromUrl();
+const passwordInput = document.getElementById("passwordInput");
+
+const dealerLoginName = document.getElementById("dealerLoginName");
+
+const dealerIdFromUrl = getDealerIdFromUrl();
+
+let currentDealer = null;
 
 initializeDealerLoginLabel();
 
-googleLoginButton?.addEventListener(
-  "click",
-  async () => {
-    try {
-      await loginWithGoogle();
+emailLoginButton?.addEventListener("click", async () => {
+  const email = emailInput?.value.trim();
 
-      window.location.href =
-        buildRedirectUrl();
-    } catch (error) {
-      console.error(
-        "Google login failed:",
-        error
-      );
+  const password = passwordInput?.value;
 
-      alert(
-        "Google login failed. Please try again."
-      );
-    }
+  if (!email || !password) {
+    alert("Enter your company email and password.");
+
+    return;
   }
-);
 
-emailLoginButton?.addEventListener(
-  "click",
-  async () => {
-    const email =
-      emailInput?.value.trim();
+  try {
+    await loginWithEmail(email, password);
 
-    const password =
-      passwordInput?.value;
+    window.location.href = buildRedirectUrl();
+  } catch (error) {
+    console.error("Email login failed:", error);
 
-    if (!email || !password) {
+    await handleEmailLoginFailure(email, error);
+  }
+});
+
+registerButton?.addEventListener("click", () => {
+  if (!dealerIdFromUrl) {
+    alert("This registration link is missing a dealer.");
+
+    return;
+  }
+
+  openRegisterModal();
+});
+
+resetPasswordButton?.addEventListener("click", async () => {
+  const email = emailInput?.value.trim();
+
+  if (!email) {
+    alert("Enter your company email first.");
+
+    return;
+  }
+
+  try {
+    const result = await checkLoginEmail({
+      email,
+    });
+
+    const status = result?.data?.status || "not-found";
+
+    if (status === "not-found") {
       alert(
-        "Enter your company email and password."
+        "No DEXP account was found for this email.\n\nPlease register first using your dealership registration link.",
       );
 
       return;
     }
 
-    try {
-      await loginWithEmail(
+    if (status === "pending") {
+      alert(
+        "Your account has been created and is waiting for manager approval.\n\nA password reset is not needed yet.",
+      );
+
+      return;
+    }
+
+    if (status === "disabled") {
+      alert(
+        "Your account has been disabled.\n\nPlease contact your dealership administrator.",
+      );
+
+      return;
+    }
+
+    await sendResetPasswordEmail(email);
+
+    alert(`Password reset email sent to:\n${email}`);
+  } catch (error) {
+    console.error("Password reset failed:", error);
+
+    alert("Could not verify this email. Please try again.");
+  }
+});
+
+async function handleEmailLoginFailure(email, error) {
+  try {
+    const result =
+      await checkLoginEmail({
         email,
-        password
-      );
+      });
 
-      window.location.href =
-        buildRedirectUrl();
-    } catch (error) {
-      console.error(
-        "Email login failed:",
-        error
-      );
+    const status =
+      result?.data?.status || "not-found";
 
+    if (status === "pending") {
       alert(
-        "Email login failed. Check your email and password."
-      );
-    }
-  }
-);
-
-registerButton?.addEventListener(
-  "click",
-  () => {
-    if (!dealerIdFromUrl) {
-      alert(
-        "This registration link is missing a dealer."
+        "Your account has been created and is waiting for manager approval.\n\nPlease contact your dealership administrator.",
       );
 
       return;
     }
 
-    openRegisterModal();
-  }
-);
-
-resetPasswordButton?.addEventListener(
-  "click",
-  async () => {
-    const email =
-      emailInput?.value.trim();
-
-    if (!email) {
+    if (status === "disabled") {
       alert(
-        "Enter your company email first."
+        "Your account has been disabled.\n\nPlease contact your dealership administrator.",
       );
 
       return;
     }
 
-    try {
-      await sendResetPasswordEmail(email);
-
-      alert(
-        "Password reset email sent."
-      );
-    } catch (error) {
-      console.error(
-        "Password reset failed:",
-        error
+    if (status === "active") {
+      const reset = confirm(
+        "Incorrect password.\n\nWould you like to reset your password?",
       );
 
-      alert(
-        "Could not send password reset email."
-      );
+      if (reset) {
+        await sendResetPasswordEmail(email);
+
+        alert(`Password reset email sent to:\n${email}`);
+      }
+
+      return;
     }
+
+    if (dealerIdFromUrl) {
+      const register = confirm(
+        "No DEXP account was found for this email.\n\nWould you like to register for this dealership?",
+      );
+
+      if (register) {
+        openRegisterModal();
+      }
+
+      return;
+    }
+
+    alert(
+      "No DEXP account was found for this email.\n\nPlease use your dealership registration link to create an account.",
+    );
+  } catch (lookupError) {
+    console.error(
+      "Login email check failed:",
+      lookupError,
+    );
+
+    alert(
+      "Could not verify this email. Please try again.",
+    );
   }
-);
+}
 
 function openRegisterModal() {
-  const existingModal =
-    document.getElementById(
-      "registerAccountModal"
-    );
+  if (!dealerIdFromUrl) {
+    alert("This registration link is missing a dealer.");
+
+    return;
+  }
+
+  const existingModal = document.getElementById("registerAccountModal");
 
   if (existingModal) {
     existingModal.remove();
   }
 
-  const modal =
-    document.createElement("div");
+  const modal = document.createElement("div");
 
-  modal.id =
-    "registerAccountModal";
+  modal.id = "registerAccountModal";
 
   modal.innerHTML = `
     <div
@@ -191,6 +236,20 @@ function openRegisterModal() {
           Create New Account
         </h2>
 
+        <div
+          style="
+            background:#f4f6f8;
+            border:1px solid #cfd6df;
+            border-radius:8px;
+            padding:10px;
+            margin-bottom:14px;
+            font-weight:bold;
+            color:#0b3d91;
+          "
+        >
+          Dealer: ${escapeHtml(currentDealer?.name || "Selected Dealer")}
+        </div>
+
         <p style="margin-top:0;">
           Your manager will approve access.
         </p>
@@ -202,7 +261,6 @@ function openRegisterModal() {
             gap:10px;
           "
         >
-
           <input
             id="registerNameInput"
             type="text"
@@ -227,9 +285,7 @@ function openRegisterModal() {
             id="registerEmailInput"
             type="email"
             placeholder="Company Email"
-            value="${escapeHtml(
-              emailInput?.value || ""
-            )}"
+            value="${escapeHtml(emailInput?.value || "")}"
             style="
               width:100%;
               padding:10px;
@@ -250,15 +306,12 @@ function openRegisterModal() {
             id="registerPasswordInput"
             type="password"
             placeholder="Create Password"
-            value="${escapeHtml(
-              passwordInput?.value || ""
-            )}"
+            value="${escapeHtml(passwordInput?.value || "")}"
             style="
               width:100%;
               padding:10px;
             "
           />
-
         </div>
 
         <div
@@ -269,7 +322,6 @@ function openRegisterModal() {
             margin-top:18px;
           "
         >
-
           <button
             id="registerCancelBtn"
             type="button"
@@ -283,7 +335,6 @@ function openRegisterModal() {
           >
             Create Account
           </button>
-
         </div>
       </div>
     </div>
@@ -292,84 +343,43 @@ function openRegisterModal() {
   document.body.appendChild(modal);
 
   document
-    .getElementById(
-      "registerCancelBtn"
-    )
-    ?.addEventListener(
-      "click",
-      () => {
-        modal.remove();
-      }
-    );
+    .getElementById("registerCancelBtn")
+    ?.addEventListener("click", () => {
+      modal.remove();
+    });
 
   document
-    .getElementById(
-      "registerCreateBtn"
-    )
-    ?.addEventListener(
-      "click",
-      async () => {
-        await handleRegisterSubmit(
-          modal
-        );
-      }
-    );
+    .getElementById("registerCreateBtn")
+    ?.addEventListener("click", async () => {
+      await handleRegisterSubmit(modal);
+    });
 
-  document
-    .getElementById(
-      "registerNameInput"
-    )
-    ?.focus();
+  document.getElementById("registerNameInput")?.focus();
 }
 
-async function handleRegisterSubmit(
-  modal
-) {
-  const displayName =
-    document
-      .getElementById(
-        "registerNameInput"
-      )
-      ?.value.trim();
+async function handleRegisterSubmit(modal) {
+  const displayName = document
+    .getElementById("registerNameInput")
+    ?.value.trim();
 
-  const companyId =
-    document
-      .getElementById(
-        "registerCompanyIdInput"
-      )
-      ?.value.trim();
+  const companyId = document
+    .getElementById("registerCompanyIdInput")
+    ?.value.trim();
 
-  const email =
-    document
-      .getElementById(
-        "registerEmailInput"
-      )
-      ?.value.trim();
+  const email = document.getElementById("registerEmailInput")?.value.trim();
 
-  const phone =
-    document
-      .getElementById(
-        "registerPhoneInput"
-      )
-      ?.value.trim();
+  const phone = document.getElementById("registerPhoneInput")?.value.trim();
 
-  const password =
-    document
-      .getElementById(
-        "registerPasswordInput"
-      )
-      ?.value;
+  const password = document.getElementById("registerPasswordInput")?.value;
 
-  if (
-    !displayName ||
-    !companyId ||
-    !email ||
-    !phone ||
-    !password
-  ) {
-    alert(
-      "Enter all registration fields."
-    );
+  if (!displayName || !companyId || !email || !phone || !password) {
+    alert("Enter all registration fields.");
+
+    return;
+  }
+
+  if (!dealerIdFromUrl) {
+    alert("This registration link is missing a dealer.");
 
     return;
   }
@@ -378,42 +388,31 @@ async function handleRegisterSubmit(
     sessionStorage.setItem(
       PENDING_REGISTRATION_KEY,
       JSON.stringify({
-        dealerId:
-          dealerIdFromUrl,
-
+        dealerId: dealerIdFromUrl,
         displayName,
         companyId,
         email,
-        phone
-      })
+        phone,
+      }),
     );
 
-    await registerWithEmail(
-      email,
-      password
-    );
+    await registerWithEmail(email, password);
 
     alert(
-      "Account created. Pending admin approval."
+      `Account created for ${
+        currentDealer?.name || "this dealer"
+      }.\n\nYour account is pending manager approval.`,
     );
 
     modal.remove();
 
-    window.location.href =
-      buildRedirectUrl();
+    window.location.href = buildRedirectUrl();
   } catch (error) {
-    sessionStorage.removeItem(
-      PENDING_REGISTRATION_KEY
-    );
+    sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
 
-    console.error(
-      "Registration failed:",
-      error
-    );
+    console.error("Registration failed:", error);
 
-    alert(
-      "Registration failed. The email may already be in use."
-    );
+    alert("Registration failed. The email may already be in use.");
   }
 }
 
@@ -423,54 +422,62 @@ async function initializeDealerLoginLabel() {
   }
 
   if (!dealerIdFromUrl) {
-    dealerLoginName.textContent =
-      "General DEXP Login";
+    currentDealer = null;
+
+    dealerLoginName.textContent = "Dealer Login";
+
+    if (registerButton) {
+      registerButton.style.display = "none";
+    }
 
     return;
   }
 
   try {
-    const dealer =
-      await getDealer(
-        dealerIdFromUrl
-      );
+    const dealer = await getDealer(dealerIdFromUrl);
 
     if (!dealer) {
-      dealerLoginName.textContent =
-        "Unknown Dealer Link";
+      currentDealer = null;
+
+      dealerLoginName.textContent = "Unknown Dealer Link";
+
+      if (registerButton) {
+        registerButton.style.display = "none";
+      }
 
       return;
     }
 
-    dealerLoginName.textContent =
-      `Signing in to ${dealer.name}`;
-  } catch (error) {
-    console.error(
-      "Dealer lookup failed:",
-      error
-    );
+    currentDealer = dealer;
 
-    dealerLoginName.textContent =
-      "Dealer could not be loaded";
+    dealerLoginName.textContent = `Signing in to ${dealer.name}`;
+
+    if (registerButton) {
+      registerButton.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Dealer lookup failed:", error);
+
+    currentDealer = null;
+
+    dealerLoginName.textContent = `Dealer Registration (${dealerIdFromUrl})`;
+
+    if (registerButton) {
+      registerButton.style.display = "block";
+    }
   }
 }
 
 function getDealerIdFromUrl() {
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
+  const params = new URLSearchParams(window.location.search);
 
-  return String(
-    params.get("dealerId") || ""
-  ).trim();
+  return String(params.get("dealerId") || "").trim();
 }
 
 function buildRedirectUrl() {
-  const pendingSession =
-    JSON.parse(
-      localStorage.getItem("dexp_session") || "null",
-    );
+  const pendingSession = JSON.parse(
+    localStorage.getItem("dexp_session") || "null",
+  );
 
   if (pendingSession?.role === "platform-admin") {
     return "/pages/platform-admin/platform-admin.html";

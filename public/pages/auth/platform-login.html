@@ -1,4 +1,4 @@
-<!-- public/pages/auth/login.html -->
+<!-- public/pages/auth/platform-login.html -->
 
 <!doctype html>
 <html lang="en">
@@ -7,10 +7,9 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>DEXP Dealer Sign In</title>
+    <title>DEXP Platform Login</title>
 
     <link rel="stylesheet" href="/css/core/reset.css" />
-
     <link rel="stylesheet" href="/css/core/base.css" />
 
     <link rel="manifest" href="/manifest.json" />
@@ -53,19 +52,7 @@
         <h1>DEXP</h1>
 
         <p class="tool-help">
-          Dealer Execution Platform
-        </p>
-
-        <p
-          id="dealerLoginName"
-          class="tool-help"
-          style="
-            margin-top: 10px;
-            font-weight: bold;
-            color: #0b3d91;
-          "
-        >
-          Dealer Login
+          Platform Administration
         </p>
 
         <div
@@ -77,9 +64,9 @@
           "
         >
           <input
-            id="emailInput"
+            id="platformEmailInput"
             type="email"
-            placeholder="Company Email"
+            placeholder="Platform Admin Email"
             style="
               width: 100%;
               padding: 10px;
@@ -87,7 +74,7 @@
           />
 
           <input
-            id="passwordInput"
+            id="platformPasswordInput"
             type="password"
             placeholder="Password"
             style="
@@ -97,34 +84,28 @@
           />
 
           <button
-            id="btn-email-login"
+            id="btn-platform-email-login"
             type="button"
           >
             Sign In
           </button>
-
-          <button
-            id="btn-register"
-            type="button"
-            class="secondary"
-          >
-            Register New Account
-          </button>
-
-          <button
-            id="btn-reset-password"
-            type="button"
-            class="secondary"
-          >
-            Forgot Password
-          </button>
         </div>
+
+        <hr style="margin: 24px 0" />
+
+        <button
+          id="btn-google-login"
+          type="button"
+          style="width: 100%"
+        >
+          Sign In with Google
+        </button>
       </section>
     </main>
 
     <script
       type="module"
-      src="/js/pages/auth/login-page.js?v=10"
+      src="/js/pages/auth/platform-login-page.js?v=2"
     ></script>
   </body>
 </html>

@@ -58,11 +58,23 @@ async function loadUserSession(user) {
 
     clearPendingRegistration();
 
-    if (profile.role === "pending" || profile.active === false) {
+    if (profile.role === "pending") {
       clearSession();
 
       alert(
-        "Your account is pending admin approval. Please contact your manager.",
+        "Your account has been created and is waiting for manager approval.\n\nPlease contact your dealership administrator.",
+      );
+
+      window.location.href = "/pages/auth/login.html";
+
+      return;
+    }
+
+    if (profile.active === false) {
+      clearSession();
+
+      alert(
+        "Your account has been disabled.\n\nPlease contact your dealership administrator.",
       );
 
       window.location.href = "/pages/auth/login.html";

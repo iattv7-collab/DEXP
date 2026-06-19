@@ -121,6 +121,56 @@ async function setClaims(
     .setCustomUserClaims(uid, claims);
 }
 
+exports.checkLoginEmail =
+  onCall(async (request) => {
+    const email = String(request.data?.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Email is required."
+      );
+    }
+
+    const snapshot =
+      await admin.firestore()
+        .collection("users")
+        .where("email", "==", email)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) {
+      return {
+        exists: false,
+        status: "not-found",
+      };
+    }
+
+    const user =
+      snapshot.docs[0].data();
+
+    if (user.role === "pending") {
+      return {
+        exists: true,
+        status: "pending",
+      };
+    }
+
+    if (user.active === false) {
+      return {
+        exists: true,
+        status: "disabled",
+      };
+    }
+
+    return {
+      exists: true,
+      status: "active",
+    };
+  });
+
 exports.bootstrapAdmin =
   onCall(async (request) => {
 

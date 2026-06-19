@@ -36,36 +36,23 @@ export async function ensureUserProfile(user, options = {}) {
   if (isSetupAdmin) {
     const newProfile = {
       uid: user.uid,
-
       email,
-
       displayName: pendingRegistration.displayName || user.displayName || "",
-
       phone: pendingRegistration.phone || "",
-
       companyId: pendingRegistration.companyId || "",
-
       role: ROLES.PLATFORM_ADMIN,
-
       dealerId: "platform",
-
       active: true,
-
       assignedModules: [
         MODULES.PLATFORM_ADMIN,
         MODULES.ADMIN,
         MODULES.COMPANY_PROFILE,
         MODULES.NOTIFICATIONS,
       ],
-
       createdAt: serverTimestamp(),
-
       approvalRequestedAt: serverTimestamp(),
-
       approvedAt: serverTimestamp(),
-
       approvedBy: "setup",
-
       inactiveAt: null,
       inactiveBy: "",
     };
@@ -80,40 +67,27 @@ export async function ensureUserProfile(user, options = {}) {
   if (invite) {
     const newProfile = {
       uid: user.uid,
-
       email,
-
       displayName:
         pendingRegistration.displayName ||
         user.displayName ||
         invite.displayName ||
         "",
-
       phone: pendingRegistration.phone || invite.phone || "",
-
       companyId: pendingRegistration.companyId || "",
-
       role: ROLES.ADMIN,
-
       dealerId: invite.dealerId,
-
       active: true,
-
       assignedModules: [
         MODULES.ADMIN,
         MODULES.COMPANY_PROFILE,
         MODULES.RO_TRACKER,
         MODULES.NOTIFICATIONS,
       ],
-
       createdAt: serverTimestamp(),
-
       approvalRequestedAt: serverTimestamp(),
-
       approvedAt: serverTimestamp(),
-
       approvedBy: "dealer-admin-invite",
-
       inactiveAt: null,
       inactiveBy: "",
     };
@@ -124,11 +98,8 @@ export async function ensureUserProfile(user, options = {}) {
       doc(db, "dealerAdminInvites", email),
       {
         status: "accepted",
-
         acceptedAt: serverTimestamp(),
-
         acceptedBy: user.uid,
-
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -143,30 +114,18 @@ export async function ensureUserProfile(user, options = {}) {
 
   const newProfile = {
     uid: user.uid,
-
     email,
-
     displayName: pendingRegistration.displayName || user.displayName || "",
-
     phone: pendingRegistration.phone || "",
-
     companyId: pendingRegistration.companyId || "",
-
     role: DEFAULT_ROLE,
-
     dealerId: dealerExists ? requestedDealerId : "",
-
     active: false,
-
     assignedModules: [],
-
     createdAt: serverTimestamp(),
-
     approvalRequestedAt: serverTimestamp(),
-
     approvedAt: null,
     approvedBy: "",
-
     inactiveAt: null,
     inactiveBy: "",
   };
@@ -174,6 +133,32 @@ export async function ensureUserProfile(user, options = {}) {
   await setDoc(userRef, newProfile);
 
   return newProfile;
+}
+
+export async function findUserByEmail(email = "") {
+  const cleanEmail = String(email || "")
+    .trim()
+    .toLowerCase();
+
+  if (!cleanEmail) {
+    return null;
+  }
+
+  const userQuery = query(
+    collection(db, "users"),
+    where("email", "==", cleanEmail),
+  );
+
+  const snapshot = await getDocs(userQuery);
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  return {
+    id: snapshot.docs[0].id,
+    ...snapshot.docs[0].data(),
+  };
 }
 
 export async function getPendingUsers() {
@@ -186,7 +171,6 @@ export async function getPendingUsers() {
   if (session.role === ROLES.PLATFORM_ADMIN) {
     const pendingQuery = query(
       collection(db, "users"),
-
       where("role", "==", ROLES.PENDING),
     );
 
@@ -204,9 +188,7 @@ export async function getPendingUsers() {
 
   const pendingQuery = query(
     collection(db, "users"),
-
     where("dealerId", "==", session.dealerId),
-
     where("role", "==", ROLES.PENDING),
   );
 
@@ -227,7 +209,6 @@ export async function getAllUsers() {
 
   const usersQuery = query(
     collection(db, "users"),
-
     where("dealerId", "==", session.dealerId),
   );
 
