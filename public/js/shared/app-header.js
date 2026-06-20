@@ -4,10 +4,7 @@ import { logoutUser } from "/js/services/firebase/auth-service.js";
 import { clearSession, getSession } from "/js/core/session.js";
 
 export function renderAppHeader(options = {}) {
-  const {
-    showHome = true,
-    platformMode = false,
-  } = options;
+  const { showHome = true, platformMode = false } = options;
 
   const session = getSession();
 
@@ -34,10 +31,9 @@ export function renderAppHeader(options = {}) {
     pending: "Pending",
   };
 
-  const roleLabel =
-    platformMode
-      ? "Owner Console"
-      : roleMap[session?.role] || session?.role || "";
+  const roleLabel = platformMode
+    ? "Owner Console"
+    : roleMap[session?.role] || session?.role || "";
 
   const header = document.createElement("header");
   header.id = "appHeader";
@@ -128,11 +124,30 @@ export function renderAppHeader(options = {}) {
   const logoutButton = document.getElementById("logoutButton");
 
   logoutButton.addEventListener("click", async () => {
+    const logoutDealerId = platformMode ? "" : session?.dealerId || "";
+
+    if (logoutDealerId) {
+      sessionStorage.setItem("dexp_last_dealer_id", logoutDealerId);
+      localStorage.setItem("dexp_last_dealer_id", logoutDealerId);
+    }
+
     clearSession();
 
     sessionStorage.removeItem("dexp_platform_selected_dealer");
 
     await logoutUser();
+
+    if (platformMode) {
+      window.location.href = "/pages/auth/platform-login.html";
+      return;
+    }
+
+    if (logoutDealerId) {
+      window.location.href = `/pages/auth/login.html?dealerId=${encodeURIComponent(
+        logoutDealerId,
+      )}`;
+      return;
+    }
 
     window.location.href = "/pages/auth/login.html";
   });

@@ -1,6 +1,7 @@
 // public/pages/admin/admin-users-table.js
 
 import { ROLES } from "../../js/config/roles.js";
+import { MODULE_CONFIG } from "../../js/config/modules.js";
 import { buildAdminRoleOptions } from "./admin-roles.js";
 
 export function renderUsersTable(users, tableType) {
@@ -26,6 +27,8 @@ export function renderUsersTable(users, tableType) {
             </select>
           </td>
 
+          <td>${renderAssignedModules(user)}</td>
+
           <td>${user.dealerId || ""}</td>
           <td>${formatAdminDate(user.createdAt)}</td>
           <td>${formatAdminDate(user.approvedAt)}</td>
@@ -47,6 +50,7 @@ export function renderUsersTable(users, tableType) {
             <th>Name</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Assigned Modules</th>
             <th>Dealer</th>
             <th>Requested</th>
             <th>Approved</th>
@@ -60,6 +64,45 @@ export function renderUsersTable(users, tableType) {
         </tbody>
       </table>
     </div>
+  `;
+}
+
+function renderAssignedModules(user) {
+  const assignedModules = Array.isArray(user.assignedModules)
+    ? user.assignedModules
+    : [];
+
+  const moduleCheckboxes = Object.entries(MODULE_CONFIG)
+    .map(([moduleKey, config]) => {
+      const checked = assignedModules.includes(moduleKey) ? "checked" : "";
+
+      return `
+        <label style="display:block; white-space:nowrap;">
+          <input
+            type="checkbox"
+            class="admin-module-checkbox"
+            value="${moduleKey}"
+            ${checked}
+          />
+          ${config.label || moduleKey}
+        </label>
+      `;
+    })
+    .join("");
+
+  return `
+    <div style="max-height:140px; overflow:auto;">
+      ${moduleCheckboxes}
+    </div>
+
+    <button
+      type="button"
+      class="admin-save-modules-btn small-button"
+      data-user-id="${user.id}"
+      style="margin-top:8px;"
+    >
+      Save Modules
+    </button>
   `;
 }
 

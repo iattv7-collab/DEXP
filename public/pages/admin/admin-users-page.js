@@ -11,6 +11,7 @@ import {
   bootstrapAdmin,
   setUserActive,
   setUserRole,
+  setUserAssignedModules,
 } from "../../js/services/firebase/admin-functions-service.js";
 
 import { renderUsersTable } from "./admin-users-table.js";
@@ -270,7 +271,7 @@ const dealerName =
   session?.dealerName || dealerId;
 
 const inviteLink =
-  `${origin}/?dealerId=${encodeURIComponent(
+  `${origin}/pages/auth/login.html?dealerId=${encodeURIComponent(
     dealerId,
   )}`;
 
@@ -352,9 +353,33 @@ function attachInviteEvents(inviteLink) {
 function attachAdminUserEvents() {
   document.querySelectorAll(".admin-role-select").forEach((select) => {
     select.addEventListener("change", async () => {
+      const row = select.closest("tr");
+      const approveButton = row?.querySelector(".admin-approve-btn");
+
+      if (approveButton) {
+        return;
+      }
+
       await setUserRole({
         uid: select.dataset.userId,
         role: select.value,
+      });
+
+      await loadAdminUsers();
+    });
+  });
+
+  document.querySelectorAll(".admin-save-modules-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("tr");
+
+      const assignedModules = Array.from(
+        row.querySelectorAll(".admin-module-checkbox:checked"),
+      ).map((checkbox) => checkbox.value);
+
+      await setUserAssignedModules({
+        uid: button.dataset.userId,
+        assignedModules,
       });
 
       await loadAdminUsers();
@@ -373,6 +398,20 @@ function attachAdminUserEvents() {
         alert("Select a role before approving.");
         return;
       }
+
+      const assignedModules = Array.from(
+        row.querySelectorAll(".admin-module-checkbox:checked"),
+      ).map((checkbox) => checkbox.value);
+
+      if (!assignedModules.length) {
+        alert("Assign at least one module before approving.");
+        return;
+      }
+
+      await setUserAssignedModules({
+        uid: button.dataset.userId,
+        assignedModules,
+      });
 
       await approveUser({
         uid: button.dataset.userId,

@@ -184,7 +184,7 @@ function attachDealerRowEvents() {
 
       sessionStorage.setItem("dexp_platform_selected_dealer", dealerId);
 
-      window.location.href = `/pages/platform-admin/open-dealer.html?dealerId=${encodeURIComponent(
+            window.location.href = `/pages/dashboard/index.html?dealerId=${encodeURIComponent(
         dealerId,
       )}`;
     });

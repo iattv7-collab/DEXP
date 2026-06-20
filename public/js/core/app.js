@@ -12,22 +12,42 @@ import { getDealerModules } from "../services/firestore/modules-service.js";
 import { setSession, clearSession } from "./session.js";
 
 const PENDING_REGISTRATION_KEY = "dexp_pending_registration";
+const PLATFORM_SELECTED_DEALER_KEY = "dexp_platform_selected_dealer";
 
 function initializeApp() {
   document.title = LABELS.appName;
-
   console.log(`${LABELS.appName} initialized`);
+}
+
+function getDealerIdFromEntryPoint() {
+  const params = new URLSearchParams(window.location.search);
+
+  const queryDealerId = String(params.get("dealerId") || "").trim();
+
+  if (queryDealerId) {
+    return queryDealerId;
+  }
+
+  const pathParts = window.location.pathname
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const dealerRouteIndex = pathParts.findIndex((part) =>
+    ["d", "dealer", "dealers"].includes(part),
+  );
+
+  if (dealerRouteIndex >= 0 && pathParts[dealerRouteIndex + 1]) {
+    return pathParts[dealerRouteIndex + 1];
+  }
+
+  return "";
 }
 
 function getPlatformSelectedDealerId() {
   return String(
-    sessionStorage.getItem("dexp_platform_selected_dealer") || "",
+    sessionStorage.getItem(PLATFORM_SELECTED_DEALER_KEY) || "",
   ).trim();
-}
-
-function getDealerIdFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("dealerId") || "").trim();
 }
 
 function getPendingRegistration() {
@@ -44,15 +64,27 @@ function clearPendingRegistration() {
   sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
 }
 
+function isAuthLoginPage() {
+  return window.location.pathname.includes("/pages/auth/login.html");
+}
+
+function isPlatformLoginPage() {
+  return window.location.pathname.includes("/pages/auth/platform-login.html");
+}
+
+function isPlatformAdminPage() {
+  return window.location.pathname.includes("/platform-admin/");
+}
+
 async function loadUserSession(user) {
   try {
     const pendingRegistration = getPendingRegistration();
 
-    const requestedDealerId =
-      pendingRegistration?.dealerId || getDealerIdFromUrl();
+    const entryDealerId =
+      pendingRegistration?.dealerId || getDealerIdFromEntryPoint();
 
     const profile = await ensureUserProfile(user, {
-      requestedDealerId,
+      requestedDealerId: entryDealerId,
       pendingRegistration,
     });
 
@@ -65,7 +97,9 @@ async function loadUserSession(user) {
         "Your account has been created and is waiting for manager approval.\n\nPlease contact your dealership administrator.",
       );
 
-      window.location.href = "/pages/auth/login.html";
+      window.location.href = entryDealerId
+        ? `/pages/auth/login.html?dealerId=${encodeURIComponent(entryDealerId)}`
+        : "/pages/auth/login.html";
 
       return;
     }
@@ -77,34 +111,77 @@ async function loadUserSession(user) {
         "Your account has been disabled.\n\nPlease contact your dealership administrator.",
       );
 
-      window.location.href = "/pages/auth/login.html";
+      window.location.href = entryDealerId
+        ? `/pages/auth/login.html?dealerId=${encodeURIComponent(entryDealerId)}`
+        : "/pages/auth/login.html";
 
       return;
     }
 
-    const selectedDealerId =
-      getDealerIdFromUrl() || getPlatformSelectedDealerId();
+    const isPlatformAdmin = profile.role === "platform-admin";
 
-    if (profile.role === "platform-admin" && getDealerIdFromUrl()) {
-      sessionStorage.setItem(
-        "dexp_platform_selected_dealer",
-        getDealerIdFromUrl(),
-      );
+    if (isPlatformAdmin) {
+      if (!isPlatformLoginPage() && !isPlatformAdminPage()) {
+        const selectedDealerId = getPlatformSelectedDealerId();
+
+        if (isPlatformAdmin && !isPlatformAdminPage()) {
+          const selectedDealerId = getPlatformSelectedDealerId();
+
+          if (!selectedDealerId) {
+            window.location.href = "/pages/platform-admin/platform-admin.html";
+            return;
+          }
+        }
+      }
     }
 
-    const effectiveDealerId =
-      profile.role === "platform-admin" && selectedDealerId
-        ? selectedDealerId
-        : profile.dealerId;
+    if (!isPlatformAdmin && isPlatformAdminPage()) {
+      window.location.href = "/pages/auth/login.html";
+      return;
+    }
+
+    if (!isPlatformAdmin && isAuthLoginPage() && !entryDealerId) {
+      clearSession();
+
+      alert("Use your dealership's DEXP entry link to sign in.");
+
+      return;
+    }
+
+    if (
+      !isPlatformAdmin &&
+      entryDealerId &&
+      profile.dealerId !== entryDealerId
+    ) {
+      clearSession();
+
+      alert(
+        "This account does not belong to this dealership.\n\nUse the correct dealership entry link.",
+      );
+
+      window.location.href = `/pages/auth/login.html?dealerId=${encodeURIComponent(
+        entryDealerId,
+      )}`;
+
+      return;
+    }
+
+    const effectiveDealerId = isPlatformAdmin
+      ? getPlatformSelectedDealerId() || profile.dealerId
+      : profile.dealerId;
 
     if (!effectiveDealerId) {
-      throw new Error("Missing dealer assignment");
+      throw new Error("Missing dealer assignment.");
     }
 
     const dealer = await getDealer(effectiveDealerId);
 
     if (!dealer) {
-      throw new Error("Dealer not found");
+      throw new Error("Dealer not found.");
+    }
+
+    if (dealer.active === false) {
+      throw new Error("Dealer is inactive.");
     }
 
     const modules = await getDealerModules(effectiveDealerId);
@@ -119,29 +196,17 @@ async function loadUserSession(user) {
       modules,
     });
 
-    const currentPath = window.location.pathname;
+    if (isPlatformAdmin && !isPlatformAdminPage()) {
+      const selectedDealerId = getPlatformSelectedDealerId();
 
-    const isPlatformAdmin = profile.role === "platform-admin";
-
-    const isPlatformAdminPage = currentPath.includes("/platform-admin/");
-
-    const isDealerWorkspace =
-      profile.role === "platform-admin" &&
-      selectedDealerId &&
-      !isPlatformAdminPage;
-
-    if (isPlatformAdmin && !isPlatformAdminPage && !isDealerWorkspace) {
-      window.location.href = "/pages/platform-admin/platform-admin.html";
-
-      return;
+      if (!selectedDealerId) {
+        window.location.href = "/pages/platform-admin/platform-admin.html";
+        return;
+      }
     }
 
-    if (
-      profile.role !== "platform-admin" &&
-      currentPath.includes("/platform-admin/")
-    ) {
+    if (!isPlatformAdmin && isAuthLoginPage()) {
       window.location.href = "/pages/dashboard/index.html";
-
       return;
     }
 
@@ -149,7 +214,7 @@ async function loadUserSession(user) {
 
     console.log("Logged in:", profile.email);
     console.log("Role:", profile.role);
-    console.log("Dealer:", profile.dealerId);
+    console.log("Dealer:", effectiveDealerId);
     console.log("Modules:", modules);
   } catch (error) {
     console.error("Session initialization failed:", error);
@@ -157,7 +222,9 @@ async function loadUserSession(user) {
     clearSession();
     clearPendingRegistration();
 
-    window.location.href = "/pages/auth/login.html";
+    if (!isAuthLoginPage() && !isPlatformLoginPage()) {
+      window.location.href = "/pages/auth/login.html";
+    }
   }
 }
 
@@ -166,7 +233,6 @@ watchAuthState(async (user) => {
     await loadUserSession(user);
   } else {
     clearSession();
-
     console.log("No active session");
   }
 

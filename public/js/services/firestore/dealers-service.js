@@ -18,25 +18,13 @@ export async function getDealer(dealerId) {
   }
 
   const dealerRef = doc(db, "dealers", dealerId);
-
   const snapshot = await getDoc(dealerRef);
 
-  if (snapshot.exists()) {
-    return snapshot.data();
+  if (!snapshot.exists()) {
+    return null;
   }
 
-  const generatedCode = await generateDealerSystemCode();
-
-  const newDealer = buildNewDealer({
-    dealerId,
-    name: "DEXP Demo Dealer",
-    displayShortName: "DEMO",
-    systemCode: generatedCode,
-  });
-
-  await setDoc(dealerRef, newDealer);
-
-  return newDealer;
+  return snapshot.data();
 }
 
 export async function getAllDealers() {
@@ -61,7 +49,6 @@ export async function createDealerWithPrimaryAdmin({
   }
 
   const dealerRef = doc(db, "dealers", dealerId);
-
   const dealerSnapshot = await getDoc(dealerRef);
 
   if (dealerSnapshot.exists()) {
@@ -69,9 +56,7 @@ export async function createDealerWithPrimaryAdmin({
   }
 
   const normalizedEmail = adminEmail.trim().toLowerCase();
-
   const inviteRef = doc(db, "dealerAdminInvites", normalizedEmail);
-
   const inviteSnapshot = await getDoc(inviteRef);
 
   if (inviteSnapshot.exists()) {
@@ -93,14 +78,10 @@ export async function createDealerWithPrimaryAdmin({
     email: normalizedEmail,
     displayName: adminName,
     phone: adminPhone || "",
-
     dealerId,
-
     role: "admin",
     active: true,
-
     status: "pending-login",
-
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -120,7 +101,6 @@ export async function updateDealerProfile(dealerId, dealerData) {
     {
       ...dealerData,
       id: dealerId,
-
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -132,21 +112,12 @@ export async function updateDealerSettings(dealerId, settingsPatch) {
     throw new Error("Missing dealerId");
   }
 
-  if (
-    !settingsPatch ||
-    typeof settingsPatch !== "object" ||
-    Array.isArray(settingsPatch)
-  ) {
-    throw new Error("Missing settings data");
-  }
-
   const dealerRef = doc(db, "dealers", dealerId);
 
   await setDoc(
     dealerRef,
     {
       settings: settingsPatch,
-
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -156,14 +127,6 @@ export async function updateDealerSettings(dealerId, settingsPatch) {
 export async function updateDealerPermissionOverrides(dealerId, roleOverrides) {
   if (!dealerId) {
     throw new Error("Missing dealerId");
-  }
-
-  if (
-    !roleOverrides ||
-    typeof roleOverrides !== "object" ||
-    Array.isArray(roleOverrides)
-  ) {
-    throw new Error("Missing role permission overrides");
   }
 
   const dealerRef = doc(db, "dealers", dealerId);
@@ -176,7 +139,6 @@ export async function updateDealerPermissionOverrides(dealerId, roleOverrides) {
           roleOverrides,
         },
       },
-
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -189,12 +151,8 @@ export async function updateDealerRolePermissionOverride({
   allow,
   deny,
 }) {
-  if (!dealerId) {
-    throw new Error("Missing dealerId");
-  }
-
-  if (!role) {
-    throw new Error("Missing role");
+  if (!dealerId || !role) {
+    throw new Error("Missing dealerId or role");
   }
 
   const dealerRef = doc(db, "dealers", dealerId);
@@ -212,7 +170,6 @@ export async function updateDealerRolePermissionOverride({
           },
         },
       },
-
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -225,11 +182,9 @@ async function generateDealerSystemCode() {
   const nextNumber = await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(counterRef);
 
-    let currentNumber = 0;
-
-    if (snapshot.exists()) {
-      currentNumber = snapshot.data().nextDealerNumber || 0;
-    }
+    const currentNumber = snapshot.exists()
+      ? snapshot.data().nextDealerNumber || 0
+      : 0;
 
     const newNumber = currentNumber + 1;
 
@@ -237,7 +192,6 @@ async function generateDealerSystemCode() {
       counterRef,
       {
         nextDealerNumber: newNumber,
-
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -246,41 +200,26 @@ async function generateDealerSystemCode() {
     return newNumber;
   });
 
-  return formatDealerCode(nextNumber);
-}
-
-function formatDealerCode(number) {
-  return `DX${String(number).padStart(4, "0")}`;
+  return `DX${String(nextNumber).padStart(4, "0")}`;
 }
 
 function buildNewDealer({ dealerId, name, displayShortName, systemCode }) {
   return {
     id: dealerId,
-
     systemCode,
-
     name,
-
     displayShortName: displayShortName || "",
-
     active: true,
-
     phone: "",
     website: "",
-
     address1: "",
     address2: "",
-
     city: "",
     state: "",
     zip: "",
-
     timezone: "America/New_York",
-
     logoUrl: "",
-
     departments: [],
-
     settings: {
       wash: {},
       loaners: {},
@@ -288,9 +227,7 @@ function buildNewDealer({ dealerId, name, displayShortName, systemCode }) {
       scanner: {},
       branding: {},
     },
-
     createdAt: serverTimestamp(),
-
     updatedAt: serverTimestamp(),
   };
 }
