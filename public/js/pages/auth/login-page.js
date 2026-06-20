@@ -22,6 +22,8 @@ import { app } from "/js/services/firebase/firebase-app.js";
 const functions = getFunctions(app);
 const checkLoginEmail = httpsCallable(functions, "checkLoginEmail");
 
+const checkDealerCompanyId = httpsCallable(functions, "checkDealerCompanyId");
+
 const PENDING_REGISTRATION_KEY = "dexp_pending_registration";
 
 const emailLoginButton = document.getElementById("btn-email-login");
@@ -420,6 +422,17 @@ async function handleRegisterSubmit(modal) {
   }
 
   try {
+    const companyIdResult = await checkDealerCompanyId({
+      dealerId: dealerIdFromEntry,
+      companyId,
+    });
+
+    if (companyIdResult?.data?.exists) {
+      const duplicateError = new Error("Company ID already registered.");
+      duplicateError.code = "dexp/company-id-in-use";
+      throw duplicateError;
+    }
+
     sessionStorage.setItem(
       PENDING_REGISTRATION_KEY,
       JSON.stringify({
@@ -458,7 +471,7 @@ async function handleRegisterSubmit(modal) {
 
     console.error("Registration failed:", error);
 
-    alert("Registration failed. The email may already be in use.");
+    alert(getRegistrationErrorMessage(error, companyId));
   }
 }
 
@@ -485,6 +498,36 @@ function getDealerIdFromEntryPoint() {
   }
 
   return "";
+}
+
+function getRegistrationErrorMessage(error, companyId) {
+  const code = error?.code || "";
+
+  if (code === "auth/email-already-in-use") {
+    return "This email is already registered. Use the existing account or reset the password.";
+  }
+
+  if (code === "auth/invalid-email") {
+    return "Enter a valid email address.";
+  }
+
+  if (code === "auth/weak-password") {
+    return "Password is too weak. Use at least 6 characters.";
+  }
+
+  if (code === "auth/operation-not-allowed") {
+    return "Email/password registration is not enabled for this app.";
+  }
+
+  if (code === "auth/network-request-failed") {
+    return "Network error. Check your connection and try again.";
+  }
+
+  if (code === "dexp/company-id-in-use") {
+    return `Company ID ${companyId} is already registered for this dealership. Contact your dealership administrator.`;
+  }
+
+  return error?.message || "Registration failed. Please try again.";
 }
 
 function escapeHtml(value = "") {
