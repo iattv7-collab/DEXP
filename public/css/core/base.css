@@ -369,12 +369,87 @@ button:hover {
   margin-top: 12px;
 }
 
+.form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 8px;
+  row-gap: 0;
+  width: 100%;
+}
+
+.form-pair label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.form-pair input {
+  width: 100%;
+}
+
+.form-pair input {
+  width: 100%;
+  min-width: 0;
+}
+
 .form-grid label {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
   color: var(--text);
+}
+.form-grid label.checkbox-field {
+  display: flex;
+  flex-direction: row;
+
+  align-items: center;
+  justify-content: flex-start;
+
+  gap: 10px;
+
+  padding: 10px 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  min-height: 44px;
+
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-grid label.checkbox-field span {
+  margin: 0;
+  line-height: 1;
+}
+
+.form-grid label.checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.file-upload-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 44px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--blue);
+}
+
+.file-upload-field input[type="file"] {
+  display: none;
 }
 
 .form-grid input {

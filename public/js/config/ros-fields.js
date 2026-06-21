@@ -1,7 +1,6 @@
 // public/js/config/ros-fields.js
 
 export const ROS_FIELDS = {
-
   // Identity
   id: "id",
   roNumber: "roNumber",
@@ -45,7 +44,7 @@ export const ROS_FIELDS = {
   sharedWithAdvisorIds: "sharedWithAdvisorIds",
   sharedWithCompanyIds: "sharedWithCompanyIds",
 
-    // Status
+  // Status
   status: "status",
 
   // Archive / lifecycle
@@ -56,7 +55,7 @@ export const ROS_FIELDS = {
   archivedByCompanyId: "archivedByCompanyId",
   archiveReason: "archiveReason",
 
-    // Follow up
+  // Follow up
   followupStatus: "followupStatus",
   followupDueAtMs: "followupDueAtMs",
   followupCompletedAtMs: "followupCompletedAtMs",
@@ -76,6 +75,9 @@ export const ROS_FIELDS = {
   isWaiter: "isWaiter",
   hasLoaner: "hasLoaner",
 
+  // RO Tracker
+  concern: "concern",
+
   // Dealer
   dealerId: "dealerId",
 
@@ -87,5 +89,5 @@ export const ROS_FIELDS = {
   createdAt: "createdAt",
   updatedAt: "updatedAt",
   createdBy: "createdBy",
-  updatedBy: "updatedBy"
+  updatedBy: "updatedBy",
 };

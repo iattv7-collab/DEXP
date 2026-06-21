@@ -29,6 +29,8 @@ const customerNameInput = document.getElementById("customerNameInput");
 const customerPhoneInput = document.getElementById("customerPhoneInput");
 const advisorNameInput = document.getElementById("advisorNameInput");
 const advisorNumberInput = document.getElementById("advisorNumberInput");
+const waiterCheckbox = document.getElementById("waiterCheckbox");
+const concernInput = document.getElementById("concernInput");
 const ocrDebugText = document.getElementById("ocrDebugText");
 const fillTestDataButton = document.getElementById("fillTestDataButton");
 const saveRoButton = document.getElementById("saveRoButton");
@@ -40,7 +42,7 @@ window.addEventListener("dexp-session-ready", () => {
 
 function initializeScannerRO() {
   renderAppHeader({
-    title: "Scanner RO",
+    title: "Scan Repair Order",
   });
 
   roImageInput.addEventListener("change", async (event) => {
@@ -215,6 +217,10 @@ async function saveRO() {
         [ROS_FIELDS.customerPhone]: customerPhoneInput.value.trim(),
         [ROS_FIELDS.advisorName]: advisorNameInput.value.trim(),
         [ROS_FIELDS.advisorCompanyId]: advisorNumberInput.value.trim(),
+        [ROS_FIELDS.isWaiter]: waiterCheckbox.checked,
+        customerWaiting: waiterCheckbox.checked,
+        [ROS_FIELDS.concern]: concernInput.value.trim(),
+
         [ROS_FIELDS.scanSource]: "scanner-ro",
       },
       {
@@ -245,6 +251,8 @@ function clearForm() {
   customerPhoneInput.value = "";
   advisorNameInput.value = "";
   advisorNumberInput.value = "";
+  waiterCheckbox.checked = false;
+  concernInput.value = "";
 
   ocrDebugText.value = "";
   roImageInput.value = "";

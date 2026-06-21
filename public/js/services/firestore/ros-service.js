@@ -98,6 +98,10 @@ export async function createRO(data = {}, options = {}) {
     [ROS_FIELDS.sharedWithAdvisorIds]: [],
     [ROS_FIELDS.sharedWithCompanyIds]: [],
 
+    [ROS_FIELDS.isWaiter]: Boolean(data[ROS_FIELDS.isWaiter]),
+    customerWaiting: Boolean(data.customerWaiting),
+    [ROS_FIELDS.concern]: data[ROS_FIELDS.concern] || "",
+
     [ROS_FIELDS.scanSource]: data[ROS_FIELDS.scanSource] || "manual",
     [ROS_FIELDS.rawOcrText]: data[ROS_FIELDS.rawOcrText] || "",
 
@@ -459,21 +463,19 @@ function buildROVisibilityQuery(rosRef, session, options = {}) {
   const advisorId = options.advisorId || null;
 
   if (includeArchived) {
-  const constraints = [
-    where(ROS_FIELDS.dealerId, "==", session.dealerId),
-    where(ROS_FIELDS.status, "==", ROS_STATUS.ARCHIVED),
-  ];
+    const constraints = [
+      where(ROS_FIELDS.dealerId, "==", session.dealerId),
+      where(ROS_FIELDS.status, "==", ROS_STATUS.ARCHIVED),
+    ];
 
-  if (advisorId) {
-    constraints.push(
-      where(ROS_FIELDS.advisorId, "==", advisorId),
-    );
+    if (advisorId) {
+      constraints.push(where(ROS_FIELDS.advisorId, "==", advisorId));
+    }
+
+    constraints.push(limit(100));
+
+    return query(rosRef, ...constraints);
   }
-
-  constraints.push(limit(100));
-
-  return query(rosRef, ...constraints);
-}
 
   return query(
     rosRef,
