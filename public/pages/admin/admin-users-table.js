@@ -1,7 +1,6 @@
 // public/pages/admin/admin-users-table.js
 
 import { ROLES } from "../../js/config/roles.js";
-import { MODULE_CONFIG } from "../../js/config/modules.js";
 import { buildAdminRoleOptions } from "./admin-roles.js";
 
 export function renderUsersTable(users, tableType) {
@@ -13,34 +12,7 @@ export function renderUsersTable(users, tableType) {
     `;
   }
 
-  const rows = users
-    .map(
-      (user) => `
-        <tr>
-          <td>${user.displayName || ""}</td>
-          <td>${user.email || ""}</td>
-
-          <td>
-            <select class="admin-role-select" data-user-id="${user.id}">
-              ${renderPendingOption(user)}
-              ${buildAdminRoleOptions(user.role)}
-            </select>
-          </td>
-
-          <td>${renderAssignedModules(user)}</td>
-
-          <td>${user.dealerId || ""}</td>
-          <td>${formatAdminDate(user.createdAt)}</td>
-          <td>${formatAdminDate(user.approvedAt)}</td>
-          <td>${formatAdminDate(user.inactiveAt)}</td>
-
-          <td>
-            ${renderActionButton(user, tableType)}
-          </td>
-        </tr>
-      `,
-    )
-    .join("");
+  const rows = users.map((user) => renderUserRow(user, tableType)).join("");
 
   return `
     <div class="dexp-admin-card">
@@ -48,13 +20,13 @@ export function renderUsersTable(users, tableType) {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Employee #</th>
             <th>Email</th>
             <th>Role</th>
             <th>Assigned Modules</th>
             <th>Dealer</th>
             <th>Requested</th>
             <th>Approved</th>
-            <th>Inactive</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -67,42 +39,61 @@ export function renderUsersTable(users, tableType) {
   `;
 }
 
-function renderAssignedModules(user) {
+function renderUserRow(user, tableType) {
+  return `
+    <tr>
+      <td>${user.displayName || ""}</td>
+      <td>${user.companyId || ""}</td>
+      <td>${user.email || ""}</td>
+
+      <td>
+        <select class="admin-role-select" data-user-id="${user.id}">
+          ${renderPendingOption(user)}
+          ${buildAdminRoleOptions(user.role)}
+        </select>
+      </td>
+
+      <td>
+        ${renderAssignedModulesSummary(user)}
+      </td>
+
+      <td>${user.dealerId || ""}</td>
+      <td>${formatAdminDate(user.createdAt)}</td>
+      <td>${formatAdminDate(user.approvedAt)}</td>
+
+      <td>
+        ${renderActionButton(user, tableType)}
+      </td>
+    </tr>
+  `;
+}
+
+function renderAssignedModulesSummary(user) {
   const assignedModules = Array.isArray(user.assignedModules)
     ? user.assignedModules
     : [];
 
-  const moduleCheckboxes = Object.entries(MODULE_CONFIG)
-    .map(([moduleKey, config]) => {
-      const checked = assignedModules.includes(moduleKey) ? "checked" : "";
-
-      return `
-        <label style="display:block; white-space:nowrap;">
-          <input
-            type="checkbox"
-            class="admin-module-checkbox"
-            value="${moduleKey}"
-            ${checked}
-          />
-          ${config.label || moduleKey}
-        </label>
-      `;
-    })
-    .join("");
-
   return `
-    <div style="max-height:140px; overflow:auto;">
-      ${moduleCheckboxes}
-    </div>
-
-    <button
-      type="button"
-      class="admin-save-modules-btn small-button"
-      data-user-id="${user.id}"
-      style="margin-top:8px;"
+    <div
+      style="
+        display:flex;
+        align-items:center;
+        gap:10px;
+        white-space:nowrap;
+      "
     >
-      Save Modules
-    </button>
+      <span>
+        <strong>${assignedModules.length}</strong> Modules
+      </span>
+
+      <button
+        type="button"
+        class="admin-edit-modules-btn small-button"
+        data-user-id="${user.id}"
+      >
+        Edit
+      </button>
+    </div>
   `;
 }
 
@@ -147,7 +138,9 @@ function renderActionButton(user, tableType) {
 }
 
 function formatAdminDate(value) {
-  if (!value) return "";
+  if (!value) {
+    return "";
+  }
 
   if (typeof value.toDate === "function") {
     return value.toDate().toLocaleDateString();

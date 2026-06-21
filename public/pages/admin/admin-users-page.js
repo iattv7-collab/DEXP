@@ -2,6 +2,7 @@
 
 import { protectRoute } from "../../js/core/router.js";
 import { ROLES } from "../../js/config/roles.js";
+import { MODULE_CONFIG } from "../../js/config/modules.js";
 import { renderAppHeader } from "../../js/shared/app-header.js";
 
 import { getAdminUserGroups } from "../../js/services/firestore/users-service.js";
@@ -22,10 +23,7 @@ let currentPendingUsers = [];
 let currentActiveUsers = [];
 let currentInactiveUsers = [];
 
-const inviteUsersContainer =
-  document.getElementById(
-    "inviteUsersContainer",
-  );
+const inviteUsersContainer = document.getElementById("inviteUsersContainer");
 
 protectRoute({
   allowedRoles: [ROLES.PLATFORM_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
@@ -264,14 +262,11 @@ function renderInviteUsersCard() {
 
   const session = getSession();
 
-const dealerId =
-  session?.dealerId || "";
+  const dealerId = session?.dealerId || "";
 
-const dealerName =
-  session?.dealerName || dealerId;
+  const dealerName = session?.dealerName || dealerId;
 
-const inviteLink =
-  `${origin}/pages/auth/login.html?dealerId=${encodeURIComponent(
+  const inviteLink = `${origin}/pages/auth/login.html?dealerId=${encodeURIComponent(
     dealerId,
   )}`;
 
@@ -324,33 +319,36 @@ function attachInviteEvents(inviteLink) {
   document
     .getElementById("copyInviteLinkBtn")
     ?.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(
-        inviteLink,
-      );
+      await navigator.clipboard.writeText(inviteLink);
 
       alert("Invite link copied.");
     });
 
-  document
-    .getElementById("emailInviteBtn")
-    ?.addEventListener("click", () => {
-      window.location.href =
-        `mailto:?subject=DEXP Invitation&body=${encodeURIComponent(
-          inviteLink,
-        )}`;
-    });
+  document.getElementById("emailInviteBtn")?.addEventListener("click", () => {
+    window.location.href = `mailto:?subject=DEXP Invitation&body=${encodeURIComponent(
+      inviteLink,
+    )}`;
+  });
 
-  document
-    .getElementById("textInviteBtn")
-    ?.addEventListener("click", () => {
-      window.location.href =
-        `sms:?body=${encodeURIComponent(
-          inviteLink,
-        )}`;
-    });
+  document.getElementById("textInviteBtn")?.addEventListener("click", () => {
+    window.location.href = `sms:?body=${encodeURIComponent(inviteLink)}`;
+  });
 }
 
 function attachAdminUserEvents() {
+  document.querySelectorAll(".admin-edit-modules-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const user = findAdminUserById(button.dataset.userId);
+
+      if (!user) {
+        alert("User not found.");
+        return;
+      }
+
+      openUserModulesModal(user);
+    });
+  });
+
   document.querySelectorAll(".admin-role-select").forEach((select) => {
     select.addEventListener("change", async () => {
       const row = select.closest("tr");
@@ -369,49 +367,22 @@ function attachAdminUserEvents() {
     });
   });
 
-  document.querySelectorAll(".admin-save-modules-btn").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const row = button.closest("tr");
-
-      const assignedModules = Array.from(
-        row.querySelectorAll(".admin-module-checkbox:checked"),
-      ).map((checkbox) => checkbox.value);
-
-      await setUserAssignedModules({
-        uid: button.dataset.userId,
-        assignedModules,
-      });
-
-      await loadAdminUsers();
-    });
-  });
-
   document.querySelectorAll(".admin-approve-btn").forEach((button) => {
     button.addEventListener("click", async () => {
       const row = button.closest("tr");
-
       const roleSelect = row.querySelector(".admin-role-select");
-
       const selectedRole = roleSelect?.value || ROLES.ADVISOR;
+      const user = findAdminUserById(button.dataset.userId);
 
       if (selectedRole === ROLES.PENDING) {
         alert("Select a role before approving.");
         return;
       }
 
-      const assignedModules = Array.from(
-        row.querySelectorAll(".admin-module-checkbox:checked"),
-      ).map((checkbox) => checkbox.value);
-
-      if (!assignedModules.length) {
+      if (!user?.assignedModules?.length) {
         alert("Assign at least one module before approving.");
         return;
       }
-
-      await setUserAssignedModules({
-        uid: button.dataset.userId,
-        assignedModules,
-      });
 
       await approveUser({
         uid: button.dataset.userId,
@@ -443,4 +414,176 @@ function attachAdminUserEvents() {
       await loadAdminUsers();
     });
   });
+}
+
+function findAdminUserById(userId) {
+  return [
+    ...currentPendingUsers,
+    ...currentActiveUsers,
+    ...currentInactiveUsers,
+  ].find((user) => user.id === userId);
+}
+
+function openUserModulesModal(user) {
+  const existingModal = document.getElementById("adminUserModulesModal");
+
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const originalModules = normalizeModuleList(user.assignedModules);
+
+  const modal = document.createElement("div");
+  modal.id = "adminUserModulesModal";
+
+  modal.innerHTML = `
+    <div
+      style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.45);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:9999;
+        padding:18px;
+      "
+    >
+      <div
+        style="
+          background:white;
+          width:min(520px,96vw);
+          max-height:90vh;
+          overflow:auto;
+          border-radius:10px;
+          padding:22px;
+          border:1px solid #cfd6df;
+          box-shadow:0 10px 30px rgba(0,0,0,.2);
+        "
+      >
+        <h2 style="margin-top:0;">
+          Edit Modules
+        </h2>
+
+        <p>
+          <strong>${escapeAdminHtml(user.displayName || user.email || "User")}</strong>
+        </p>
+
+        <div
+          id="adminModulesCheckboxList"
+          style="
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+            gap:8px 14px;
+            margin-top:14px;
+          "
+        >
+          ${renderModuleCheckboxes(originalModules)}
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            gap:10px;
+            margin-top:20px;
+          "
+        >
+          <button id="cancelModulesBtn" type="button">
+            Cancel
+          </button>
+
+          <button
+            id="saveModulesBtn"
+            type="button"
+            disabled
+            style="opacity:.5; cursor:not-allowed;"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const saveButton = document.getElementById("saveModulesBtn");
+
+  const updateSaveState = () => {
+    const selectedModules = getSelectedModalModules();
+
+    const changed =
+      JSON.stringify(selectedModules) !== JSON.stringify(originalModules);
+
+    saveButton.disabled = !changed;
+    saveButton.style.opacity = changed ? "1" : ".5";
+    saveButton.style.cursor = changed ? "pointer" : "not-allowed";
+  };
+
+  modal.querySelectorAll(".admin-modal-module-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("change", updateSaveState);
+  });
+
+  document.getElementById("cancelModulesBtn")?.addEventListener("click", () => {
+    modal.remove();
+  });
+
+  saveButton?.addEventListener("click", async () => {
+    if (saveButton.disabled) {
+      return;
+    }
+
+    const assignedModules = getSelectedModalModules();
+
+    await setUserAssignedModules({
+      uid: user.id,
+      assignedModules,
+    });
+
+    modal.remove();
+
+    await loadAdminUsers();
+  });
+}
+
+function renderModuleCheckboxes(assignedModules = []) {
+  return Object.entries(MODULE_CONFIG)
+    .map(([moduleKey, config]) => {
+      const checked = assignedModules.includes(moduleKey) ? "checked" : "";
+
+      return `
+        <label style="display:flex; gap:8px; align-items:center;">
+          <input
+            type="checkbox"
+            class="admin-modal-module-checkbox"
+            value="${moduleKey}"
+            ${checked}
+          />
+
+          <span>${escapeAdminHtml(config.label || moduleKey)}</span>
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function getSelectedModalModules() {
+  return normalizeModuleList(
+    Array.from(
+      document.querySelectorAll(".admin-modal-module-checkbox:checked"),
+    ).map((checkbox) => checkbox.value),
+  );
+}
+
+function normalizeModuleList(modules = []) {
+  return Array.from(new Set(Array.isArray(modules) ? modules : [])).sort();
+}
+
+function escapeAdminHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
