@@ -1,0 +1,81 @@
+/* public/css/modules/scanner-ro.css */
+/* Scanner RO mobile-first layout */
+
+#scannerRoPage {
+  max-width: 460px;
+}
+
+#scannerRoPage .form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#scannerRoPage .form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+#scannerRoPage .form-grid label,
+#scannerRoPage .form-pair label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+#scannerRoPage .form-grid input,
+#scannerRoPage .form-grid textarea,
+#scannerRoPage .form-pair input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+#scannerRoPage .checkbox-field {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#scannerRoPage .checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0;
+  margin: 0;
+}
+
+#scannerRoPage .file-upload-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--blue);
+}
+
+#scannerRoPage .file-upload-field input[type="file"],
+#scannerRoPage .toolbar-row input[type="file"] {
+  display: none;
+}
