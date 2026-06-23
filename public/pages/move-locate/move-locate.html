@@ -10,6 +10,7 @@
     <title>Move & Locate</title>
 
     <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/move-locate.css?v=2" />
   </head>
 
   <body>
@@ -24,12 +25,19 @@
           ></div>
         </div>
 
-        <section class="tool-card">
-          <h3>Find Vehicle / Move Vehicle</h3>
+        <section class="tool-card move-workflow-card">
+          <div class="move-card-header">
+            <div>
+              <h3>Move Vehicle</h3>
+              <p class="tool-help">Search by RO, Tag, or VIN</p>
+            </div>
 
-          <p class="tool-help">Search by RO, Tag, or VIN</p>
+            <p id="moveLocateMessage" class="tool-message">
+              Enter RO # or Tag #.
+            </p>
+          </div>
 
-          <div class="tool-row">
+          <div class="tool-row move-search-row">
             <input
               id="vehicleSearchInput"
               type="text"
@@ -47,32 +55,9 @@
             <button id="searchVehicleButton" type="button">Find</button>
           </div>
 
-          <div id="moveChainPanel" class="tool-details hidden">
-            <hr />
-
-            <div><b>Move Chain:</b></div>
-
-            <div id="moveChainList"></div>
-          </div>
-        </section>
-
-        <section class="tool-card">
-          <h3>Move Vehicle</h3>
-
-          <p id="moveLocateMessage" class="tool-message">
-            Enter RO # or Tag #.
-          </p>
-
-          <div id="vehicleResultCard" class="tool-preview">
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 10px;
-              "
-            >
-              <div class="tool-preview-grid">
+          <div id="vehicleResultCard" class="tool-preview move-vehicle-preview">
+            <div class="move-preview-main">
+              <div class="tool-preview-grid move-preview-grid">
                 <div>
                   <strong>TAG</strong>
                   <span id="previewTag">—</span>
@@ -99,62 +84,63 @@
                 </div>
               </div>
 
-              <button
-                id="detailsButton"
-                type="button"
-                class="small-button secondary"
-              >
-                View Details
-              </button>
+              <div class="move-action-stack">
+                <button
+                  id="detailsButton"
+                  type="button"
+                  class="small-button secondary"
+                >
+                  View Details
+                </button>
+
+                <button id="startMoveButton" type="button">Start Move</button>
+
+                <button
+                  id="releaseRequestButton"
+                  type="button"
+                  class="small-button secondary hidden"
+                >
+                  Release Request
+                </button>
+
+                <button
+                  id="cancelMoveButton"
+                  type="button"
+                  class="small-button secondary hidden"
+                >
+                  Cancel Move
+                </button>
+
+                <button
+                  id="overrideCancelMoveButton"
+                  type="button"
+                  class="small-button secondary hidden"
+                >
+                  Override Cancel
+                </button>
+              </div>
             </div>
 
             <div id="vehicleDetailsPanel" class="tool-details hidden">
               <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
-
               <div><b>VIN:</b> <span id="detailVIN"></span></div>
-
               <div><b>Model:</b> <span id="detailVehicle"></span></div>
-
               <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
-
               <div>
                 <b>Started By:</b> <span id="detailMoveStartedBy"></span>
               </div>
-
               <div>
                 <b>Started At:</b> <span id="detailMoveStartedAt"></span>
               </div>
             </div>
           </div>
-        </section>
 
-        <section class="tool-card">
-          <div class="tool-row">
-            <button id="startMoveButton" type="button">Start Move</button>
+          <div id="moveChainPanel" class="tool-details hidden">
+            <hr />
 
-            <button
-              id="releaseRequestButton"
-              type="button"
-              class="small-button secondary hidden"
-            >
-              Release Request
-            </button>
+            <div><b>Move Chain:</b></div>
 
-            <button
-              id="cancelMoveButton"
-              type="button"
-              class="small-button secondary hidden"
-            >
-              Cancel Move
-            </button>
-
-            <button
-              id="overrideCancelMoveButton"
-              type="button"
-              class="small-button secondary hidden"
-            >
-              Override Cancel
-            </button>
+            <div id="moveChainList"></div>
           </div>
 
           <div id="finalLocationPanel" class="hidden">
@@ -201,6 +187,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate.js?v=12"></script>
+    <script type="module" src="/pages/move-locate/move-locate.js?v=13"></script>
   </body>
 </html>

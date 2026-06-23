@@ -1,0 +1,94 @@
+/* public/css/modules/move-locate.css */
+/* Move & Locate page-specific layout */
+
+#moveLocatePage .move-workflow-card {
+  display: grid;
+  gap: 10px;
+}
+
+#moveLocatePage .move-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+#moveLocatePage .move-card-header h3 {
+  margin-bottom: 3px;
+}
+
+#moveLocatePage .move-card-header .tool-message {
+  margin: 0;
+  text-align: right;
+}
+
+#moveLocatePage .move-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+}
+
+#moveLocatePage .move-search-row input {
+  min-width: 0;
+}
+
+#moveLocatePage .move-vehicle-preview {
+  margin-top: 0;
+}
+
+#moveLocatePage .move-preview-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+#moveLocatePage .move-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+#moveLocatePage .move-preview-grid div {
+  margin-bottom: 0;
+}
+
+#moveLocatePage .move-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+}
+
+#moveLocatePage .move-action-stack button {
+  width: 100%;
+}
+
+@media (max-width: 700px) {
+  #moveLocatePage .move-card-header {
+    display: block;
+  }
+
+  #moveLocatePage .move-card-header .tool-message {
+    margin-top: 6px;
+    text-align: left;
+  }
+
+  #moveLocatePage .move-search-row {
+    grid-template-columns: 1fr;
+  }
+
+  #moveLocatePage .move-preview-main {
+    grid-template-columns: 1fr;
+  }
+
+  #moveLocatePage .move-preview-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #moveLocatePage .move-action-stack {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-width: 0;
+  }
+}

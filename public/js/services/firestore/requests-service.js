@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -162,6 +163,58 @@ export async function linkNotificationToRequest({
   );
 }
 
+export async function markRequestInProgress(requestId) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!requestId) {
+    throw new Error("Missing request ID.");
+  }
+
+  const requestRef = doc(db, REQUESTS_COLLECTION, requestId);
+
+  await updateDoc(requestRef, {
+    status: REQUEST_STATUS.IN_PROGRESS,
+
+    startedAt: serverTimestamp(),
+    startedAtMs: Date.now(),
+    startedBy: session.uid,
+    startedByName: session.displayName || session.email || "",
+
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  });
+}
+
+export async function completeRequest(requestId) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!requestId) {
+    throw new Error("Missing request ID.");
+  }
+
+  const requestRef = doc(db, REQUESTS_COLLECTION, requestId);
+
+  await updateDoc(requestRef, {
+    status: REQUEST_STATUS.COMPLETED,
+
+    completedAt: serverTimestamp(),
+    completedAtMs: Date.now(),
+    completedBy: session.uid,
+    completedByName: session.displayName || session.email || "",
+
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  });
+}
+
 export function watchActiveRequests(callback) {
   const session = getSession();
 
@@ -172,10 +225,7 @@ export function watchActiveRequests(callback) {
   const requestsQuery = query(
     collection(db, REQUESTS_COLLECTION),
     where("dealerId", "==", session.dealerId),
-    where("status", "in", [
-      REQUEST_STATUS.ACTIVE,
-      REQUEST_STATUS.IN_PROGRESS,
-    ]),
+    where("status", "in", [REQUEST_STATUS.ACTIVE, REQUEST_STATUS.IN_PROGRESS]),
     orderBy("createdAtMs", "desc"),
   );
 

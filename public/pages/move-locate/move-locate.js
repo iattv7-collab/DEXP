@@ -19,10 +19,16 @@ import {
 } from "/js/services/firestore/locations-service.js";
 
 import {
+  openNotificationRequest,
   releaseNotificationRequest,
   markNotificationInProgress,
   resolveNotificationRequest,
 } from "/js/services/firestore/notification-requests-service.js";
+
+import {
+  completeRequest,
+  markRequestInProgress,
+} from "/js/services/firestore/requests-service.js";
 
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
@@ -97,6 +103,7 @@ let lastROs = [];
 let searchMode = "tag";
 let groupedLocations = {};
 let activeNotificationId = "";
+let activeRequestId = "";
 
 const DEVICE_ID_KEY = "dexp_device_id";
 
@@ -141,10 +148,10 @@ function initializeMoveLocate() {
   });
 
   if (releaseRequestButton) {
-  releaseRequestButton.addEventListener("click", async () => {
-    await releaseOpenedRequest();
-  });
-}
+    releaseRequestButton.addEventListener("click", async () => {
+      await releaseOpenedRequest();
+    });
+  }
 
   cancelMoveButton.addEventListener("click", async () => {
     await cancelMove();
@@ -183,6 +190,7 @@ function loadNotificationRouteParams() {
 
   const tagNumber = String(params.get("tagNumber") || "").trim();
   activeNotificationId = String(params.get("notificationId") || "").trim();
+  activeRequestId = String(params.get("requestId") || "").trim();
 
   if (!tagNumber) {
     return;
@@ -193,8 +201,13 @@ function loadNotificationRouteParams() {
   vehicleSearchInput.value = tagNumber;
 
   if (activeNotificationId && releaseRequestButton) {
-  releaseRequestButton.classList.remove("hidden");
-}
+    releaseRequestButton.classList.remove("hidden");
+
+    openNotificationRequest(activeNotificationId).catch((error) => {
+      console.error("Could not mark notification opened:", error);
+      showMessage(error?.message || "Could not open request.");
+    });
+  }
 
   searchModeToggleButton.textContent = "By Tag";
 
@@ -602,13 +615,17 @@ async function startMove() {
 
     startMoveButton.classList.add("hidden");
     if (releaseRequestButton) {
-  releaseRequestButton.classList.add("hidden");
-}
+      releaseRequestButton.classList.add("hidden");
+    }
     cancelMoveButton.classList.remove("hidden");
     finalLocationPanel.classList.remove("hidden");
 
     if (activeNotificationId) {
       await markNotificationInProgress(activeNotificationId);
+    }
+
+    if (activeRequestId) {
+      await markRequestInProgress(activeRequestId);
     }
 
     renderUnifiedMoveCards();
@@ -873,6 +890,11 @@ async function saveAllLocations() {
     if (activeNotificationId) {
       await resolveNotificationRequest(activeNotificationId);
       activeNotificationId = "";
+    }
+
+    if (activeRequestId) {
+      await completeRequest(activeRequestId);
+      activeRequestId = "";
     }
 
     showMessage("All locations saved.");
@@ -1503,8 +1525,8 @@ function resetMoveLocateForm() {
   startMoveButton.classList.remove("hidden");
 
   if (releaseRequestButton) {
-  releaseRequestButton.classList.add("hidden");
-}
+    releaseRequestButton.classList.add("hidden");
+  }
 
   groupFinalLocationList.innerHTML = "";
 

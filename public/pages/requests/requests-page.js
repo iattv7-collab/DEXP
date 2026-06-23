@@ -17,39 +17,44 @@ import {
   findActiveROByTag,
 } from "/js/services/firestore/ros-service.js";
 
+import {
+  watchDealerNotifications,
+} from "/js/services/firestore/notification-requests-service.js";
+
 protectRoute();
 
-const requestRoNumberInput =
-  document.getElementById("requestRoNumberInput");
+const requestRoNumberInput = document.getElementById("requestRoNumberInput");
 
-const requestTagNumberInput =
-  document.getElementById("requestTagNumberInput");
+const requestTagNumberInput = document.getElementById("requestTagNumberInput");
 
-const requestMessageInput =
-  document.getElementById("requestMessageInput");
+const requestMessageInput = document.getElementById("requestMessageInput");
 
-const requestFormMessage =
-  document.getElementById("requestFormMessage");
+const requestFormMessage = document.getElementById("requestFormMessage");
 
-const requestPickupButton =
-  document.getElementById("requestPickupButton");
+const requestPickupButton = document.getElementById("requestPickupButton");
 
-const requestBringToShopButton =
-  document.getElementById("requestBringToShopButton");
+const requestBringToShopButton = document.getElementById(
+  "requestBringToShopButton",
+);
 
-const requestMoveToAnnexButton =
-  document.getElementById("requestMoveToAnnexButton");
+const requestMoveToAnnexButton = document.getElementById(
+  "requestMoveToAnnexButton",
+);
 
-const activeRequestsContainer =
-  document.getElementById("activeRequestsContainer");
+const activeRequestsContainer = document.getElementById(
+  "activeRequestsContainer",
+);
 
-const completedRequestsContainer =
-  document.getElementById("completedRequestsContainer");
+const completedRequestsContainer = document.getElementById(
+  "completedRequestsContainer",
+);
 
 let notificationGroups = [];
+let dealerNotifications = [];
 
 let unsubscribeActiveRequests = null;
 let unsubscribeCompletedRequests = null;
+let unsubscribeDealerNotifications = null;
 
 const REQUEST_PRESETS = {
   pickup: {
@@ -134,9 +139,7 @@ async function handleCreatePresetRequest(preset) {
       return;
     }
 
-    const targetGroup = findTargetGroupByName(
-      preset.targetGroupName,
-    );
+    const targetGroup = findTargetGroupByName(preset.targetGroupName);
 
     if (!targetGroup) {
       setFormMessage(
@@ -145,11 +148,9 @@ async function handleCreatePresetRequest(preset) {
       return;
     }
 
-    const finalRoNumber =
-      ro.roNumber || roNumber || "";
+    const finalRoNumber = ro.roNumber || roNumber || "";
 
-    const finalTagNumber =
-      ro.tagNumber || tagNumber || "";
+    const finalTagNumber = ro.tagNumber || tagNumber || "";
 
     await createRequest({
       roId: ro.id || "",
@@ -184,17 +185,11 @@ async function handleCreatePresetRequest(preset) {
   } catch (error) {
     console.error(error);
 
-    setFormMessage(
-      error.message ||
-      "Failed to create request.",
-    );
+    setFormMessage(error.message || "Failed to create request.");
   }
 }
 
-async function findMatchingRO({
-  roNumber,
-  tagNumber,
-}) {
+async function findMatchingRO({ roNumber, tagNumber }) {
   if (roNumber) {
     const ro = await findActiveROByNumber(roNumber);
 
@@ -212,12 +207,14 @@ async function findMatchingRO({
 
 function findTargetGroupByName(groupName) {
   return notificationGroups.find((group) => {
-    return String(group.name || "")
-      .trim()
-      .toLowerCase() ===
+    return (
+      String(group.name || "")
+        .trim()
+        .toLowerCase() ===
       String(groupName || "")
         .trim()
-        .toLowerCase();
+        .toLowerCase()
+    );
   });
 }
 
@@ -234,28 +231,70 @@ function listenToRequests() {
     unsubscribeCompletedRequests();
   }
 
-  unsubscribeActiveRequests = watchActiveRequests((requests) => {
+  if (unsubscribeDealerNotifications) {
+    unsubscribeDealerNotifications();
+  }
+
+  let latestActiveRequests = [];
+  let latestCompletedRequests = [];
+
+  function renderAllRequestLists() {
     renderRequestsList({
       container: activeRequestsContainer,
-      requests,
+      requests: latestActiveRequests,
       emptyMessage: "No active requests yet.",
     });
+
+    renderRequestsList({
+      container: completedRequestsContainer,
+      requests: latestCompletedRequests,
+      emptyMessage: "No completed requests yet.",
+    });
+  }
+
+  unsubscribeDealerNotifications = watchDealerNotifications((notifications) => {
+    dealerNotifications = notifications;
+    renderAllRequestLists();
+  });
+
+  unsubscribeActiveRequests = watchActiveRequests((requests) => {
+    latestActiveRequests = requests;
+    renderAllRequestLists();
   });
 
   unsubscribeCompletedRequests = watchCompletedRequests((requests) => {
-    renderRequestsList({
-      container: completedRequestsContainer,
-      requests,
-      emptyMessage: "No completed requests yet.",
-    });
+    latestCompletedRequests = requests;
+    renderAllRequestLists();
   });
 }
 
-function renderRequestsList({
-  container,
-  requests,
-  emptyMessage,
-}) {
+function getNotificationForRequest(request = {}) {
+  if (!request.notificationRequestId) {
+    return null;
+  }
+
+  return (
+    dealerNotifications.find((notification) => {
+      return notification.id === request.notificationRequestId;
+    }) || null
+  );
+}
+
+function buildRequestOpenedLine(request = {}) {
+  const notification = getNotificationForRequest(request);
+
+  if (!notification?.openedByName) {
+    return "";
+  }
+
+  return `
+    <div>
+      <strong>Opened By:</strong> ${notification.openedByName}
+    </div>
+  `;
+}
+
+function renderRequestsList({ container, requests, emptyMessage }) {
   if (!requests.length) {
     container.innerHTML = `<p>${emptyMessage}</p>`;
     return;
@@ -269,14 +308,13 @@ function renderRequestsList({
 
           <div class="tool-details">
             <div><strong>Status:</strong> ${request.status || ""}</div>
+            ${buildRequestOpenedLine(request)}
             <div><strong>Type:</strong> ${request.requestType || ""}</div>
             <div><strong>RO:</strong> ${request.roNumber || ""}</div>
             <div><strong>Tag:</strong> ${request.tagNumber || ""}</div>
             <div><strong>From:</strong> ${request.requestedByName || ""}</div>
             <div><strong>Target:</strong> ${
-              request.targetGroupName ||
-              request.targetGroupId ||
-              ""
+              request.targetGroupName || request.targetGroupId || ""
             }</div>
             <div><strong>Message:</strong> ${request.message || ""}</div>
           </div>
