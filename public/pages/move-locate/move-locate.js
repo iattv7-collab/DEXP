@@ -141,6 +141,11 @@ function initializeMoveLocate() {
     }
   });
 
+  vehicleSearchInput.addEventListener("input", () => {
+    clearMessage();
+    searchVehicleButton.disabled = false;
+  });
+
   detailsButton.addEventListener("click", toggleDetails);
 
   startMoveButton.addEventListener("click", async () => {
@@ -425,6 +430,7 @@ async function findVehicle() {
   renderMovingVehicles();
   renderSelectedVehicle(match);
 
+  searchVehicleButton.disabled = true;
   showMessage("Vehicle found.");
 }
 
@@ -897,7 +903,15 @@ async function saveAllLocations() {
       activeRequestId = "";
     }
 
-    showMessage("All locations saved.");
+    const savedTags = saveItems
+      .map((item) => getROTag(item.ro))
+      .filter(Boolean);
+
+    if (savedTags.length === 1) {
+      showMessage(`Location saved for Tag ${savedTags[0]}.`);
+    } else {
+      showMessage(`Locations saved for ${savedTags.length} vehicles.`);
+    }
     setTimeout(resetMoveLocateForm, 2000);
   } catch (error) {
     console.error(error);
@@ -1509,6 +1523,7 @@ function resetMoveLocateForm() {
   currentMoveGroup = [];
 
   vehicleSearchInput.value = "";
+  searchVehicleButton.disabled = false;
 
   vehicleResultCard.classList.add("hidden");
   vehicleDetailsPanel.classList.add("hidden");

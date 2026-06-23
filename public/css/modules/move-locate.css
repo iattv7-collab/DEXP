@@ -26,10 +26,15 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 6px;
+  align-items: center;
 }
 
 #moveLocatePage .move-search-row input {
   min-width: 0;
+}
+
+#moveLocatePage .move-search-row button {
+  white-space: nowrap;
 }
 
 #moveLocatePage .move-vehicle-preview {
@@ -74,8 +79,14 @@
     text-align: left;
   }
 
+  /* Keep search row on one line */
   #moveLocatePage .move-search-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+  }
+
+  #moveLocatePage .move-search-row button {
+    white-space: nowrap;
   }
 
   #moveLocatePage .move-preview-main {
