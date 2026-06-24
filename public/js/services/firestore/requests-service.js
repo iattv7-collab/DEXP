@@ -1,9 +1,12 @@
 // public/js/services/firestore/requests-service.js
+// Central Firestore service for DEXP requests.
 
 import {
   addDoc,
   collection,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -18,10 +21,12 @@ import { getSession } from "/js/core/session.js";
 
 import {
   createNotificationRequest,
+  NOTIFICATION_STATUS,
   NOTIFICATION_TARGET_TYPE,
 } from "/js/services/firestore/notification-requests-service.js";
 
 const REQUESTS_COLLECTION = "requests";
+const NOTIFICATION_REQUESTS_COLLECTION = "notificationRequests";
 
 export const REQUEST_STATUS = {
   ACTIVE: "active",
@@ -29,6 +34,45 @@ export const REQUEST_STATUS = {
   COMPLETED: "completed",
   CANCELLED: "cancelled",
 };
+
+const OPEN_REQUEST_STATUSES = [
+  REQUEST_STATUS.ACTIVE,
+  REQUEST_STATUS.IN_PROGRESS,
+];
+
+async function assertNoOpenRequestForRO({
+  dealerId,
+  roId = "",
+  roNumber = "",
+  tagNumber = "",
+}) {
+  const requestsQuery = query(
+    collection(db, REQUESTS_COLLECTION),
+    where("dealerId", "==", dealerId),
+    where("status", "in", OPEN_REQUEST_STATUSES),
+    limit(50),
+  );
+
+  const snapshot = await getDocs(requestsQuery);
+
+  const existingRequest = snapshot.docs
+    .map((docSnap) => docSnap.data())
+    .find((request) => {
+      return (
+        (roId && request.roId === roId) ||
+        (roNumber && request.roNumber === roNumber) ||
+        (tagNumber && request.tagNumber === tagNumber)
+      );
+    });
+
+  if (existingRequest) {
+    throw new Error(
+      `This RO already has an active request: ${
+        existingRequest.title || existingRequest.requestType || "Request"
+      }.`,
+    );
+  }
+}
 
 export async function createRequest({
   roId = "",
@@ -61,6 +105,13 @@ export async function createRequest({
   if (!targetGroupId) {
     throw new Error("Missing target group.");
   }
+
+  await assertNoOpenRequestForRO({
+    dealerId: session.dealerId,
+    roId,
+    roNumber,
+    tagNumber,
+  });
 
   const requestRef = await addDoc(collection(db, REQUESTS_COLLECTION), {
     dealerId: session.dealerId,
@@ -98,6 +149,11 @@ export async function createRequest({
 
     completedAt: null,
     completedAtMs: null,
+
+    cancelledAt: null,
+    cancelledAtMs: null,
+    cancelledBy: "",
+    cancelledByName: "",
   });
 
   const notification = await createNotificationRequest({
@@ -212,6 +268,75 @@ export async function completeRequest(requestId) {
 
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
+  });
+}
+
+export async function cancelRequest(request = {}) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!request?.id) {
+    throw new Error("Missing request ID.");
+  }
+
+  const requestRef = doc(db, REQUESTS_COLLECTION, request.id);
+
+  await updateDoc(requestRef, {
+    status: REQUEST_STATUS.CANCELLED,
+
+    cancelledAt: serverTimestamp(),
+    cancelledAtMs: Date.now(),
+    cancelledBy: session.uid,
+    cancelledByName: session.displayName || session.email || "",
+
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  });
+
+  if (request.notificationRequestId) {
+    const notificationRef = doc(
+      db,
+      NOTIFICATION_REQUESTS_COLLECTION,
+      request.notificationRequestId,
+    );
+
+    await updateDoc(notificationRef, {
+      status: NOTIFICATION_STATUS.EXPIRED,
+
+      resolvedAt: serverTimestamp(),
+      resolvedAtMs: Date.now(),
+      resolvedBy: session.uid,
+
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now(),
+      updatedBy: session.uid,
+    });
+  }
+}
+
+export function watchDealerRequests(callback) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    throw new Error("Missing dealer session.");
+  }
+
+  const requestsQuery = query(
+    collection(db, REQUESTS_COLLECTION),
+    where("dealerId", "==", session.dealerId),
+    orderBy("createdAtMs", "desc"),
+  );
+
+  return onSnapshot(requestsQuery, (snapshot) => {
+    const rows = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+
+    callback(rows);
   });
 }
 

@@ -51,24 +51,15 @@
           </div>
 
           <div class="action-row">
-            <button
-              id="requestPickupButton"
-              type="button"
-            >
+            <button id="requestPickupButton" type="button">
               Request Pickup
             </button>
 
-            <button
-              id="requestBringToShopButton"
-              type="button"
-            >
+            <button id="requestBringToShopButton" type="button">
               Bring Vehicle to Shop
             </button>
 
-            <button
-              id="requestMoveToAnnexButton"
-              type="button"
-            >
+            <button id="requestMoveToAnnexButton" type="button">
               Move Vehicle to Annex
             </button>
           </div>
@@ -79,26 +70,60 @@
 
       <section class="page-section">
         <div class="dexp-admin-card">
-          <h3>Active Requests</h3>
+          <div class="page-title-row">
+            <div>
+              <h3>Requests Tracker</h3>
+              <p>Track request status without taking extra space.</p>
+            </div>
 
-          <div id="activeRequestsContainer">
-            Loading active requests...
+            <div class="action-row">
+              <button
+                id="myRequestsToggleButton"
+                type="button"
+                class="small-button"
+              >
+                My Requests
+              </button>
+
+              <button
+                id="allRequestsToggleButton"
+                type="button"
+                class="small-button secondary"
+              >
+                All Requests
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section class="page-section">
-        <div class="dexp-admin-card">
-          <h3>Completed Requests</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Created</th>
+                  <th>Type</th>
+                  <th>RO</th>
+                  <th>Tag</th>
+                  <th>Target</th>
+                  <th>Status</th>
+                  <th>Opened By</th>
+                  <th>Started By</th>
+                  <th>Completed By</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
 
-          <div id="completedRequestsContainer">
-            Loading completed requests...
+              <tbody id="requestsTableBody">
+                <tr>
+                  <td colspan="10">Loading requests...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/requests/requests-page.js?v=2"></script>
+    <script type="module" src="/pages/requests/requests-page.js?v=3"></script>
   </body>
 </html>

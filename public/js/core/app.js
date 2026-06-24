@@ -3,6 +3,8 @@
 import { watchAuthState } from "../services/firebase/auth-service.js";
 import { LABELS } from "../config/labels.js";
 
+import { DEXP_APP_VERSION } from "../config/app-version.js";
+
 import { startNotificationEngine } from "../modules/notifications/notification-engine.js";
 
 import { ensureUserProfile } from "../services/firestore/users-service.js";
@@ -16,7 +18,10 @@ const PLATFORM_SELECTED_DEALER_KEY = "dexp_platform_selected_dealer";
 
 function initializeApp() {
   document.title = LABELS.appName;
+  window.DEXP_APP_VERSION = DEXP_APP_VERSION;
+
   console.log(`${LABELS.appName} initialized`);
+  console.log("DEXP Version:", DEXP_APP_VERSION);
 }
 
 function getDealerIdFromEntryPoint() {
@@ -227,6 +232,14 @@ async function loadUserSession(user) {
     }
   }
 }
+
+window.addEventListener("error", (event) => {
+  console.error("DEXP window error:", event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("DEXP promise error:", event.reason);
+});
 
 watchAuthState(async (user) => {
   if (user) {

@@ -1,4 +1,5 @@
 // public/pages/requests/requests-page.js
+// Requests page for creating and tracking dealer requests.
 
 import { protectRoute } from "/js/core/router.js";
 import { getSession } from "/js/core/session.js";
@@ -7,9 +8,10 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 import { getNotificationGroups } from "/js/services/firestore/notification-groups-service.js";
 
 import {
+  cancelRequest,
   createRequest,
-  watchActiveRequests,
-  watchCompletedRequests,
+  REQUEST_STATUS,
+  watchDealerRequests,
 } from "/js/services/firestore/requests-service.js";
 
 import {
@@ -24,11 +26,8 @@ import {
 protectRoute();
 
 const requestRoNumberInput = document.getElementById("requestRoNumberInput");
-
 const requestTagNumberInput = document.getElementById("requestTagNumberInput");
-
 const requestMessageInput = document.getElementById("requestMessageInput");
-
 const requestFormMessage = document.getElementById("requestFormMessage");
 
 const requestPickupButton = document.getElementById("requestPickupButton");
@@ -41,19 +40,22 @@ const requestMoveToAnnexButton = document.getElementById(
   "requestMoveToAnnexButton",
 );
 
-const activeRequestsContainer = document.getElementById(
-  "activeRequestsContainer",
+const myRequestsToggleButton = document.getElementById(
+  "myRequestsToggleButton",
 );
 
-const completedRequestsContainer = document.getElementById(
-  "completedRequestsContainer",
+const allRequestsToggleButton = document.getElementById(
+  "allRequestsToggleButton",
 );
+
+const requestsTableBody = document.getElementById("requestsTableBody");
 
 let notificationGroups = [];
 let dealerNotifications = [];
+let dealerRequests = [];
+let requestViewMode = "my";
 
-let unsubscribeActiveRequests = null;
-let unsubscribeCompletedRequests = null;
+let unsubscribeDealerRequests = null;
 let unsubscribeDealerNotifications = null;
 
 const REQUEST_PRESETS = {
@@ -98,7 +100,7 @@ async function initializeRequestsPage() {
   notificationGroups = await getNotificationGroups();
 
   wireRequestButtons();
-
+  wireViewToggle();
   listenToRequests();
 }
 
@@ -114,6 +116,30 @@ function wireRequestButtons() {
   requestMoveToAnnexButton?.addEventListener("click", () => {
     handleCreatePresetRequest(REQUEST_PRESETS.move_to_annex);
   });
+}
+
+function wireViewToggle() {
+  myRequestsToggleButton?.addEventListener("click", () => {
+    requestViewMode = "my";
+    updateToggleButtons();
+    renderRequestsTable();
+  });
+
+  allRequestsToggleButton?.addEventListener("click", () => {
+    requestViewMode = "all";
+    updateToggleButtons();
+    renderRequestsTable();
+  });
+
+  updateToggleButtons();
+}
+
+function updateToggleButtons() {
+  myRequestsToggleButton.classList.toggle("secondary", requestViewMode !== "my");
+  allRequestsToggleButton.classList.toggle(
+    "secondary",
+    requestViewMode !== "all",
+  );
 }
 
 async function handleCreatePresetRequest(preset) {
@@ -149,7 +175,6 @@ async function handleCreatePresetRequest(preset) {
     }
 
     const finalRoNumber = ro.roNumber || roNumber || "";
-
     const finalTagNumber = ro.tagNumber || tagNumber || "";
 
     await createRequest({
@@ -181,10 +206,12 @@ async function handleCreatePresetRequest(preset) {
     requestTagNumberInput.value = "";
     requestMessageInput.value = "";
 
+    requestViewMode = "my";
+    updateToggleButtons();
+
     setFormMessage("Request created.");
   } catch (error) {
     console.error(error);
-
     setFormMessage(error.message || "Failed to create request.");
   }
 }
@@ -208,12 +235,8 @@ async function findMatchingRO({ roNumber, tagNumber }) {
 function findTargetGroupByName(groupName) {
   return notificationGroups.find((group) => {
     return (
-      String(group.name || "")
-        .trim()
-        .toLowerCase() ===
-      String(groupName || "")
-        .trim()
-        .toLowerCase()
+      String(group.name || "").trim().toLowerCase() ===
+      String(groupName || "").trim().toLowerCase()
     );
   });
 }
@@ -223,49 +246,104 @@ function setFormMessage(message) {
 }
 
 function listenToRequests() {
-  if (unsubscribeActiveRequests) {
-    unsubscribeActiveRequests();
-  }
-
-  if (unsubscribeCompletedRequests) {
-    unsubscribeCompletedRequests();
+  if (unsubscribeDealerRequests) {
+    unsubscribeDealerRequests();
   }
 
   if (unsubscribeDealerNotifications) {
     unsubscribeDealerNotifications();
   }
 
-  let latestActiveRequests = [];
-  let latestCompletedRequests = [];
+  unsubscribeDealerNotifications = watchDealerNotifications((notifications) => {
+    dealerNotifications = notifications;
+    renderRequestsTable();
+  });
 
-  function renderAllRequestLists() {
-    renderRequestsList({
-      container: activeRequestsContainer,
-      requests: latestActiveRequests,
-      emptyMessage: "No active requests yet.",
-    });
+  unsubscribeDealerRequests = watchDealerRequests((requests) => {
+    dealerRequests = requests;
+    renderRequestsTable();
+  });
+}
 
-    renderRequestsList({
-      container: completedRequestsContainer,
-      requests: latestCompletedRequests,
-      emptyMessage: "No completed requests yet.",
+function getVisibleRequests() {
+  const session = getSession();
+
+  let rows = [...dealerRequests];
+
+  if (requestViewMode === "my") {
+    rows = rows.filter((request) => {
+      return request.requestedByUid === session?.uid;
     });
   }
 
-  unsubscribeDealerNotifications = watchDealerNotifications((notifications) => {
-    dealerNotifications = notifications;
-    renderAllRequestLists();
-  });
+  return rows;
+}
 
-  unsubscribeActiveRequests = watchActiveRequests((requests) => {
-    latestActiveRequests = requests;
-    renderAllRequestLists();
-  });
+function renderRequestsTable() {
+  const rows = getVisibleRequests();
 
-  unsubscribeCompletedRequests = watchCompletedRequests((requests) => {
-    latestCompletedRequests = requests;
-    renderAllRequestLists();
-  });
+  if (!rows.length) {
+    requestsTableBody.innerHTML = `
+      <tr>
+        <td colspan="10">No requests found.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  requestsTableBody.innerHTML = rows.map(renderRequestRow).join("");
+
+  requestsTableBody
+    .querySelectorAll(".js-cancel-request")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const requestId = button.dataset.id;
+        const request = dealerRequests.find((item) => item.id === requestId);
+
+        if (!request) {
+          return;
+        }
+
+        const confirmed = confirm("Cancel this request?");
+
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          await cancelRequest(request);
+        } catch (error) {
+          console.error(error);
+          setFormMessage(error.message || "Could not cancel request.");
+        }
+      });
+    });
+}
+
+function renderRequestRow(request) {
+  const notification = getNotificationForRequest(request);
+  const canCancel = canCancelRequest(request);
+
+  return `
+    <tr>
+      <td data-label="Created">${formatDateTime(request.createdAtMs)}</td>
+      <td data-label="Type">${escapeHtml(request.title || request.requestType || "")}</td>
+      <td data-label="RO">${escapeHtml(request.roNumber || "")}</td>
+      <td data-label="Tag">${escapeHtml(request.tagNumber || "")}</td>
+      <td data-label="Target">${escapeHtml(request.targetGroupName || request.targetGroupId || "")}</td>
+      <td data-label="Status">${escapeHtml(formatStatus(request.status))}</td>
+      <td data-label="Opened By">${escapeHtml(notification?.openedByName || "")}</td>
+      <td data-label="Started By">${escapeHtml(request.startedByName || "")}</td>
+      <td data-label="Completed By">${escapeHtml(request.completedByName || request.cancelledByName || "")}</td>
+      <td data-label="Action">
+        ${
+          canCancel
+            ? `<button class="small-button secondary js-cancel-request" type="button" data-id="${request.id}">Cancel</button>`
+            : ""
+        }
+      </td>
+    </tr>
+  `;
 }
 
 function getNotificationForRequest(request = {}) {
@@ -280,46 +358,60 @@ function getNotificationForRequest(request = {}) {
   );
 }
 
-function buildRequestOpenedLine(request = {}) {
-  const notification = getNotificationForRequest(request);
+function canCancelRequest(request = {}) {
+  const session = getSession();
 
-  if (!notification?.openedByName) {
+  if (
+    request.status === REQUEST_STATUS.COMPLETED ||
+    request.status === REQUEST_STATUS.CANCELLED
+  ) {
+    return false;
+  }
+
+  if (request.requestedByUid === session?.uid) {
+    return true;
+  }
+
+  return ["platform-admin", "admin", "manager", "dispatcher"].includes(
+    session?.role,
+  );
+}
+
+function formatStatus(status = "") {
+  if (status === REQUEST_STATUS.IN_PROGRESS) {
+    return "In Progress";
+  }
+
+  if (status === REQUEST_STATUS.COMPLETED) {
+    return "Completed";
+  }
+
+  if (status === REQUEST_STATUS.CANCELLED) {
+    return "Cancelled";
+  }
+
+  return "Active";
+}
+
+function formatDateTime(value) {
+  if (!value) {
     return "";
   }
 
-  return `
-    <div>
-      <strong>Opened By:</strong> ${notification.openedByName}
-    </div>
-  `;
-}
+  const date = new Date(value);
 
-function renderRequestsList({ container, requests, emptyMessage }) {
-  if (!requests.length) {
-    container.innerHTML = `<p>${emptyMessage}</p>`;
-    return;
+  if (Number.isNaN(date.getTime())) {
+    return "";
   }
 
-  container.innerHTML = requests
-    .map((request) => {
-      return `
-        <div class="tool-card">
-          <h3>${request.title || "Request"}</h3>
+  return date.toLocaleString();
+}
 
-          <div class="tool-details">
-            <div><strong>Status:</strong> ${request.status || ""}</div>
-            ${buildRequestOpenedLine(request)}
-            <div><strong>Type:</strong> ${request.requestType || ""}</div>
-            <div><strong>RO:</strong> ${request.roNumber || ""}</div>
-            <div><strong>Tag:</strong> ${request.tagNumber || ""}</div>
-            <div><strong>From:</strong> ${request.requestedByName || ""}</div>
-            <div><strong>Target:</strong> ${
-              request.targetGroupName || request.targetGroupId || ""
-            }</div>
-            <div><strong>Message:</strong> ${request.message || ""}</div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
