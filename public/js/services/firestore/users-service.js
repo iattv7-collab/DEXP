@@ -15,19 +15,32 @@ import { db } from "../firebase/firestore.js";
 import { getSession } from "../../core/session.js";
 
 import { DEFAULT_ROLE, ROLES, SETUP_ADMIN_EMAILS } from "../../config/roles.js";
-
 import { MODULES } from "../../config/modules.js";
+
+import { acceptDealerAdminInvite } from "../firebase/admin-functions-service.js";
+
+import {
+  refreshCurrentUserToken,
+} from "../firebase/auth-service.js";
 
 export async function ensureUserProfile(user, options = {}) {
   const userRef = doc(db, "users", user.uid);
+
+  const email = (user.email || "").trim().toLowerCase();
+
+  const dealerAdminInviteAcceptance = await acceptDealerAdminInvite();
+
+  if (dealerAdminInviteAcceptance?.data?.accepted) {
+    await refreshCurrentUserToken();
+
+    return dealerAdminInviteAcceptance.data.profile;
+  }
 
   const snapshot = await getDoc(userRef);
 
   if (snapshot.exists()) {
     return snapshot.data();
   }
-
-  const email = (user.email || "").trim().toLowerCase();
 
   const pendingRegistration = options.pendingRegistration || {};
 
@@ -58,52 +71,6 @@ export async function ensureUserProfile(user, options = {}) {
     };
 
     await setDoc(userRef, newProfile);
-
-    return newProfile;
-  }
-
-  const invite = await getDealerAdminInvite(email);
-
-  if (invite) {
-    const newProfile = {
-      uid: user.uid,
-      email,
-      displayName:
-        pendingRegistration.displayName ||
-        user.displayName ||
-        invite.displayName ||
-        "",
-      phone: pendingRegistration.phone || invite.phone || "",
-      companyId: pendingRegistration.companyId || "",
-      role: ROLES.ADMIN,
-      dealerId: invite.dealerId,
-      active: true,
-      assignedModules: [
-        MODULES.ADMIN,
-        MODULES.COMPANY_PROFILE,
-        MODULES.RO_TRACKER,
-        MODULES.NOTIFICATIONS,
-      ],
-      createdAt: serverTimestamp(),
-      approvalRequestedAt: serverTimestamp(),
-      approvedAt: serverTimestamp(),
-      approvedBy: "dealer-admin-invite",
-      inactiveAt: null,
-      inactiveBy: "",
-    };
-
-    await setDoc(userRef, newProfile);
-
-    await setDoc(
-      doc(db, "dealerAdminInvites", email),
-      {
-        status: "accepted",
-        acceptedAt: serverTimestamp(),
-        acceptedBy: user.uid,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
 
     return newProfile;
   }
@@ -252,26 +219,4 @@ async function doesDealerExist(dealerId) {
 
 function cleanDealerId(value = "") {
   return String(value || "").trim();
-}
-
-async function getDealerAdminInvite(email) {
-  if (!email) {
-    return null;
-  }
-
-  const inviteRef = doc(db, "dealerAdminInvites", email);
-
-  const snapshot = await getDoc(inviteRef);
-
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  const invite = snapshot.data();
-
-  if (invite.status === "accepted") {
-    return null;
-  }
-
-  return invite;
 }

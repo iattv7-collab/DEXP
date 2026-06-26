@@ -12,42 +12,40 @@
 
   <body>
     <main class="page-shell full-page">
-      <div class="page-title-row">
+      <div class="page-title-row" style="align-items:flex-start;">
         <div>
           <h2>Location Settings</h2>
           <p class="tool-help">
             Manage parking areas and lots used by Move & Locate.
           </p>
+          <p id="locationSettingsMessage" class="tool-message"></p>
         </div>
+
+        <section class="tool-card" style="min-width:320px; margin:0;">
+          <h3>Add Area</h3>
+
+          <div class="tool-row">
+            <input
+              id="areaNameInput"
+              type="text"
+              placeholder="Example: PWB, Annex"
+            />
+
+            <button id="addAreaButton" type="button">Add Area</button>
+          </div>
+        </section>
       </div>
-
-      <section class="tool-card">
-        <h3>Add Area</h3>
-
-        <p class="tool-help">Create your main parking areas first.</p>
-
-        <div class="tool-row">
-          <input
-            id="areaNameInput"
-            type="text"
-            placeholder="Example: Main, Annex, Shop"
-          />
-
-          <button id="addAreaButton" type="button">Add Area</button>
-        </div>
-
-        <p id="locationSettingsMessage" class="tool-message"></p>
-      </section>
 
       <section class="tool-card">
         <h3>Add Parking Lot</h3>
 
-        <p class="tool-help">Add parking lots under an existing area.</p>
+        <p class="tool-help">
+          Select an area, then add the lot name and capacity.
+        </p>
 
         <div class="tool-row">
           <label>
             Area
-
             <select id="locationAreaSelect">
               <option value="">Select area...</option>
             </select>
@@ -55,17 +53,15 @@
 
           <label>
             Lot Name
-
             <input
               id="locationNameInput"
               type="text"
-              placeholder="Example: Lot 1"
+              placeholder="Example: Drive, Shop, Lot 1"
             />
           </label>
 
           <label>
             Capacity
-
             <input
               id="locationCapacityInput"
               type="number"
@@ -80,8 +76,6 @@
 
       <section class="tool-card">
         <h3>Manage Areas</h3>
-
-        <p class="tool-help">Existing parking areas currently in use.</p>
 
         <div class="table-wrap">
           <table class="data-table">
@@ -104,25 +98,20 @@
       <section class="tool-card">
         <h3>Active Parking Lots</h3>
 
-        <p class="tool-help">
-          Locations currently available for vehicle parking.
-        </p>
-
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Location</th>
                 <th>Area</th>
+                <th>Lot Name</th>
                 <th>Capacity</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
 
             <tbody id="activeLocationsTableBody">
               <tr>
-                <td colspan="5">Loading...</td>
+                <td colspan="4">Loading...</td>
               </tr>
             </tbody>
           </table>
@@ -132,25 +121,20 @@
       <section class="tool-card">
         <h3>Inactive Parking Lots</h3>
 
-        <p class="tool-help">
-          Disabled lots kept for history and future reuse.
-        </p>
-
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Location</th>
                 <th>Area</th>
+                <th>Lot Name</th>
                 <th>Capacity</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
 
             <tbody id="inactiveLocationsTableBody">
               <tr>
-                <td colspan="5">Loading...</td>
+                <td colspan="4">Loading...</td>
               </tr>
             </tbody>
           </table>
@@ -159,10 +143,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-
-    <script
-      type="module"
-      src="/pages/location-settings/location-settings.js"
-    ></script>
+    <script type="module" src="/pages/location-settings/location-settings.js"></script>
   </body>
 </html>

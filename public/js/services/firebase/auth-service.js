@@ -45,6 +45,14 @@ export async function logoutUser() {
   return signOut(auth);
 }
 
+export async function refreshCurrentUserToken() {
+  if (!auth.currentUser) {
+    return null;
+  }
+
+  return auth.currentUser.getIdToken(true);
+}
+
 export function watchAuthState(callback) {
   return onAuthStateChanged(auth, callback);
 }

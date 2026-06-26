@@ -1,9 +1,7 @@
 // public/pages/location-settings/location-settings.js
 
 import { renderAppHeader } from "/js/shared/app-header.js";
-
 import { protectRoute } from "/js/core/router.js";
-
 import { MODULES } from "/js/config/modules.js";
 
 import {
@@ -25,17 +23,11 @@ protectRoute({
 });
 
 const locationCapacityInput = document.getElementById("locationCapacityInput");
-
 const locationNameInput = document.getElementById("locationNameInput");
-
 const locationAreaSelect = document.getElementById("locationAreaSelect");
-
 const areaNameInput = document.getElementById("areaNameInput");
-
 const addAreaButton = document.getElementById("addAreaButton");
-
 const areasTableBody = document.getElementById("areasTableBody");
-
 const addLocationButton = document.getElementById("addLocationButton");
 
 const locationSettingsMessage = document.getElementById(
@@ -91,7 +83,6 @@ async function handleCreateArea() {
     showMessage("Area added.");
   } catch (error) {
     console.error(error);
-
     showMessage("Could not create area.");
   }
 }
@@ -104,7 +95,6 @@ async function loadAreas() {
     populateAreaDropdown(areas);
   } catch (error) {
     console.error(error);
-
     showMessage("Could not load areas.");
   }
 }
@@ -115,12 +105,9 @@ function renderAreas(areas = []) {
   if (!areas.length) {
     areasTableBody.innerHTML = `
       <tr>
-        <td colspan="2">
-          No areas created.
-        </td>
+        <td colspan="2">No areas created.</td>
       </tr>
     `;
-
     return;
   }
 
@@ -131,40 +118,26 @@ function renderAreas(areas = []) {
       <td>
         <input
           class="area-edit-input"
-          data-original="${area.label || ""}"
-          value="${area.label || ""}"
+          data-original="${escapeHtml(area.label || "")}"
+          value="${escapeHtml(area.label || "")}"
           disabled
         />
       </td>
 
       <td>
-        <button
-          class="small-button secondary edit-area-button"
-          data-id="${area.id}"
-        >
+        <button class="small-button secondary edit-area-button" data-id="${area.id}">
           Edit
         </button>
 
-        <button
-          class="small-button save-area-button"
-          data-id="${area.id}"
-          disabled
-        >
+        <button class="small-button save-area-button" data-id="${area.id}" disabled>
           Save
         </button>
 
-        <button
-          class="small-button secondary cancel-area-button"
-          data-id="${area.id}"
-          disabled
-        >
+        <button class="small-button secondary cancel-area-button" data-id="${area.id}" disabled>
           Cancel
         </button>
 
-        <button
-          class="small-button secondary delete-area-button"
-          data-id="${area.id}"
-        >
+        <button class="small-button secondary delete-area-button" data-id="${area.id}">
           Delete
         </button>
       </td>
@@ -180,11 +153,8 @@ function renderAreas(areas = []) {
 function bindAreaEditButtons() {
   areasTableBody.querySelectorAll("tr").forEach((row) => {
     const input = row.querySelector(".area-edit-input");
-
     const saveButton = row.querySelector(".save-area-button");
-
     const cancelButton = row.querySelector(".cancel-area-button");
-
     const editButton = row.querySelector(".edit-area-button");
 
     if (!input || !saveButton || !cancelButton || !editButton) {
@@ -193,9 +163,7 @@ function bindAreaEditButtons() {
 
     editButton.addEventListener("click", () => {
       input.disabled = false;
-
       cancelButton.disabled = false;
-
       input.focus();
     });
 
@@ -207,11 +175,8 @@ function bindAreaEditButtons() {
 
     cancelButton.addEventListener("click", () => {
       input.value = input.dataset.original;
-
       input.disabled = true;
-
       saveButton.disabled = true;
-
       cancelButton.disabled = true;
     });
 
@@ -220,7 +185,6 @@ function bindAreaEditButtons() {
 
       if (!newLabel) {
         showMessage("Area name cannot be empty.");
-
         return;
       }
 
@@ -238,16 +202,13 @@ function bindAreaEditButtons() {
 function bindDeleteAreaButtons() {
   document.querySelectorAll(".delete-area-button").forEach((button) => {
     button.addEventListener("click", async () => {
-      const id = button.dataset.id;
-
       const confirmed = confirm("Delete this area?");
 
       if (!confirmed) {
         return;
       }
 
-      await deleteArea(id);
-
+      await deleteArea(button.dataset.id);
       await loadAreas();
 
       showMessage("Area deleted.");
@@ -256,10 +217,11 @@ function bindDeleteAreaButtons() {
 }
 
 function populateAreaDropdown(areas = []) {
+  const currentValue = locationAreaSelect.value;
+
   locationAreaSelect.innerHTML = "";
 
   const placeholder = document.createElement("option");
-
   placeholder.value = "";
   placeholder.textContent = "Select area...";
 
@@ -273,16 +235,23 @@ function populateAreaDropdown(areas = []) {
 
     locationAreaSelect.appendChild(option);
   });
+
+  if (currentValue) {
+    locationAreaSelect.value = currentValue;
+  }
 }
 
 async function handleCreateLocation() {
   clearMessage();
 
   const capacity = Number(locationCapacityInput.value || 0);
-
   const label = locationNameInput.value.trim();
-
   const area = locationAreaSelect.value;
+
+  if (!area) {
+    showMessage("Select area.");
+    return;
+  }
 
   if (!label) {
     showMessage("Enter location name.");
@@ -304,7 +273,6 @@ async function handleCreateLocation() {
     showMessage("Location added.");
   } catch (error) {
     console.error(error);
-
     showMessage("Could not create location.");
   }
 }
@@ -316,19 +284,16 @@ async function loadLocations() {
     renderLocationTables(locations);
   } catch (error) {
     console.error(error);
-
     showMessage("Could not load locations.");
   }
 }
 
 function renderLocationTables(locations = []) {
   const active = locations.filter((location) => location.active !== false);
-
   const inactive = locations.filter((location) => location.active === false);
 
-  renderActiveLocations(active);
-
-  renderInactiveLocations(inactive);
+  renderActiveLocations(sortLocations(active));
+  renderInactiveLocations(sortLocations(inactive));
 }
 
 function renderActiveLocations(locations = []) {
@@ -337,79 +302,19 @@ function renderActiveLocations(locations = []) {
   if (!locations.length) {
     activeLocationsTableBody.innerHTML = `
       <tr>
-        <td colspan="5">
-          No active locations.
-        </td>
+        <td colspan="4">No active locations.</td>
       </tr>
     `;
-
     return;
   }
 
   locations.forEach((location) => {
     const row = document.createElement("tr");
 
-    row.innerHTML = `
-      <td data-label="Location">
-        <input
-          class="location-label-edit-input"
-          data-original="${location.label || ""}"
-          value="${location.label || ""}"
-          disabled
-        />
-      </td>
-
-      <td data-label="Area">
-        ${formatArea(location.area)}
-      </td>
-
-      <td data-label="Capacity">
-        <input
-          class="location-capacity-edit-input"
-          type="number"
-          min="0"
-          data-original="${location.capacity || 0}"
-          value="${location.capacity || 0}"
-          disabled
-        />
-      </td>
-
-      <td data-label="Status">
-        Active
-      </td>
-
-      <td data-label="Actions">
-        <button
-          class="small-button secondary edit-location-button"
-          data-id="${location.id}"
-        >
-          Edit
-        </button>
-
-        <button
-          class="small-button save-location-button"
-          data-id="${location.id}"
-          disabled
-        >
-          Save
-        </button>
-
-        <button
-          class="small-button secondary cancel-location-button"
-          data-id="${location.id}"
-          disabled
-        >
-          Cancel
-        </button>
-
-        <button
-          class="small-button secondary deactivate-location-button"
-          data-id="${location.id}"
-        >
-          Deactivate
-        </button>
-      </td>
-    `;
+    row.innerHTML = buildLocationRow({
+      location,
+      inactive: false,
+    });
 
     activeLocationsTableBody.appendChild(row);
   });
@@ -424,86 +329,19 @@ function renderInactiveLocations(locations = []) {
   if (!locations.length) {
     inactiveLocationsTableBody.innerHTML = `
       <tr>
-        <td colspan="5">
-          No inactive locations.
-        </td>
+        <td colspan="4">No inactive locations.</td>
       </tr>
     `;
-
     return;
   }
 
   locations.forEach((location) => {
     const row = document.createElement("tr");
 
-    row.innerHTML = `
-      <td data-label="Location">
-        <input
-          class="location-label-edit-input"
-          data-original="${location.label || ""}"
-          value="${location.label || ""}"
-          disabled
-        />
-      </td>
-
-      <td data-label="Area">
-        ${formatArea(location.area)}
-      </td>
-
-      <td data-label="Capacity">
-        <input
-          class="location-capacity-edit-input"
-          type="number"
-          min="0"
-          data-original="${location.capacity || 0}"
-          value="${location.capacity || 0}"
-          disabled
-        />
-      </td>
-
-      <td data-label="Status">
-        Inactive
-      </td>
-
-      <td data-label="Actions">
-        <button
-          class="small-button secondary edit-location-button"
-          data-id="${location.id}"
-        >
-          Edit
-        </button>
-
-        <button
-          class="small-button save-location-button"
-          data-id="${location.id}"
-          disabled
-        >
-          Save
-        </button>
-
-        <button
-          class="small-button secondary cancel-location-button"
-          data-id="${location.id}"
-          disabled
-        >
-          Cancel
-        </button>
-
-        <button
-          class="small-button reactivate-location-button"
-          data-id="${location.id}"
-        >
-          Reactivate
-        </button>
-
-        <button
-          class="small-button secondary delete-location-button"
-          data-id="${location.id}"
-        >
-          Delete
-        </button>
-      </td>
-    `;
+    row.innerHTML = buildLocationRow({
+      location,
+      inactive: true,
+    });
 
     inactiveLocationsTableBody.appendChild(row);
   });
@@ -511,6 +349,66 @@ function renderInactiveLocations(locations = []) {
   bindLocationEditButtons(inactiveLocationsTableBody);
   bindReactivateButtons();
   bindDeleteLocationButtons();
+}
+
+function buildLocationRow({ location, inactive }) {
+  const statusButton = inactive
+    ? `
+      <button class="small-button reactivate-location-button" data-id="${location.id}">
+        Reactivate
+      </button>
+
+      <button class="small-button secondary delete-location-button" data-id="${location.id}">
+        Delete
+      </button>
+    `
+    : `
+      <button class="small-button secondary deactivate-location-button" data-id="${location.id}">
+        Deactivate
+      </button>
+    `;
+
+  return `
+    <td data-label="Area">
+      ${escapeHtml(formatArea(location.area))}
+    </td>
+
+    <td data-label="Lot Name">
+      <input
+        class="location-label-edit-input"
+        data-original="${escapeHtml(location.label || "")}"
+        value="${escapeHtml(location.label || "")}"
+        disabled
+      />
+    </td>
+
+    <td data-label="Capacity">
+      <input
+        class="location-capacity-edit-input"
+        type="number"
+        min="0"
+        data-original="${location.capacity || 0}"
+        value="${location.capacity || 0}"
+        disabled
+      />
+    </td>
+
+    <td data-label="Actions">
+      <button class="small-button secondary edit-location-button" data-id="${location.id}">
+        Edit
+      </button>
+
+      <button class="small-button save-location-button" data-id="${location.id}" disabled>
+        Save
+      </button>
+
+      <button class="small-button secondary cancel-location-button" data-id="${location.id}" disabled>
+        Cancel
+      </button>
+
+      ${statusButton}
+    </td>
+  `;
 }
 
 function bindLocationEditButtons(tableBody) {
@@ -546,7 +444,6 @@ function bindLocationEditButtons(tableBody) {
       labelInput.disabled = false;
       capacityInput.disabled = false;
       cancelButton.disabled = false;
-
       labelInput.focus();
     });
 
@@ -587,9 +484,7 @@ function bindLocationEditButtons(tableBody) {
 function bindDeactivateButtons() {
   document.querySelectorAll(".deactivate-location-button").forEach((button) => {
     button.addEventListener("click", async () => {
-      const id = button.dataset.id;
-
-      await updateLocation(id, {
+      await updateLocation(button.dataset.id, {
         active: false,
       });
 
@@ -605,9 +500,7 @@ function bindReactivateButtons() {
     .querySelectorAll(".reactivate-location-button")
     .forEach((button) => {
       button.addEventListener("click", async () => {
-        const id = button.dataset.id;
-
-        await updateLocation(id, {
+        await updateLocation(button.dataset.id, {
           active: true,
         });
 
@@ -623,15 +516,13 @@ function bindDeleteLocationButtons() {
     .querySelectorAll(".delete-location-button")
     .forEach((button) => {
       button.addEventListener("click", async () => {
-        const id = button.dataset.id;
-
         const confirmed = confirm("Delete this parking lot?");
 
         if (!confirmed) {
           return;
         }
 
-        await deleteLocation(id);
+        await deleteLocation(button.dataset.id);
 
         await loadLocations();
 
@@ -640,10 +531,30 @@ function bindDeleteLocationButtons() {
     });
 }
 
+function sortLocations(locations = []) {
+  return [...locations].sort((a, b) => {
+    const areaCompare = formatArea(a.area).localeCompare(formatArea(b.area));
+
+    if (areaCompare !== 0) {
+      return areaCompare;
+    }
+
+    return String(a.label || "").localeCompare(String(b.label || ""));
+  });
+}
+
 function formatArea(area) {
   return String(area || "")
     .replace(/-/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function showMessage(message) {

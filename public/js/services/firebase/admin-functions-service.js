@@ -2,83 +2,73 @@
 
 import {
   getFunctions,
-  httpsCallable
+  httpsCallable,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
 import { app } from "./firebase-app.js";
 
 const functions = getFunctions(app);
 
-const bootstrapAdminCallable =
-  httpsCallable(functions, "bootstrapAdmin");
+const bootstrapAdminCallable = httpsCallable(functions, "bootstrapAdmin");
 
-const approveUserCallable =
-  httpsCallable(functions, "approveUser");
+const acceptDealerAdminInviteCallable = httpsCallable(
+  functions,
+  "acceptDealerAdminInvite",
+);
 
-const setUserRoleCallable =
-  httpsCallable(functions, "setUserRole");
+const approveUserCallable = httpsCallable(functions, "approveUser");
 
-const setUserActiveCallable =
-  httpsCallable(functions, "setUserActive");
+const setUserRoleCallable = httpsCallable(functions, "setUserRole");
 
-const setUserAssignedModulesCallable =
-  httpsCallable(functions, "setUserAssignedModules");
+const setUserActiveCallable = httpsCallable(functions, "setUserActive");
 
-const assignDealerAdminCallable =
-  httpsCallable(functions, "assignDealerAdmin");
+const setUserAssignedModulesCallable = httpsCallable(
+  functions,
+  "setUserAssignedModules",
+);
+
+const assignDealerAdminCallable = httpsCallable(functions, "assignDealerAdmin");
 
 export async function bootstrapAdmin() {
   return bootstrapAdminCallable();
 }
 
-export async function approveUser({
-  uid,
-  role
-}) {
+export async function approveUser({ uid, role }) {
   return approveUserCallable({
     uid,
-    role
+    role,
   });
 }
 
-export async function setUserRole({
-  uid,
-  role
-}) {
+export async function setUserRole({ uid, role }) {
   return setUserRoleCallable({
     uid,
-    role
+    role,
   });
 }
 
-export async function setUserActive({
-  uid,
-  active
-}) {
+export async function setUserActive({ uid, active }) {
   return setUserActiveCallable({
     uid,
-    active
+    active,
   });
 }
 
-export async function setUserAssignedModules({
-  uid,
-  assignedModules
-}) {
+export async function setUserAssignedModules({ uid, assignedModules }) {
   return setUserAssignedModulesCallable({
     uid,
-    assignedModules
+    assignedModules,
   });
 }
 
-export async function assignDealerAdmin({
-  uid,
-  dealerId,
-  assignedModules
-}) {
+export async function acceptDealerAdminInvite() {
+  return acceptDealerAdminInviteCallable();
+}
+
+export async function assignDealerAdmin({ uid, dealerId, assignedModules }) {
   return assignDealerAdminCallable({
     uid,
     dealerId,
-    assignedModules
+    assignedModules,
   });
 }

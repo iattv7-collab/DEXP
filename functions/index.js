@@ -442,6 +442,86 @@ exports.assignDealerAdmin = onCall(async (request) => {
   };
 });
 
+exports.acceptDealerAdminInvite = onCall(async (request) => {
+  requireAuth(request);
+
+  const email = String(request.auth.token.email || "")
+    .trim()
+    .toLowerCase();
+
+  if (!email) {
+    throw new HttpsError("permission-denied", "Missing email.");
+  }
+
+  const inviteRef = admin.firestore().doc(`dealerAdminInvites/${email}`);
+  const inviteSnapshot = await inviteRef.get();
+
+  if (!inviteSnapshot.exists) {
+    return {
+      accepted: false,
+      reason: "no-invite",
+    };
+  }
+
+  const invite = inviteSnapshot.data();
+
+  if (
+    invite.status === "accepted" &&
+    invite.acceptedBy &&
+    invite.acceptedBy !== request.auth.uid
+  ) {
+    throw new HttpsError("permission-denied", "Invite already accepted.");
+  }
+
+  await setClaims(request.auth.uid, {
+    role: "admin",
+    active: true,
+  });
+
+  const profile = {
+    uid: request.auth.uid,
+    email,
+    displayName: invite.displayName || request.auth.token.name || "",
+    phone: invite.phone || "",
+    companyId: "",
+    role: "admin",
+    dealerId: invite.dealerId,
+    active: true,
+    assignedModules: [
+      "admin",
+      "company-profile",
+      "ro-tracker",
+      "notifications",
+    ],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvalRequestedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+    approvedBy: "dealer-admin-invite",
+    inactiveAt: null,
+    inactiveBy: "",
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  await admin.firestore().doc(`users/${request.auth.uid}`).set(profile, {
+    merge: true,
+  });
+
+  await inviteRef.set(
+    {
+      status: "accepted",
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      acceptedBy: request.auth.uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return {
+    accepted: true,
+    profile,
+  };
+});
+
 exports.scanRO = onRequest(async (req, res) => {
   cors(req, res, async () => {
     try {
