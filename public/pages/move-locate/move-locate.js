@@ -28,6 +28,8 @@ import {
 import {
   completeRequest,
   markRequestInProgress,
+  releaseRequestInProgress,
+  releaseRequestInProgressByNotificationId,
 } from "/js/services/firestore/requests-service.js";
 
 protectRoute({
@@ -88,11 +90,6 @@ const groupSaveLocationRow = document.getElementById("groupSaveLocationRow");
 const saveGroupLocationsButton = document.getElementById(
   "saveGroupLocationsButton",
 );
-
-const movingVehiclesTableBody = document.getElementById(
-  "movingVehiclesTableBody",
-);
-
 const parkingAvailabilityList = document.getElementById(
   "parkingAvailabilityList",
 );
@@ -185,7 +182,7 @@ function initializeMoveLocate() {
   }
 
   loadLocationCatalog();
-  loadMovingVehicles();
+  loadDealerROs();
 
   loadNotificationRouteParams();
 }
@@ -348,11 +345,10 @@ function toggleSearchMode() {
   vehicleSearchInput.focus();
 }
 
-function loadMovingVehicles() {
+function loadDealerROs() {
   watchDealerROs((ros) => {
     lastROs = ros;
 
-    renderMovingVehicles();
     renderParkingAvailability();
 
     if (currentRO?.id) {
@@ -427,7 +423,6 @@ async function findVehicle() {
     currentMoveGroup = [];
   }
 
-  renderMovingVehicles();
   renderSelectedVehicle(match);
 
   searchVehicleButton.disabled = true;
@@ -635,7 +630,6 @@ async function startMove() {
     }
 
     renderUnifiedMoveCards();
-    renderMovingVehicles();
     renderSelectedVehicle(currentRO);
 
     showMessage(
@@ -891,8 +885,6 @@ async function saveAllLocations() {
 
     lastROs = await getDealerROs();
 
-    renderMovingVehicles();
-
     if (activeNotificationId) {
       await resolveNotificationRequest(activeNotificationId);
       activeNotificationId = "";
@@ -1103,6 +1095,12 @@ async function cancelMove() {
     if (activeNotificationId) {
       await releaseNotificationRequest(activeNotificationId);
     }
+
+    if (activeRequestId) {
+      await releaseRequestInProgress(activeRequestId);
+    } else if (activeNotificationId) {
+      await releaseRequestInProgressByNotificationId(activeNotificationId);
+    }
     currentMoveGroup = [];
     currentRO = {
       ...freshCurrentRO,
@@ -1126,7 +1124,6 @@ async function cancelMove() {
 
     lastROs = await getDealerROs();
 
-    renderMovingVehicles();
     renderSelectedVehicle(currentRO);
 
     showMessage(
@@ -1205,7 +1202,6 @@ async function overrideCancelMove() {
     lastROs = await getDealerROs();
 
     resetMoveLocateForm();
-    renderMovingVehicles();
 
     showMessage("Move override cancelled.");
   } catch (error) {
@@ -1278,7 +1274,6 @@ async function takeOverMove() {
     }
 
     renderUnifiedMoveCards();
-    renderMovingVehicles();
     renderSelectedVehicle(currentRO);
 
     showMessage("Move taken over.");
@@ -1286,67 +1281,6 @@ async function takeOverMove() {
     console.error(error);
     showMessage("Could not take over move.");
   }
-}
-
-function renderMovingVehicles() {
-  const moving = lastROs.filter((ro) => ro.moveStatus === "moving");
-
-  movingVehiclesTableBody.innerHTML = "";
-
-  if (!moving.length) {
-    movingVehiclesTableBody.innerHTML = `
-      <tr>
-        <td colspan="6">No moving vehicles.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  moving.forEach((ro) => {
-    const row = document.createElement("tr");
-
-    const actionHtml = !isMoveOwner(ro)
-      ? `
-        <button
-          class="small-button secondary table-override-cancel-button"
-          data-id="${ro.id}"
-        >
-          Override Cancel
-        </button>
-      `
-      : "";
-
-    row.innerHTML = `
-      <td data-label="Tag">${getROTag(ro)}</td>
-      <td data-label="RO">${ro[ROS_FIELDS.roNumber] || ""}</td>
-      <td data-label="Current Location">${formatAreaLot(getROArea(ro), getROLot(ro))}</td>
-      <td data-label="Started By">${ro.moveStartedBy || ""}</td>
-      <td data-label="Started At">${formatDateTime(ro.moveStartedAt)}</td>
-      <td data-label="Action">${actionHtml}</td>
-    `;
-
-    row.addEventListener("click", () => {
-      currentRO = ro;
-      renderSelectedVehicle(ro);
-      showMessage("Vehicle selected.");
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-    });
-
-    movingVehiclesTableBody.appendChild(row);
-
-    const overrideButton = row.querySelector(".table-override-cancel-button");
-
-    if (overrideButton) {
-      overrideButton.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        currentRO = ro;
-        await overrideCancelMove();
-      });
-    }
-  });
 }
 
 function normalizeTag(value = "") {

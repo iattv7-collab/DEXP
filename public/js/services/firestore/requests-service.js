@@ -245,6 +245,62 @@ export async function markRequestInProgress(requestId) {
   });
 }
 
+export async function releaseRequestInProgress(requestId) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!requestId) {
+    throw new Error("Missing request ID.");
+  }
+
+  const requestRef = doc(db, REQUESTS_COLLECTION, requestId);
+
+  await updateDoc(requestRef, {
+    status: REQUEST_STATUS.ACTIVE,
+
+    startedAt: null,
+    startedAtMs: null,
+    startedBy: "",
+    startedByName: "",
+
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  });
+}
+
+export async function releaseRequestInProgressByNotificationId(
+  notificationRequestId,
+) {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!notificationRequestId) {
+    throw new Error("Missing notification request ID.");
+  }
+
+  const requestsQuery = query(
+    collection(db, REQUESTS_COLLECTION),
+    where("notificationRequestId", "==", notificationRequestId),
+    limit(1),
+  );
+
+  const snapshot = await getDocs(requestsQuery);
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  const requestDoc = snapshot.docs[0];
+
+  await releaseRequestInProgress(requestDoc.id);
+}
+
 export async function completeRequest(requestId) {
   const session = getSession();
 

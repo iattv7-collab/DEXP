@@ -24,6 +24,9 @@ export const PERMISSIONS = {
   RO_TRACKER_VIEW: "roTracker.view",
   RO_TRACKER_EDIT: "roTracker.edit",
 
+  OPERATIONS_VIEW: "operations.view",
+
+  // Legacy notification engine permissions. Keep for backend/internal use.
   NOTIFICATIONS_VIEW: "notifications.view",
   NOTIFICATIONS_MANAGE: "notifications.manage",
   // Wash
@@ -52,5 +55,5 @@ export const PERMISSIONS = {
   // Pickup
   PICKUP_REQUEST: "pickup.request",
   PICKUP_CLAIM: "pickup.claim",
-  PICKUP_COMPLETE: "pickup.complete"
+  PICKUP_COMPLETE: "pickup.complete",
 };

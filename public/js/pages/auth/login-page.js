@@ -454,6 +454,15 @@ function openRegisterModal() {
 }
 
 async function handleRegisterSubmit(modal) {
+  const createButton = document.getElementById("registerCreateBtn");
+
+  if (createButton?.disabled) {
+    return;
+  }
+
+  createButton.disabled = true;
+  createButton.textContent = "Creating...";
+
   const displayName = document
     .getElementById("registerNameInput")
     ?.value.trim();
@@ -469,11 +478,17 @@ async function handleRegisterSubmit(modal) {
   const password = document.getElementById("registerPasswordInput")?.value;
 
   if (!displayName || !companyId || !email || !phone || !password) {
+    createButton.disabled = false;
+    createButton.textContent = "Create Account";
+
     alert("Enter all registration fields.");
     return;
   }
 
   if (!currentDealer || !dealerIdFromEntry) {
+    createButton.disabled = false;
+    createButton.textContent = "Create Account";
+
     alert("Use your dealership's DEXP registration link.");
     return;
   }
@@ -518,6 +533,9 @@ async function handleRegisterSubmit(modal) {
 
     await logoutUser();
 
+    createButton.disabled = true;
+    createButton.textContent = "Account Created";
+
     alert(
       `Account created for ${currentDealer.name}.\n\nYour account is pending manager approval.`,
     );
@@ -527,6 +545,9 @@ async function handleRegisterSubmit(modal) {
     sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
 
     console.error("Registration failed:", error);
+
+    createButton.disabled = false;
+    createButton.textContent = "Create Account";
 
     alert(getRegistrationErrorMessage(error, companyId));
   }

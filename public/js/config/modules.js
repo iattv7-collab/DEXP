@@ -28,7 +28,7 @@ export const MODULES = {
   ARCHIVE: "archive",
   DETAILS: "details",
   SHOP: "shop",
-  NOTIFICATIONS: "notifications"
+  OPERATIONS: "operations"
 };
 
 export const MODULE_CONFIG = {
@@ -200,11 +200,11 @@ export const MODULE_CONFIG = {
     permission: PERMISSIONS.MASTER_RO_VIEW
   },
 
-  [MODULES.NOTIFICATIONS]: {
-    label: "Notifications",
-    route: "/pages/notifications/notifications.html",
-    icon: "notifications",
-    permission: PERMISSIONS.NOTIFICATIONS_VIEW
+    [MODULES.OPERATIONS]: {
+    label: "Operations",
+    route: "/pages/operations/operations.html",
+    icon: "monitoring",
+    permission: PERMISSIONS.OPERATIONS_VIEW
   }
 };
 
@@ -302,7 +302,7 @@ export const SELLABLE_MODULE_GROUPS = [
     id: "notifications",
     label: "Notifications",
     modules: [
-      MODULES.NOTIFICATIONS
+      MODULES.OPERATIONS
     ]
   }
 ];

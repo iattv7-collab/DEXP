@@ -1,0 +1,121 @@
+<!-- public/pages/operations/operations.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>DEXP Operations</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+  </head>
+
+  <body>
+    <main class="page-shell">
+      <section class="page-section">
+        <div class="page-title-row">
+          <div>
+            <h2>Operations</h2>
+          </div>
+        </div>
+
+        <div class="action-row" style="margin-bottom: 16px">
+          <input
+            id="operationsSearchInput"
+            type="text"
+            placeholder="Search RO or Tag..."
+          />
+        </div>
+
+        <div class="action-row">
+          <button
+            id="liveOperationsTabButton"
+            type="button"
+            class="small-button"
+          >
+            Live Operations
+          </button>
+
+          <button
+            id="operationsHistoryTabButton"
+            type="button"
+            class="small-button secondary"
+          >
+            History
+          </button>
+        </div>
+
+        <div id="operationsGroupFilterRow" class="action-row"></div>
+      </section>
+
+      <section id="liveOperationsSection" class="page-section">
+        <div class="dexp-admin-card">
+          <h3>Live Operations</h3>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Operation</th>
+                  <th>Status</th>
+                  <th>Target Group</th>
+                  <th>Opened By</th>
+                  <th>Started By</th>
+                  <th>Elapsed</th>
+                </tr>
+              </thead>
+
+              <tbody id="liveOperationsTableBody">
+                <tr>
+                  <td colspan="7">Loading live operations...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="operationsHistorySection" class="page-section hidden">
+        <div class="dexp-admin-card">
+          <h3>History</h3>
+
+          <p class="tool-help">
+            Completed operations will move here after the live visibility
+            window.
+          </p>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Operation</th>
+                  <th>Status</th>
+                  <th>Target Group</th>
+                  <th>Completed By</th>
+                  <th>Completed At</th>
+                </tr>
+              </thead>
+
+              <tbody id="operationsHistoryTableBody">
+                <tr>
+                  <td colspan="6">History coming next.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script
+      type="module"
+      src="/pages/operations/operations-page.js?v=2"
+    ></script>
+  </body>
+</html>
