@@ -33,37 +33,22 @@
     >
       <section
         class="tool-card"
-        style="
-          width: 100%;
-          max-width: 420px;
-          text-align: center;
-          padding: 32px;
-        "
+        style="width: 100%; max-width: 420px; text-align: center; padding: 32px"
       >
         <img
           src="/assets/logo-v2.png"
           alt="DEXP"
-          style="
-            width: 180px;
-            max-width: 70%;
-            margin-bottom: 18px;
-          "
+          style="width: 180px; max-width: 70%; margin-bottom: 18px"
         />
 
         <h1>DEXP</h1>
 
-        <p class="tool-help">
-          Dealer Execution Platform
-        </p>
+        <p class="tool-help">Dealer Execution Platform</p>
 
         <p
           id="dealerLoginName"
           class="tool-help"
-          style="
-            margin-top: 10px;
-            font-weight: bold;
-            color: #0b3d91;
-          "
+          style="margin-top: 10px; font-weight: bold; color: #0b3d91"
         >
           Dealer Login
         </p>
@@ -80,51 +65,65 @@
             id="emailInput"
             type="email"
             placeholder="Company Email"
-            style="
-              width: 100%;
-              padding: 10px;
-            "
+            style="width: 100%; padding: 10px"
           />
 
-          <input
-            id="passwordInput"
-            type="password"
-            placeholder="Password"
-            style="
-              width: 100%;
-              padding: 10px;
-            "
-          />
+          <div style="position: relative; width: 100%">
+            <input
+              id="passwordInput"
+              type="password"
+              placeholder="Password"
+              style="width: 100%; padding: 10px 52px 10px 10px"
+            />
 
-          <button
-            id="btn-email-login"
-            type="button"
-          >
-            Sign In
-          </button>
+            <button
+              id="togglePasswordButton"
+              type="button"
+              aria-label="Show password"
+              style="
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                border: none;
+                background: none;
+                cursor: pointer;
+                padding: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#0b3d91"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
 
-          <button
-            id="btn-register"
-            type="button"
-            class="secondary"
-          >
+          <button id="btn-email-login" type="button">Sign In</button>
+
+          <button id="btn-register" type="button" class="secondary">
             Register New Account
           </button>
 
-          <button
-            id="btn-reset-password"
-            type="button"
-            class="secondary"
-          >
+          <button id="btn-reset-password" type="button" class="secondary">
             Forgot Password
           </button>
         </div>
       </section>
     </main>
 
-    <script
-      type="module"
-      src="/js/pages/auth/login-page.js?v=10"
-    ></script>
+    <script type="module" src="/js/pages/auth/login-page.js?v=12"></script>
   </body>
 </html>

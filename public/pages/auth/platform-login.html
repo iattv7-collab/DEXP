@@ -32,28 +32,17 @@
     >
       <section
         class="tool-card"
-        style="
-          width: 100%;
-          max-width: 420px;
-          text-align: center;
-          padding: 32px;
-        "
+        style="width: 100%; max-width: 420px; text-align: center; padding: 32px"
       >
         <img
           src="/assets/logo-v2.png"
           alt="DEXP"
-          style="
-            width: 180px;
-            max-width: 70%;
-            margin-bottom: 18px;
-          "
+          style="width: 180px; max-width: 70%; margin-bottom: 18px"
         />
 
         <h1>DEXP</h1>
 
-        <p class="tool-help">
-          Platform Administration
-        </p>
+        <p class="tool-help">Platform Administration</p>
 
         <div
           style="
@@ -67,37 +56,61 @@
             id="platformEmailInput"
             type="email"
             placeholder="Platform Admin Email"
-            style="
-              width: 100%;
-              padding: 10px;
-            "
+            style="width: 100%; padding: 10px"
           />
 
-          <input
-            id="platformPasswordInput"
-            type="password"
-            placeholder="Password"
-            style="
-              width: 100%;
-              padding: 10px;
-            "
-          />
+          <div style="position: relative; width: 100%">
+            <input
+              id="platformPasswordInput"
+              type="password"
+              placeholder="Password"
+              style="width: 100%; padding: 10px 52px 10px 10px"
+            />
 
-          <button
-            id="btn-platform-email-login"
-            type="button"
-          >
+            <button
+              id="togglePlatformPasswordButton"
+              type="button"
+              aria-label="Show password"
+              style="
+                position: absolute;
+                top: 50%;
+                right: 10px;
+                transform: translateY(-50%);
+                border: none;
+                background: none;
+                cursor: pointer;
+                padding: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <svg
+                id="platformPasswordEyeIcon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#0b3d91"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <button id="btn-platform-email-login" type="button">
             Sign In
           </button>
         </div>
 
         <hr style="margin: 24px 0" />
 
-        <button
-          id="btn-google-login"
-          type="button"
-          style="width: 100%"
-        >
+        <button id="btn-google-login" type="button" style="width: 100%">
           Sign In with Google
         </button>
       </section>
@@ -105,7 +118,7 @@
 
     <script
       type="module"
-      src="/js/pages/auth/platform-login-page.js?v=2"
+      src="/js/pages/auth/platform-login-page.js?v=4"
     ></script>
   </body>
 </html>
