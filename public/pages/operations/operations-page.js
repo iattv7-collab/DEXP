@@ -5,7 +5,10 @@ import { protectRoute } from "/js/core/router.js";
 import { getSession } from "/js/core/session.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { MODULES } from "/js/config/modules.js";
-import { REQUEST_STATUS, watchDealerRequests } from "/js/services/firestore/requests-service.js";
+import {
+  REQUEST_STATUS,
+  watchDealerRequests,
+} from "/js/services/firestore/requests-service.js";
 import { getNotificationGroups } from "/js/services/firestore/notification-groups-service.js";
 import { watchDealerNotifications } from "/js/services/firestore/notification-requests-service.js";
 
@@ -25,9 +28,7 @@ const operationsGroupFilterRow = document.getElementById(
   "operationsGroupFilterRow",
 );
 
-const operationsSearchInput = document.getElementById(
-  "operationsSearchInput",
-);
+const operationsSearchInput = document.getElementById("operationsSearchInput");
 
 const liveOperationsSection = document.getElementById("liveOperationsSection");
 
@@ -72,10 +73,10 @@ async function initializeOperationsPage() {
   renderGroupFilters();
 
   operationsSearchInput?.addEventListener("input", (event) => {
-  searchText = event.target.value.trim().toLowerCase();
+    searchText = event.target.value.trim().toLowerCase();
 
-  renderOperations();
-});
+    renderOperations();
+  });
 
   watchDealerNotifications((notifications) => {
     dealerNotifications = notifications;
@@ -215,7 +216,7 @@ function renderLiveOperations() {
   if (!rows.length) {
     liveOperationsTableBody.innerHTML = `
       <tr>
-        <td colspan="7">No live operations.</td>
+        <td colspan="8">No live operations.</td>
       </tr>
     `;
 
@@ -281,9 +282,25 @@ function renderLiveOperationRow(request) {
       <td data-label="Target Group">${escapeHtml(
         request.targetGroupName || getGroupName(request.targetGroupId),
       )}</td>
-      <td data-label="Opened By">${escapeHtml(notification?.openedByName || "")}</td>
-      <td data-label="Started By">${escapeHtml(request.startedByName || "")}</td>
-      <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}</td>
+      <td data-label="Opened By">${escapeHtml(
+        formatPersonWithTime(
+          notification?.openedByName,
+          notification?.openedAtMs,
+        ),
+      )}</td>
+
+      <td data-label="Started By">${escapeHtml(
+        formatPersonWithTime(request.startedByName, request.startedAtMs),
+      )}</td>
+
+      <td data-label="Completed By">${escapeHtml(
+        formatPersonWithTime(
+          request.completedByName || request.cancelledByName,
+          request.completedAtMs || request.cancelledAtMs,
+        ),
+      )}</td>
+
+    <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}</td>
     </tr>
   `;
 }
@@ -298,7 +315,10 @@ function renderHistoryRow(request) {
         request.targetGroupName || getGroupName(request.targetGroupId),
       )}</td>
       <td data-label="Completed By">${escapeHtml(
-        request.completedByName || request.cancelledByName || "",
+        formatPersonWithTime(
+          request.completedByName || request.cancelledByName,
+          request.completedAtMs || request.cancelledAtMs,
+        ),
       )}</td>
       <td data-label="Completed At">${escapeHtml(
         formatDateTime(request.completedAtMs || request.cancelledAtMs),
@@ -404,7 +424,47 @@ function formatDateTime(value) {
     return "";
   }
 
-  return date.toLocaleString();
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatPersonWithTime(name, timeMs) {
+  if (!name) {
+    return "";
+  }
+
+  if (!timeMs) {
+    return name;
+  }
+
+  const date = new Date(timeMs);
+  const today = new Date();
+
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  const time = date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (sameDay) {
+    return `${name} • ${time}`;
+  }
+
+  const shortDate = date.toLocaleDateString([], {
+    month: "numeric",
+    day: "numeric",
+  });
+
+  return `${name} • ${shortDate}, ${time}`;
 }
 
 function escapeHtml(value = "") {

@@ -19,9 +19,8 @@ import {
   findActiveROByTag,
 } from "/js/services/firestore/ros-service.js";
 
-import {
-  watchDealerNotifications,
-} from "/js/services/firestore/notification-requests-service.js";
+import { watchDealerNotifications } from "/js/services/firestore/notification-requests-service.js";
+import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
 
 protectRoute();
 
@@ -30,15 +29,14 @@ const requestTagNumberInput = document.getElementById("requestTagNumberInput");
 const requestMessageInput = document.getElementById("requestMessageInput");
 const requestFormMessage = document.getElementById("requestFormMessage");
 
-const requestPickupButton = document.getElementById("requestPickupButton");
-
-const requestBringToShopButton = document.getElementById(
-  "requestBringToShopButton",
+const searchRequestVehicleButton = document.getElementById(
+  "searchRequestVehicleButton",
 );
 
-const requestMoveToAnnexButton = document.getElementById(
-  "requestMoveToAnnexButton",
-);
+const requestVehicleSummary = document.getElementById("requestVehicleSummary");
+const requestCreateControls = document.getElementById("requestCreateControls");
+const requestTypeSelect = document.getElementById("requestTypeSelect");
+const createRequestButton = document.getElementById("createRequestButton");
 
 const myRequestsToggleButton = document.getElementById(
   "myRequestsToggleButton",
@@ -53,33 +51,12 @@ const requestsTableBody = document.getElementById("requestsTableBody");
 let notificationGroups = [];
 let dealerNotifications = [];
 let dealerRequests = [];
+let requestTypes = [];
+let selectedRequestRO = null;
 let requestViewMode = "my";
 
 let unsubscribeDealerRequests = null;
 let unsubscribeDealerNotifications = null;
-
-const REQUEST_PRESETS = {
-  pickup: {
-    requestType: "pickup",
-    title: "Pickup Request",
-    targetGroupName: "Front Valet",
-    defaultMessage: "Vehicle needs pickup.",
-  },
-
-  bring_to_shop: {
-    requestType: "bring_to_shop",
-    title: "Bring Vehicle to Shop",
-    targetGroupName: "Shop Valets",
-    defaultMessage: "Vehicle needs to be brought to the shop.",
-  },
-
-  move_to_annex: {
-    requestType: "move_to_annex",
-    title: "Move Vehicle to Annex",
-    targetGroupName: "Shop to shop Valets",
-    defaultMessage: "Vehicle needs to be moved to the annex.",
-  },
-};
 
 window.addEventListener("dexp-session-ready", () => {
   initializeRequestsPage();
@@ -98,23 +75,36 @@ async function initializeRequestsPage() {
   });
 
   notificationGroups = await getNotificationGroups();
+  requestTypes = await getActiveRequestTypes();
 
-  wireRequestButtons();
+  populateRequestTypeSelect();
+  wireRequestForm();
   wireViewToggle();
   listenToRequests();
 }
 
-function wireRequestButtons() {
-  requestPickupButton?.addEventListener("click", () => {
-    handleCreatePresetRequest(REQUEST_PRESETS.pickup);
+function wireRequestForm() {
+  searchRequestVehicleButton?.addEventListener("click", async () => {
+    await handleSearchRequestVehicle();
   });
 
-  requestBringToShopButton?.addEventListener("click", () => {
-    handleCreatePresetRequest(REQUEST_PRESETS.bring_to_shop);
+  createRequestButton?.addEventListener("click", async () => {
+    await handleCreateSelectedRequest();
   });
+}
 
-  requestMoveToAnnexButton?.addEventListener("click", () => {
-    handleCreatePresetRequest(REQUEST_PRESETS.move_to_annex);
+function populateRequestTypeSelect() {
+  requestTypeSelect.innerHTML = `
+    <option value="">Select request type...</option>
+  `;
+
+  requestTypes.forEach((requestType) => {
+    const option = document.createElement("option");
+
+    option.value = requestType.id;
+    option.textContent = requestType.name || requestType.requestType || "";
+
+    requestTypeSelect.appendChild(option);
   });
 }
 
@@ -135,11 +125,132 @@ function wireViewToggle() {
 }
 
 function updateToggleButtons() {
-  myRequestsToggleButton.classList.toggle("secondary", requestViewMode !== "my");
+  myRequestsToggleButton.classList.toggle(
+    "secondary",
+    requestViewMode !== "my",
+  );
   allRequestsToggleButton.classList.toggle(
     "secondary",
     requestViewMode !== "all",
   );
+}
+
+async function handleSearchRequestVehicle() {
+  setFormMessage("");
+
+  selectedRequestRO = null;
+  requestVehicleSummary.classList.add("hidden");
+  requestVehicleSummary.innerHTML = "";
+  requestCreateControls.classList.add("hidden");
+
+  const roNumber = requestRoNumberInput.value.trim();
+  const tagNumber = requestTagNumberInput.value.trim();
+
+  if (!roNumber && !tagNumber) {
+    setFormMessage("Enter an RO number or tag number.");
+    return;
+  }
+
+  const ro = await findMatchingRO({
+    roNumber,
+    tagNumber,
+  });
+
+  if (!ro) {
+    setFormMessage("No active RO found for that RO/tag.");
+    return;
+  }
+
+  selectedRequestRO = ro;
+
+  const openRequest = findOpenRequestForRO(ro);
+
+  renderRequestVehicleSummary(ro, openRequest);
+
+  if (ro.moveStatus === "moving" || openRequest) {
+    requestCreateControls.classList.add("hidden");
+    return;
+  }
+
+  requestCreateControls.classList.remove("hidden");
+}
+
+async function handleCreateSelectedRequest() {
+  try {
+    setFormMessage("");
+
+    if (!selectedRequestRO) {
+      setFormMessage("Search and select a vehicle first.");
+      return;
+    }
+
+    const requestTypeId = requestTypeSelect.value;
+    const selectedRequestType = requestTypes.find(
+      (item) => item.id === requestTypeId,
+    );
+
+    if (!selectedRequestType) {
+      setFormMessage("Select request type.");
+      return;
+    }
+
+    const openRequest = findOpenRequestForRO(selectedRequestRO);
+
+    if (selectedRequestRO.moveStatus === "moving" || openRequest) {
+      renderRequestVehicleSummary(selectedRequestRO, openRequest);
+      requestCreateControls.classList.add("hidden");
+      return;
+    }
+
+    const finalRoNumber = selectedRequestRO.roNumber || "";
+    const finalTagNumber = selectedRequestRO.tagNumber || "";
+    const customMessage = requestMessageInput.value.trim();
+
+    await createRequest({
+      roId: selectedRequestRO.id || "",
+      roNumber: finalRoNumber,
+      tagNumber: finalTagNumber,
+      vinLast8: selectedRequestRO.vinLast8 || "",
+
+      requestType: selectedRequestType.requestType,
+      sourceModule: "requests",
+
+      targetGroupId: selectedRequestType.targetGroupId,
+      targetGroupName: selectedRequestType.targetGroupName,
+
+      title: selectedRequestType.name,
+
+      message:
+        customMessage ||
+        `${selectedRequestType.defaultMessage || selectedRequestType.name} RO ${
+          finalRoNumber || "N/A"
+        } Tag ${finalTagNumber || "N/A"}.`,
+
+      route: selectedRequestType.route || "/pages/move-locate/move-locate.html",
+
+      routeParams: {
+        tagNumber: finalTagNumber,
+      },
+    });
+
+    requestRoNumberInput.value = "";
+    requestTagNumberInput.value = "";
+    requestMessageInput.value = "";
+    requestTypeSelect.value = "";
+    selectedRequestRO = null;
+
+    requestVehicleSummary.classList.add("hidden");
+    requestVehicleSummary.innerHTML = "";
+    requestCreateControls.classList.add("hidden");
+
+    requestViewMode = "my";
+    updateToggleButtons();
+
+    setFormMessage("Request created.");
+  } catch (error) {
+    console.error(error);
+    setFormMessage(error.message || "Failed to create request.");
+  }
 }
 
 async function handleCreatePresetRequest(preset) {
@@ -216,6 +327,113 @@ async function handleCreatePresetRequest(preset) {
   }
 }
 
+function renderRequestVehicleSummary(ro = {}, openRequest = null) {
+  const isMoving = ro.moveStatus === "moving";
+  const hasOpenRequest = Boolean(openRequest);
+
+  requestVehicleSummary.classList.remove("hidden");
+
+  requestVehicleSummary.innerHTML = `
+    <div>
+      <strong>Vehicle Found</strong>
+    </div>
+
+    <div style="margin-top:8px;">
+      RO: ${escapeHtml(ro.roNumber || ro.id || "")}
+      <br />
+      Tag: ${escapeHtml(ro.tagNumber || "")}
+      <br />
+      Location: ${escapeHtml(ro.currentLocation || "Not set")}
+      <br />
+      
+      Status:
+      ${
+        isMoving
+          ? `<span
+               style="
+                 color:#b00020;
+                 font-weight:700;
+               "
+             >
+               Currently moving by ${escapeHtml(
+                 ro.moveStartedBy || "another user",
+               )}
+             </span>`
+          : hasOpenRequest
+            ? `<span
+           style="
+             color:#b00020;
+             font-weight:700;
+           "
+         >
+           Request already active: ${escapeHtml(
+             openRequest.title || openRequest.requestType || "Request",
+           )}
+         </span>`
+            : "Available"
+      }
+    </div>
+
+    ${
+      isMoving
+        ? `
+    <div
+      style="
+        margin-top:10px;
+        padding:8px 12px;
+        border:1px solid #b00020;
+        background:#fff4f4;
+        color:#b00020;
+        font-weight:700;
+        border-radius:6px;
+     "
+   >
+     Vehicle is currently being moved. Complete the move before creating another request.
+   </div>
+        `
+        : ""
+    }
+
+    ${
+      hasOpenRequest
+        ? `
+          <div 
+            style="
+              margin-top:10px;
+              padding:8px 12px;
+              border:1px solid #b00020;
+              background:#fff4f4;
+              color:#b00020;
+              font-weight:700;
+              border-radius:6px;
+            "
+          >
+            An active request already exists for this vehicle. Complete or cancel it before creating another request.
+          </div>
+        `
+        : ""
+    }
+  `;
+}
+
+function findOpenRequestForRO(ro = {}) {
+  return dealerRequests.find((request) => {
+    const isOpen =
+      request.status === REQUEST_STATUS.ACTIVE ||
+      request.status === REQUEST_STATUS.IN_PROGRESS;
+
+    if (!isOpen) {
+      return false;
+    }
+
+    return (
+      (ro.id && request.roId === ro.id) ||
+      (ro.roNumber && request.roNumber === ro.roNumber) ||
+      (ro.tagNumber && request.tagNumber === ro.tagNumber)
+    );
+  });
+}
+
 async function findMatchingRO({ roNumber, tagNumber }) {
   if (roNumber) {
     const ro = await findActiveROByNumber(roNumber);
@@ -235,8 +453,12 @@ async function findMatchingRO({ roNumber, tagNumber }) {
 function findTargetGroupByName(groupName) {
   return notificationGroups.find((group) => {
     return (
-      String(group.name || "").trim().toLowerCase() ===
-      String(groupName || "").trim().toLowerCase()
+      String(group.name || "")
+        .trim()
+        .toLowerCase() ===
+      String(groupName || "")
+        .trim()
+        .toLowerCase()
     );
   });
 }
@@ -293,31 +515,29 @@ function renderRequestsTable() {
 
   requestsTableBody.innerHTML = rows.map(renderRequestRow).join("");
 
-  requestsTableBody
-    .querySelectorAll(".js-cancel-request")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const requestId = button.dataset.id;
-        const request = dealerRequests.find((item) => item.id === requestId);
+  requestsTableBody.querySelectorAll(".js-cancel-request").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const requestId = button.dataset.id;
+      const request = dealerRequests.find((item) => item.id === requestId);
 
-        if (!request) {
-          return;
-        }
+      if (!request) {
+        return;
+      }
 
-        const confirmed = confirm("Cancel this request?");
+      const confirmed = confirm("Cancel this request?");
 
-        if (!confirmed) {
-          return;
-        }
+      if (!confirmed) {
+        return;
+      }
 
-        try {
-          await cancelRequest(request);
-        } catch (error) {
-          console.error(error);
-          setFormMessage(error.message || "Could not cancel request.");
-        }
-      });
+      try {
+        await cancelRequest(request);
+      } catch (error) {
+        console.error(error);
+        setFormMessage(error.message || "Could not cancel request.");
+      }
     });
+  });
 }
 
 function renderRequestRow(request) {
@@ -332,9 +552,23 @@ function renderRequestRow(request) {
       <td data-label="Tag">${escapeHtml(request.tagNumber || "")}</td>
       <td data-label="Target">${escapeHtml(request.targetGroupName || request.targetGroupId || "")}</td>
       <td data-label="Status">${escapeHtml(formatStatus(request.status))}</td>
-      <td data-label="Opened By">${escapeHtml(notification?.openedByName || "")}</td>
-      <td data-label="Started By">${escapeHtml(request.startedByName || "")}</td>
-      <td data-label="Completed By">${escapeHtml(request.completedByName || request.cancelledByName || "")}</td>
+      <td data-label="Opened By">${escapeHtml(
+        formatPersonWithTime(
+          notification?.openedByName,
+          notification?.openedAtMs,
+        ),
+      )}</td>
+
+      <td data-label="Started By">${escapeHtml(
+        formatPersonWithTime(request.startedByName, request.startedAtMs),
+      )}</td>
+
+     <td data-label="Completed By">${escapeHtml(
+       formatPersonWithTime(
+         request.completedByName || request.cancelledByName,
+         request.completedAtMs || request.cancelledAtMs,
+       ),
+     )}</td>
       <td data-label="Action">
         ${
           canCancel
@@ -404,7 +638,47 @@ function formatDateTime(value) {
     return "";
   }
 
-  return date.toLocaleString();
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatPersonWithTime(name, timeMs) {
+  if (!name) {
+    return "";
+  }
+
+  if (!timeMs) {
+    return name;
+  }
+
+  const date = new Date(timeMs);
+  const today = new Date();
+
+  const sameDay =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  const time = date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (sameDay) {
+    return `${name} • ${time}`;
+  }
+
+  const shortDate = date.toLocaleDateString([], {
+    month: "numeric",
+    day: "numeric",
+  });
+
+  return `${name} • ${shortDate}, ${time}`;
 }
 
 function escapeHtml(value = "") {

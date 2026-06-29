@@ -184,15 +184,8 @@ function renderNotificationCard(item) {
   const showOpen =
     !isOpened &&
     hasRoute &&
-    [
-      "followup_due",
-      "pickup",
-      "pickup_request",
-      "bring_to_shop",
-      "move_to_annex",
-      "move_request",
-      "developer_test",
-    ].includes(eventType);
+    (item.module === "requests" ||
+      ["followup_due", "developer_test"].includes(eventType));
 
   const showDismiss =
     !isOpened &&

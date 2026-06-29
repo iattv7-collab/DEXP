@@ -39,29 +39,40 @@
               Tag Number
               <input id="requestTagNumberInput" type="text" />
             </label>
-
-            <label>
-              Notes
-              <input
-                id="requestMessageInput"
-                type="text"
-                placeholder="Optional notes..."
-              />
-            </label>
           </div>
 
           <div class="action-row">
-            <button id="requestPickupButton" type="button">
-              Request Pickup
+            <button id="searchRequestVehicleButton" type="button">
+              Search Vehicle
             </button>
+          </div>
 
-            <button id="requestBringToShopButton" type="button">
-              Bring Vehicle to Shop
-            </button>
+          <div id="requestVehicleSummary" class="tool-preview hidden"></div>
 
-            <button id="requestMoveToAnnexButton" type="button">
-              Move Vehicle to Annex
-            </button>
+          <div id="requestCreateControls" class="hidden">
+            <div class="form-grid">
+              <label>
+                Request Type
+                <select id="requestTypeSelect">
+                  <option value="">Select request type...</option>
+                </select>
+              </label>
+
+              <label>
+                Notes
+                <input
+                  id="requestMessageInput"
+                  type="text"
+                  placeholder="Optional notes..."
+                />
+              </label>
+            </div>
+
+            <div class="action-row">
+              <button id="createRequestButton" type="button">
+                Create Request
+              </button>
+            </div>
           </div>
 
           <p id="requestFormMessage" class="page-message"></p>
@@ -124,6 +135,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/requests/requests-page.js?v=3"></script>
+    <script type="module" src="/pages/requests/requests-page.js?v=4"></script>
   </body>
 </html>

@@ -1,0 +1,138 @@
+<!-- public/pages/admin/request-types.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Request Types</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/request-types.css" />
+  </head>
+
+  <body>
+    <div id="appHeader"></div>
+
+    <main class="page-shell">
+      <section class="page-section">
+        <h2>Request Types</h2>
+
+        <p class="tool-help">
+          Manage dealer-specific request buttons, destination groups, and
+          default messages.
+        </p>
+
+        <p id="requestTypesMessage" class="tool-message"></p>
+
+        <section class="tool-card">
+          <h3>Add Request Type</h3>
+
+          <div class="tool-row">
+            <label>
+              Button Name
+              <input
+                id="requestTypeNameInput"
+                type="text"
+                placeholder="Example: Bring Vehicle to Shop"
+              />
+            </label>
+
+            <label>
+              Request Key
+              <input
+                id="requestTypeKeyInput"
+                type="text"
+                placeholder="Example: bring_to_shop"
+                readonly
+              />
+            </label>
+
+            <label>
+              Target Group
+              <select id="requestTypeTargetGroupSelect">
+                <option value="">Select group...</option>
+              </select>
+            </label>
+
+            <label>
+              Sort Order
+              <input id="requestTypeSortOrderInput" type="number" value="10" />
+            </label>
+          </div>
+
+          <label>
+            Default Message
+            <input
+              id="requestTypeDefaultMessageInput"
+              type="text"
+              placeholder="Example: Vehicle needs to be brought to the shop."
+            />
+          </label>
+
+          <div style="margin-top: 12px">
+            <button id="addRequestTypeButton" type="button">
+              Add Request Type
+            </button>
+          </div>
+        </section>
+
+        <section class="tool-card">
+          <h3>Active Request Types</h3>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th>Target Group</th>
+                  <th>Sort</th>
+                  <th>Message</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="activeRequestTypesTableBody">
+                <tr>
+                  <td colspan="6">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tool-card">
+          <h3>Inactive Request Types</h3>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Key</th>
+                  <th>Target Group</th>
+                  <th>Sort</th>
+                  <th>Message</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="inactiveRequestTypesTableBody">
+                <tr>
+                  <td colspan="6">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/pages/admin/request-types-page.js"></script>
+  </body>
+</html>
