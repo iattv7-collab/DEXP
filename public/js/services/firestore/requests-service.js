@@ -5,6 +5,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -18,6 +19,7 @@ import {
 
 import { db } from "../firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
+import { updateRO } from "/js/services/firestore/ros-service.js";
 
 import {
   createNotificationRequest,
@@ -192,6 +194,31 @@ export async function createRequest({
     notificationRequestId: notification.id,
   });
 
+  if (roId) {
+    await updateRO(
+      roId,
+      {
+        activeRequestId: requestRef.id,
+        activeRequestNotificationId: notification.id,
+        activeRequestType: requestType,
+        activeRequestTitle: title || "New Request",
+        activeRequestStatus: REQUEST_STATUS.ACTIVE,
+        activeRequestTargetGroupId: targetGroupId,
+        activeRequestTargetGroupName: targetGroupName,
+        activeRequestRequestedByUid: session.uid || "",
+        activeRequestRequestedByName:
+          session.displayName || session.email || "",
+        activeRequestRequestedByCompanyId: session.companyId || "",
+        activeRequestCreatedAtMs: Date.now(),
+      },
+      {
+        module: "requests",
+        eventType: "request_created",
+        message: title || "Request created",
+      },
+    );
+  }
+
   return {
     requestId: requestRef.id,
     notificationRequestId: notification.id,
@@ -243,6 +270,26 @@ export async function markRequestInProgress(requestId) {
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
   });
+
+  const requestSnap = await getDoc(requestRef);
+  const request = requestSnap.exists() ? requestSnap.data() : null;
+
+  if (request?.roId) {
+    await updateRO(
+      request.roId,
+      {
+        activeRequestStatus: REQUEST_STATUS.IN_PROGRESS,
+        activeRequestStartedAtMs: Date.now(),
+        activeRequestStartedByUid: session.uid,
+        activeRequestStartedByName: session.displayName || session.email || "",
+      },
+      {
+        module: "requests",
+        eventType: "request_started",
+        message: request.title || "Request started",
+      },
+    );
+  }
 }
 
 export async function releaseRequestInProgress(requestId) {
@@ -301,6 +348,25 @@ export async function releaseRequestInProgressByNotificationId(
   await releaseRequestInProgress(requestDoc.id);
 }
 
+function buildClearedActiveRequestFields() {
+  return {
+    activeRequestId: "",
+    activeRequestNotificationId: "",
+    activeRequestType: "",
+    activeRequestTitle: "",
+    activeRequestStatus: "",
+    activeRequestTargetGroupId: "",
+    activeRequestTargetGroupName: "",
+    activeRequestRequestedByUid: "",
+    activeRequestRequestedByName: "",
+    activeRequestRequestedByCompanyId: "",
+    activeRequestCreatedAtMs: null,
+    activeRequestStartedAtMs: null,
+    activeRequestStartedByUid: "",
+    activeRequestStartedByName: "",
+  };
+}
+
 export async function completeRequest(requestId) {
   const session = getSession();
 
@@ -325,9 +391,22 @@ export async function completeRequest(requestId) {
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
   });
+
+  const requestSnap = await getDoc(requestRef);
+  const request = requestSnap.exists() ? requestSnap.data() : null;
+
+  if (request?.roId) {
+    await updateRO(request.roId, buildClearedActiveRequestFields(), {
+      module: "requests",
+      eventType: "request_completed",
+      message: request.title || "Request completed",
+    });
+  }
 }
 
 export async function cancelRequest(request = {}) {
+  console.log("Cancelling request:", request);
+  
   const session = getSession();
 
   if (!session?.uid) {
@@ -351,6 +430,14 @@ export async function cancelRequest(request = {}) {
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
   });
+
+  if (request.roId) {
+    await updateRO(request.roId, buildClearedActiveRequestFields(), {
+      module: "requests",
+      eventType: "request_cancelled",
+      message: request.title || "Request cancelled",
+    });
+  }
 
   if (request.notificationRequestId) {
     const notificationRef = doc(
