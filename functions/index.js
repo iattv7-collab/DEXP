@@ -13,6 +13,7 @@ const {
 } = require("firebase-functions/v2/https");
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 
 const admin = require("firebase-admin");
 
@@ -615,5 +616,101 @@ exports.releaseStaleNotifications = onSchedule(
     await Promise.all(updates);
 
     console.log(`Released ${updates.length} stale notifications.`);
+  },
+);
+
+exports.sendPushForNotificationRequest = onDocumentCreated(
+  "notificationRequests/{notificationId}",
+  async (event) => {
+    const notification = event.data?.data();
+
+    if (!notification) {
+      return;
+    }
+
+    const dealerId = notification.dealerId || "";
+    const title = notification.title || "DEXP Notification";
+    const body = notification.message || "";
+
+    let targetUids = [];
+
+    if (notification.targetType === "user" && notification.targetUserId) {
+      targetUids = [notification.targetUserId];
+    }
+
+    if (notification.targetType === "group" && notification.targetGroupId) {
+      const groupSnap = await admin
+        .firestore()
+        .doc(`notificationGroups/${notification.targetGroupId}`)
+        .get();
+
+      if (groupSnap.exists) {
+        const group = groupSnap.data();
+
+        if (group.dealerId === dealerId && Array.isArray(group.memberUids)) {
+          targetUids = group.memberUids;
+        }
+      }
+    }
+
+    if (!targetUids.length) {
+      return;
+    }
+
+    const tokens = [];
+
+    for (const uid of targetUids) {
+      const devicesSnap = await admin
+        .firestore()
+        .collection(`users/${uid}/devices`)
+        .where("dealerId", "==", dealerId)
+        .where("active", "==", true)
+        .where("notificationsEnabled", "==", true)
+        .get();
+
+      devicesSnap.forEach((deviceDoc) => {
+        const device = deviceDoc.data();
+
+        if (device.fcmToken) {
+          tokens.push(device.fcmToken);
+        }
+      });
+    }
+
+    const uniqueTokens = Array.from(new Set(tokens));
+
+    if (!uniqueTokens.length) {
+      return;
+    }
+
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens: uniqueTokens,
+      data: {
+        title,
+    body,
+        notificationId: event.params.notificationId,
+        route: notification.route || "",
+        module: notification.module || "",
+        eventType: notification.eventType || "",
+        relatedRoId: notification.relatedRoId || "",
+        relatedRoNumber: String(notification.relatedRoNumber || ""),
+        relatedTagNumber: String(notification.relatedTagNumber || ""),
+      },
+    });
+
+    await event.data.ref.set(
+      {
+        pushSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        pushSentAtMs: Date.now(),
+        pushTargetDeviceCount: uniqueTokens.length,
+        pushSuccessCount: response.successCount,
+        pushFailureCount: response.failureCount,
+      },
+      { merge: true },
+    );
+
+    console.log(
+      `Push sent for notification ${event.params.notificationId}: ${response.successCount}/${uniqueTokens.length}`,
+    );
   },
 );

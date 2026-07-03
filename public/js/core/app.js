@@ -7,6 +7,8 @@ import { DEXP_APP_VERSION } from "../config/app-version.js";
 
 import { startNotificationEngine } from "../modules/notifications/notification-engine.js";
 
+import { registerCurrentDeviceForNotifications } from "../services/firebase/messaging-service.js";
+
 import { ensureUserProfile } from "../services/firestore/users-service.js";
 import { getDealer } from "../services/firestore/dealers-service.js";
 import { getDealerModules } from "../services/firestore/modules-service.js";
@@ -200,6 +202,12 @@ async function loadUserSession(user) {
       dealer,
       modules,
     });
+
+    try {
+      await registerCurrentDeviceForNotifications();
+    } catch (error) {
+      console.error("Device notification registration failed:", error);
+    }
 
     if (isPlatformAdmin && !isPlatformAdminPage()) {
       const selectedDealerId = getPlatformSelectedDealerId();
