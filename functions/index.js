@@ -687,8 +687,18 @@ exports.sendPushForNotificationRequest = onDocumentCreated(
       tokens: uniqueTokens,
       data: {
         title,
-    body,
+        body,
         notificationId: event.params.notificationId,
+        requestId: String(
+          notification.routeParams?.requestId ||
+            notification.data?.requestId ||
+            "",
+        ),
+        tagNumber: String(
+          notification.routeParams?.tagNumber ||
+            notification.relatedTagNumber ||
+            "",
+        ),
         route: notification.route || "",
         module: notification.module || "",
         eventType: notification.eventType || "",

@@ -187,12 +187,34 @@ function initializeMoveLocate() {
   loadNotificationRouteParams();
 }
 
+async function openNotificationFromRoute() {
+  if (!activeNotificationId) {
+    return;
+  }
+
+  if (releaseRequestButton) {
+    releaseRequestButton.classList.remove("hidden");
+  }
+
+  try {
+    await openNotificationRequest(activeNotificationId);
+  } catch (error) {
+    console.error("Could not mark notification opened:", error);
+    showMessage(error?.message || "Could not open request.");
+  }
+}
+
 function loadNotificationRouteParams() {
   const params = new URLSearchParams(window.location.search);
 
   const tagNumber = String(params.get("tagNumber") || "").trim();
   activeNotificationId = String(params.get("notificationId") || "").trim();
   activeRequestId = String(params.get("requestId") || "").trim();
+  console.log("Move Locate route params:", {
+  tagNumber,
+  activeNotificationId,
+  activeRequestId,
+});
 
   if (!tagNumber) {
     return;
@@ -202,14 +224,7 @@ function loadNotificationRouteParams() {
 
   vehicleSearchInput.value = tagNumber;
 
-  if (activeNotificationId && releaseRequestButton) {
-    releaseRequestButton.classList.remove("hidden");
-
-    openNotificationRequest(activeNotificationId).catch((error) => {
-      console.error("Could not mark notification opened:", error);
-      showMessage(error?.message || "Could not open request.");
-    });
-  }
+  openNotificationFromRoute();
 
   searchModeToggleButton.textContent = "By Tag";
 
