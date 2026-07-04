@@ -32,6 +32,16 @@ import {
   releaseRequestInProgressByNotificationId,
 } from "/js/services/firestore/requests-service.js";
 
+import {
+  normalizeTag,
+  formatAreaLabel,
+  formatAreaLot,
+  formatDateTime,
+  escapeHtml,
+} from "./move-locate-helpers.js";
+
+import { renderParkingAvailability as renderParkingAvailabilityView } from "./move-locate-parking.js";
+
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
 });
@@ -211,10 +221,10 @@ function loadNotificationRouteParams() {
   activeNotificationId = String(params.get("notificationId") || "").trim();
   activeRequestId = String(params.get("requestId") || "").trim();
   console.log("Move Locate route params:", {
-  tagNumber,
-  activeNotificationId,
-  activeRequestId,
-});
+    tagNumber,
+    activeNotificationId,
+    activeRequestId,
+  });
 
   if (!tagNumber) {
     return;
@@ -320,12 +330,6 @@ function populateLegacyLotDropdown() {
   });
 }
 
-function formatAreaLabel(area) {
-  return String(area || "")
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 function getSessionUserName() {
   const session = getSession();
 
@@ -364,7 +368,13 @@ function loadDealerROs() {
   watchDealerROs((ros) => {
     lastROs = ros;
 
-    renderParkingAvailability();
+    renderParkingAvailabilityView({
+      parkingAvailabilityList,
+      groupedLocations,
+      ros: lastROs,
+      getROArea,
+      getROLot,
+    });
 
     if (currentRO?.id) {
       const updatedRO = ros.find((ro) => ro.id === currentRO.id);
@@ -669,6 +679,9 @@ function getCurrentMoveGroup(ro) {
 
   return group.length ? group : [ro];
 }
+
+// public/pages/move-locate/move-locate.js
+// Restored local render functions. No logic change.
 
 function renderUnifiedMoveCards() {
   groupFinalLocationList.innerHTML = "";
@@ -1298,10 +1311,6 @@ async function takeOverMove() {
   }
 }
 
-function normalizeTag(value = "") {
-  return String(value).trim().toUpperCase();
-}
-
 function getROTag(ro) {
   return normalizeTag(ro?.[ROS_FIELDS.tagNumber] || ro?.tagNumber || "");
 }
@@ -1317,10 +1326,6 @@ function getROLot(ro) {
       ro?.location ||
       "",
   ).trim();
-}
-
-function formatAreaLot(area, lot) {
-  return [area, lot].filter(Boolean).join(" / ");
 }
 
 function findROByTag(tag, ros = []) {
@@ -1508,79 +1513,6 @@ function resetMoveLocateForm() {
   if (blocksTagInput) {
     blocksTagInput.value = "";
   }
-}
-
-function renderParkingAvailability() {
-  if (!parkingAvailabilityList) {
-    return;
-  }
-
-  parkingAvailabilityList.innerHTML = "";
-
-  const locations = Object.values(groupedLocations)
-    .flat()
-    .map((location) => {
-      const area = String(location.area || "").trim();
-      const lot = String(location.label || "").trim();
-      const capacity = Number(location.capacity || 0);
-
-      const used = lastROs.filter((ro) => {
-        return getROArea(ro) === area && getROLot(ro) === lot;
-      }).length;
-
-      const available = Math.max(capacity - used, 0);
-
-      return {
-        location,
-        lot,
-        available,
-      };
-    })
-    .sort((a, b) => b.available - a.available);
-
-  locations.forEach((itemData) => {
-    const item = document.createElement("div");
-
-    item.className =
-      itemData.available > 0
-        ? "parking-availability-item"
-        : "parking-availability-item parking-full";
-
-    item.innerHTML = `
-      <span class="parking-availability-label">
-        ${escapeHtml(itemData.lot)}
-      </span>
-
-      <span class="parking-availability-count">
-        ${itemData.available}
-      </span>
-    `;
-
-    parkingAvailabilityList.appendChild(item);
-  });
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleString();
-}
-
-function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 function showMessage(message) {
