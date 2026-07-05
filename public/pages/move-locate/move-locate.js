@@ -234,6 +234,9 @@ function loadNotificationRouteParams() {
 
   vehicleSearchInput.value = tagNumber;
 
+  showMessage("Loading...");
+  vehicleResultCard.classList.add("hidden");
+
   openNotificationFromRoute();
 
   searchModeToggleButton.textContent = "By Tag";
@@ -449,6 +452,7 @@ async function findVehicle() {
   }
 
   renderSelectedVehicle(match);
+  vehicleResultCard.classList.remove("hidden");
 
   searchVehicleButton.disabled = true;
   showMessage("Vehicle found.");

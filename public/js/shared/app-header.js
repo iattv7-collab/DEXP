@@ -2,6 +2,10 @@
 
 import { logoutUser } from "/js/services/firebase/auth-service.js";
 import { clearSession, getSession } from "/js/core/session.js";
+import {
+  getCurrentNotificationStatus,
+  registerCurrentDeviceForNotifications,
+} from "/js/services/firebase/messaging-service.js";
 
 export function renderAppHeader(options = {}) {
   const { showHome = true, platformMode = false } = options;
@@ -78,6 +82,14 @@ export function renderAppHeader(options = {}) {
       }
 
       <button
+        id="notificationStatusButton"
+        type="button"
+        title="Checking notification status..."
+      >
+        🔔 Notifications
+      </button>
+
+      <button
         id="logoutButton"
         type="button"
       >
@@ -118,6 +130,40 @@ export function renderAppHeader(options = {}) {
       }
 
       window.location.href = "/pages/dashboard/index.html";
+    });
+  }
+
+  const notificationStatusButton = document.getElementById(
+    "notificationStatusButton",
+  );
+
+  async function refreshNotificationButton() {
+    if (!notificationStatusButton) {
+      return;
+    }
+
+    const status = await getCurrentNotificationStatus();
+
+    notificationStatusButton.textContent = status.label;
+    notificationStatusButton.title = status.title;
+  }
+
+  if (notificationStatusButton) {
+    refreshNotificationButton();
+
+    notificationStatusButton.addEventListener("click", async () => {
+      notificationStatusButton.disabled = true;
+      notificationStatusButton.textContent = "Checking...";
+
+      try {
+        await registerCurrentDeviceForNotifications();
+        await refreshNotificationButton();
+      } catch (error) {
+        console.error("Could not update notification status:", error);
+        alert("Could not update notification status on this device.");
+      } finally {
+        notificationStatusButton.disabled = false;
+      }
     });
   }
 

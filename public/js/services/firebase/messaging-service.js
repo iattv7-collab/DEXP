@@ -27,23 +27,63 @@ function getOrCreateDeviceId() {
 function getBrowserName() {
   const agent = navigator.userAgent || "";
 
-  if (agent.includes("Edg/")) {
-    return "Microsoft Edge";
-  }
-
-  if (agent.includes("Chrome/")) {
-    return "Chrome";
-  }
-
-  if (agent.includes("Safari/")) {
-    return "Safari";
-  }
-
-  if (agent.includes("Firefox/")) {
-    return "Firefox";
-  }
+  if (agent.includes("Edg/")) return "Microsoft Edge";
+  if (agent.includes("Chrome/")) return "Chrome";
+  if (agent.includes("Safari/")) return "Safari";
+  if (agent.includes("Firefox/")) return "Firefox";
 
   return "Browser";
+}
+
+async function saveNotificationsDisabledDevice() {
+  await saveUserDevice({
+    deviceId: getOrCreateDeviceId(),
+    fcmToken: "",
+    browser: getBrowserName(),
+    platform: navigator.platform || "",
+    userAgent: navigator.userAgent || "",
+    notificationsEnabled: false,
+  });
+}
+
+function showNotificationsBlockedMessage() {
+  alert(
+    "Notifications are blocked on this device.\n\nTo receive DEXP alerts, enable notifications for this site in your browser settings, then refresh DEXP or sign out and sign back in.",
+  );
+}
+
+export async function getCurrentNotificationStatus() {
+  const supported = await isSupported();
+
+  if (!supported || !("Notification" in window)) {
+    return {
+      status: "unsupported",
+      label: "❌ Notifications",
+      title: "Notifications are not supported on this device.",
+    };
+  }
+
+  if (Notification.permission === "granted") {
+    return {
+      status: "granted",
+      label: "✅ Notifications",
+      title: "Notifications are enabled on this device.",
+    };
+  }
+
+  if (Notification.permission === "denied") {
+    return {
+      status: "denied",
+      label: "⚠️ Notifications",
+      title: "Notifications are blocked on this device.",
+    };
+  }
+
+  return {
+    status: "default",
+    label: "🔔 Enable",
+    title: "Enable notifications on this device.",
+  };
 }
 
 export async function registerCurrentDeviceForNotifications() {
@@ -51,32 +91,39 @@ export async function registerCurrentDeviceForNotifications() {
 
   if (!supported) {
     console.warn("Firebase Messaging is not supported in this browser.");
-    return;
+    return "unsupported";
   }
 
   if (!("Notification" in window)) {
     console.warn("Browser notifications are not available.");
-    return;
+    return "unsupported";
   }
 
   if (!firebaseVapidKey || firebaseVapidKey.includes("PASTE_")) {
     console.warn("Missing Firebase Web Push public VAPID key.");
-    return;
+    return "missing-vapid-key";
   }
 
-  const permission = await Notification.requestPermission();
+  if (Notification.permission === "denied") {
+    await saveNotificationsDisabledDevice();
+    showNotificationsBlockedMessage();
+    return "denied";
+  }
+
+  let permission = Notification.permission;
+
+  if (permission === "default") {
+    permission = await Notification.requestPermission();
+  }
 
   if (permission !== "granted") {
-    await saveUserDevice({
-      deviceId: getOrCreateDeviceId(),
-      fcmToken: "",
-      browser: getBrowserName(),
-      platform: navigator.platform || "",
-      userAgent: navigator.userAgent || "",
-      notificationsEnabled: false,
-    });
+    await saveNotificationsDisabledDevice();
 
-    return;
+    if (permission === "denied") {
+      showNotificationsBlockedMessage();
+    }
+
+    return permission;
   }
 
   const registration = await navigator.serviceWorker.register(
@@ -92,7 +139,8 @@ export async function registerCurrentDeviceForNotifications() {
 
   if (!token) {
     console.warn("Firebase did not return an FCM token.");
-    return;
+    await saveNotificationsDisabledDevice();
+    return "no-token";
   }
 
   await saveUserDevice({
@@ -103,4 +151,6 @@ export async function registerCurrentDeviceForNotifications() {
     userAgent: navigator.userAgent || "",
     notificationsEnabled: true,
   });
+
+  return "granted";
 }

@@ -55,7 +55,7 @@
             <button id="searchVehicleButton" type="button">Search</button>
           </div>
 
-          <div id="vehicleResultCard" class="tool-preview move-vehicle-preview">
+          <div id="vehicleResultCard" class="tool-preview move-vehicle-preview hidden">
             <div class="move-preview-main">
               <div class="tool-preview-grid move-preview-grid">
                 <div>
@@ -165,7 +165,24 @@
       </section>
     </main>
 
+<script>
+  const moveParams = new URLSearchParams(window.location.search);
+
+  if (moveParams.get("tagNumber")) {
+    const message = document.getElementById("moveLocateMessage");
+    const resultCard = document.getElementById("vehicleResultCard");
+
+    if (message) {
+      message.textContent = "Loading...";
+    }
+
+    if (resultCard) {
+      resultCard.classList.add("hidden");
+    }
+  }
+</script>
+
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate.js?v=16"></script>
+    <script type="module" src="/pages/move-locate/move-locate.js?v=18"></script>
   </body>
 </html>
