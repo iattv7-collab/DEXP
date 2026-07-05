@@ -234,6 +234,7 @@ function loadNotificationRouteParams() {
 
   vehicleSearchInput.value = tagNumber;
 
+  moveLocateMessage.classList.add("dexp-loading");
   showMessage("Loading...");
   vehicleResultCard.classList.add("hidden");
 
@@ -455,6 +456,7 @@ async function findVehicle() {
   vehicleResultCard.classList.remove("hidden");
 
   searchVehicleButton.disabled = true;
+  moveLocateMessage.classList.remove("dexp-loading");
   showMessage("Vehicle found.");
 }
 
@@ -559,6 +561,7 @@ async function startMove() {
   const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
 
   if (!freshCurrentRO) {
+    moveLocateMessage.classList.remove("dexp-loading");
     showMessage("Vehicle not found.");
     return;
   }

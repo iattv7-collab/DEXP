@@ -1,0 +1,22 @@
+/* public/css/components/loading.css */
+/* Reusable DEXP loading indicator */
+
+.dexp-loading {
+  font-size: 1.4rem;
+  font-weight: 700;
+  animation: dexp-loading-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes dexp-loading-pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
