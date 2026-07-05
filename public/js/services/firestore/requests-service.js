@@ -76,6 +76,37 @@ async function assertNoOpenRequestForRO({
   }
 }
 
+async function updateROActiveRequestFieldsForRequest(roId, updates = {}) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    throw new Error("Missing dealer session.");
+  }
+
+  if (!roId) {
+    return;
+  }
+
+  const roRef = doc(db, "ros", roId);
+  const roSnap = await getDoc(roRef);
+
+  if (!roSnap.exists()) {
+    throw new Error("RO not found.");
+  }
+
+  const ro = roSnap.data();
+
+  if (ro.dealerId !== session.dealerId) {
+    throw new Error("RO not found or dealer mismatch.");
+  }
+
+  await updateDoc(roRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+    updatedBy: session.uid || "",
+  });
+}
+
 export async function createRequest({
   roId = "",
   roNumber = "",
@@ -194,30 +225,19 @@ export async function createRequest({
     notificationRequestId: notification.id,
   });
 
-  if (roId) {
-    await updateRO(
-      roId,
-      {
-        activeRequestId: requestRef.id,
-        activeRequestNotificationId: notification.id,
-        activeRequestType: requestType,
-        activeRequestTitle: title || "New Request",
-        activeRequestStatus: REQUEST_STATUS.ACTIVE,
-        activeRequestTargetGroupId: targetGroupId,
-        activeRequestTargetGroupName: targetGroupName,
-        activeRequestRequestedByUid: session.uid || "",
-        activeRequestRequestedByName:
-          session.displayName || session.email || "",
-        activeRequestRequestedByCompanyId: session.companyId || "",
-        activeRequestCreatedAtMs: Date.now(),
-      },
-      {
-        module: "requests",
-        eventType: "request_created",
-        message: title || "Request created",
-      },
-    );
-  }
+  await updateROActiveRequestFieldsForRequest(roId, {
+    activeRequestId: requestRef.id,
+    activeRequestNotificationId: notification.id,
+    activeRequestType: requestType,
+    activeRequestTitle: title || "New Request",
+    activeRequestStatus: REQUEST_STATUS.ACTIVE,
+    activeRequestTargetGroupId: targetGroupId,
+    activeRequestTargetGroupName: targetGroupName,
+    activeRequestRequestedByUid: session.uid || "",
+    activeRequestRequestedByName: session.displayName || session.email || "",
+    activeRequestRequestedByCompanyId: session.companyId || "",
+    activeRequestCreatedAtMs: Date.now(),
+  });
 
   return {
     requestId: requestRef.id,
@@ -406,7 +426,7 @@ export async function completeRequest(requestId) {
 
 export async function cancelRequest(request = {}) {
   console.log("Cancelling request:", request);
-  
+
   const session = getSession();
 
   if (!session?.uid) {
