@@ -1,0 +1,205 @@
+/* public/css/modules/loaner-fleet.css */
+/* Loaner Fleet table styling aligned with RO Tracker. */
+
+:root {
+  --lf-blue: #0b3d91;
+  --lf-teal: #4066e2;
+  --lf-grid: #c9c9c9;
+
+  --lf-row-h: 22px;
+  --lf-cell-pad-y: 2px;
+  --lf-edit-pad-y: 0px;
+}
+
+/* LOANER FLEET PAGE LAYOUT */
+
+.loaner-fleet-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px;
+  box-sizing: border-box;
+}
+
+#loanerFleetPage .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+/* TABLE WRAP */
+
+.loaner-fleet-table-wrap {
+  width: 100%;
+  margin-top: 12px;
+  background: #fff;
+  border: 1px solid var(--lf-grid);
+  border-radius: 10px;
+  overflow: auto;
+}
+
+/* TABLE */
+
+.loaner-fleet-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #fff;
+}
+
+.loaner-fleet-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--lf-teal);
+  color: #fff;
+  font-weight: bold;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.loaner-fleet-table td {
+  padding: var(--lf-cell-pad-y) 6px;
+  border-right: 1px solid var(--lf-grid);
+  border-bottom: 1px solid var(--lf-grid);
+  white-space: nowrap;
+  font-size: 16px;
+  height: var(--lf-row-h);
+  line-height: calc(var(--lf-row-h) - 4px);
+  vertical-align: middle;
+}
+
+.loaner-fleet-table td:last-child,
+.loaner-fleet-table th:last-child {
+  border-right: 0;
+}
+
+.loaner-fleet-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.loaner-fleet-table .center {
+  text-align: center;
+}
+
+/* EDITABLE CELLS */
+
+.loaner-fleet-table .cell-edit {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+  padding: var(--lf-edit-pad-y) 6px;
+  border: none;
+  outline: none;
+  background: transparent;
+  height: calc(var(--lf-row-h) - 4px);
+  line-height: calc(var(--lf-row-h) - 4px);
+}
+
+.loaner-fleet-table .cell-edit:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* SMALL BUTTONS */
+
+.loaner-small-action-button {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  line-height: 1;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid #888;
+  background: #fff;
+  cursor: pointer;
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: middle;
+  color: #111;
+}
+
+.loaner-small-action-button:hover {
+  background: #e6e4e4;
+}
+
+.loaner-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* COLUMN WIDTHS */
+
+.col-unit {
+  width: 55px;
+}
+
+.col-last8 {
+  width: 70px;
+}
+
+.col-year {
+  width: 55px;
+}
+
+.col-make {
+  width: 100px;
+}
+
+.col-model {
+  width: 140px;
+}
+
+.col-plate {
+  width: 70px;
+}
+
+.col-ro {
+  width: 90px;
+}
+
+.col-status {
+  width: 100px;
+}
+
+.col-location {
+  width: 135px;
+}
+
+.col-returned {
+  width: 130px;
+}
+
+.col-received {
+  width: 120px;
+}
+
+.col-mileage {
+  width: 90px;
+}
+
+.col-fuel {
+  width: 70px;
+}
+
+.col-damage {
+  width: 90px;
+}
+
+.col-notes {
+  width: 110px;
+}
+
+.col-actions {
+  width: 145px;
+}

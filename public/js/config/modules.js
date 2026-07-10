@@ -40,7 +40,7 @@ export const MODULE_CONFIG = {
   },
 
   [MODULES.SCANNER_RO]: {
-    label: "Scanner RO",
+    label: "Scan RO",
     route: "/pages/scanner-ro/index.html",
     icon: "document_scanner",
     permission: PERMISSIONS.SCANNER_RO_USE

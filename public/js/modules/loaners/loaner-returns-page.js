@@ -23,13 +23,13 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
   scanVinWithCamera,
   normalizeVin,
-  decodeVinLive
+  decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
 
 const $ = (id) => document.getElementById(id);
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         () => {
           resolve(getSession());
         },
-        { once: true }
+        { once: true },
       );
     });
   }
@@ -113,9 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("model").value = decoded?.model || "";
       $("returnedAt").value = stampNow();
       $("receivedBy").value =
-        auth.currentUser?.email ||
-        currentSession?.email ||
-        "";
+        currentSession?.displayName || auth.currentUser?.displayName || "";
 
       $("returnMsg").textContent = "";
       $("mileage")?.focus();
@@ -127,9 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("model").value = "";
       $("returnedAt").value = stampNow();
       $("receivedBy").value =
-        auth.currentUser?.email ||
-        currentSession?.email ||
-        "";
+        currentSession?.displayName || auth.currentUser?.displayName || "";
 
       $("returnMsg").textContent = "VIN scanned, decode failed";
     }
@@ -179,7 +175,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const returnedAtText = $("returnedAt")?.value || "";
-    const receivedBy = $("receivedBy")?.value || "";
+    const receivedByName = $("receivedBy")?.value || "";
+    const receivedByEmail =
+      currentSession?.email || auth.currentUser?.email || "";
+    const receivedByUid = currentSession?.uid || auth.currentUser?.uid || "";
     const mileage = $("mileage")?.value || "";
     const fuelLevel = $("fuelLevel")?.value || "";
     const damageNotes = $("damageNotes")?.value || "";
@@ -192,11 +191,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       year,
       model,
       returnedAtText,
-      receivedBy,
+      receivedByName,
+      receivedByEmail,
+      receivedByUid,
       mileage,
       fuelLevel,
       damageNotes,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     });
 
     const fleetRef = doc(db, "loanerFleet", vin);
@@ -212,13 +213,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           status: "At Wash",
           assignedRo: "",
           lastReturnedAt: returnedAtText,
-          lastReceivedBy: receivedBy,
+          lastReceivedByName: receivedByName,
+          lastReceivedByEmail: receivedByEmail,
+          lastReceivedByUid: receivedByUid,
           lastMileage: mileage,
           lastFuelLevel: fuelLevel,
           lastDamageNotes: damageNotes,
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
 
       if (assignedRo) {
@@ -240,7 +243,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "receivedBy",
       "mileage",
       "fuelLevel",
-      "damageNotes"
+      "damageNotes",
     ].forEach((id) => {
       if ($(id)) $(id).value = "";
     });
@@ -275,9 +278,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         loanerVin: "",
         loanerStatus: "",
         loanerAssignedAt: null,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
   }
 
@@ -289,7 +292,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const roNumberQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("roNumber", "==", cleanRo)
+      where("roNumber", "==", cleanRo),
     );
 
     const roNumberSnap = await getDocs(roNumberQuery);
@@ -301,7 +304,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const legacyRoQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("ro", "==", cleanRo)
+      where("ro", "==", cleanRo),
     );
 
     const legacyRoSnap = await getDocs(legacyRoQuery);
@@ -316,7 +319,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function updateCounts() {
     const q = query(
       collection(db, "loanerFleet"),
-      where("dealerId", "==", currentDealerId)
+      where("dealerId", "==", currentDealerId),
     );
 
     const snap = await getDocs(q);
@@ -346,7 +349,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const q = query(
       collection(db, "loanerReturns"),
-      where("dealerId", "==", currentDealerId)
+      where("dealerId", "==", currentDealerId),
     );
 
     const snap = await getDocs(q);
@@ -394,13 +397,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[c],
+    );
   }
 
   currentSession = await waitForSession();

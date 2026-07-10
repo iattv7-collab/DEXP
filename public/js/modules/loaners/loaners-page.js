@@ -23,20 +23,20 @@ import {
   collection,
   query,
   where,
-  serverTimestamp
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
   scanVinWithCamera,
   normalizeVin,
-  decodeVinLive
+  decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
 
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({
-    allowedModules: ["loaner-fleet"]
+    allowedModules: ["loaner-fleet"],
   });
 
   renderAppHeader();
@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         () => {
           resolve(getSession());
         },
-        { once: true }
+        { once: true },
       );
     });
   }
@@ -193,7 +193,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         assignedRo: existing.assignedRo || "",
 
         lastReturnedAt: existing.lastReturnedAt || "",
-        lastReceivedBy: existing.lastReceivedBy || "",
+        lastReceivedByName: existing.lastReceivedByName || "",
+        lastReceivedByEmail: existing.lastReceivedByEmail || "",
+        lastReceivedByUid: existing.lastReceivedByUid || "",
         lastMileage: existing.lastMileage || "",
         lastFuelLevel: existing.lastFuelLevel || "",
         lastDamageNotes: existing.lastDamageNotes || "",
@@ -204,9 +206,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         notes: existing.notes || "",
         holdReason: existing.holdReason || "",
 
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     $("fleetMsg").textContent = "Saved";
@@ -231,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const roNumberQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("roNumber", "==", cleanRo)
+      where("roNumber", "==", cleanRo),
     );
 
     const roNumberSnap = await getDocs(roNumberQuery);
@@ -243,7 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const legacyRoQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("ro", "==", cleanRo)
+      where("ro", "==", cleanRo),
     );
 
     const legacyRoSnap = await getDocs(legacyRoQuery);
@@ -262,20 +264,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     return fleetRows.filter((x) => {
       return (
-        String(x.vin || "").toUpperCase().includes(q) ||
-        String(x.last8 || "").toUpperCase().includes(q) ||
-        String(x.unitNumber || "").toUpperCase().includes(q) ||
-        String(x.plate || "").toUpperCase().includes(q) ||
-        String(x.year || "").toUpperCase().includes(q) ||
-        String(x.make || "").toUpperCase().includes(q) ||
-        String(x.model || "").toUpperCase().includes(q) ||
-        String(x.status || "").toUpperCase().includes(q) ||
-        String(x.location || "").toUpperCase().includes(q) ||
-        String(x.assignedRo || "").toUpperCase().includes(q)
+        String(x.vin || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.last8 || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.unitNumber || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.plate || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.year || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.make || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.model || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.status || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.location || "")
+          .toUpperCase()
+          .includes(q) ||
+        String(x.assignedRo || "")
+          .toUpperCase()
+          .includes(q)
       );
     });
   }
-
   function renderFleetTable() {
     const filtered = getFilteredRows();
 
@@ -286,61 +307,83 @@ document.addEventListener("DOMContentLoaded", async () => {
       const safeId = makeSafeId(vin);
 
       html += `
-        <tr>
-          <td>${escapeHtml(x.unitNumber || "")}</td>
-          <td>${escapeHtml(x.last8 || "")}</td>
-          <td>${escapeHtml(x.year || "")}</td>
-          <td>${escapeHtml(x.make || "")}</td>
-          <td>${escapeHtml(x.model || "")}</td>
-          <td>${escapeHtml(x.plate || "")}</td>
+      <tr>
+        <td class="col-unit">${escapeHtml(x.unitNumber || "")}</td>
+        <td class="col-last8">${escapeHtml(x.last8 || "")}</td>
+        <td class="col-year">${escapeHtml(x.year || "")}</td>
+        <td class="col-make">${escapeHtml(x.make || "")}</td>
+        <td class="col-model">${escapeHtml(x.model || "")}</td>
+        <td class="col-plate">${escapeHtml(x.plate || "")}</td>
 
-          <td>
-            <input
-              class="mini-input"
-              id="ro-${safeId}"
-              value="${escapeAttr(x.assignedRo || "")}"
-              placeholder="RO #"
+        <td class="col-ro">
+          <input
+            class="cell-edit"
+            id="ro-${safeId}"
+            value="${escapeAttr(x.assignedRo || "")}"
+            placeholder="RO #"
+          >
+        </td>
+
+        <td class="col-status">
+          <select
+            class="cell-edit"
+            id="status-${safeId}"
+          >
+            ${statusOptions(x.status || "")}
+          </select>
+        </td>
+
+        <td class="col-location">
+          <input
+            class="cell-edit"
+            id="location-${safeId}"
+            value="${escapeAttr(x.location || "")}"
+            placeholder="Location"
+          >
+        </td>
+
+        <td class="col-returned">
+          ${escapeHtml(
+             String(x.status || "").toLowerCase() === "out"
+               ? x.outAt || ""
+               : x.lastReturnedAt || "",
+            )}
+        </td>
+        <td class="col-received">${escapeHtml(x.lastReceivedByName || "")}</td>
+        <td class="col-mileage">${escapeHtml(x.lastMileage || "")}</td>
+        <td class="col-fuel">${escapeHtml(x.lastFuelLevel || "")}</td>
+        <td class="col-damage">${escapeHtml(x.lastDamageNotes || "")}</td>
+
+        <td class="col-notes">
+          <input
+            class="cell-edit"
+            id="notes-${safeId}"
+            value="${escapeAttr(x.notes || "")}"
+            placeholder="Notes"
+          >
+        </td>
+
+        <td class="col-actions center">
+          <div class="loaner-row-actions">
+            <button
+              type="button"
+              data-vin="${escapeAttr(vin)}"
+              class="save-row-btn loaner-small-action-button"
             >
-          </td>
+              Update
+            </button>
 
-          <td>
-            <select class="mini-select" id="status-${safeId}">
-              ${statusOptions(x.status || "")}
-            </select>
-          </td>
-
-          <td>
-            <input
-              class="mini-input"
-              id="location-${safeId}"
-              value="${escapeAttr(x.location || "")}"
-              placeholder="Location"
+            <button
+              type="button"
+              data-vin="${escapeAttr(vin)}"
+              class="remove-row-btn loaner-small-action-button"
             >
-          </td>
-
-          <td>${escapeHtml(x.lastReturnedAt || "")}</td>
-          <td>${escapeHtml(x.lastReceivedBy || "")}</td>
-          <td>${escapeHtml(x.lastMileage || "")}</td>
-          <td>${escapeHtml(x.lastFuelLevel || "")}</td>
-          <td>${escapeHtml(x.lastDamageNotes || "")}</td>
-
-          <td>
-            <input
-              class="mini-input"
-              id="notes-${safeId}"
-              value="${escapeAttr(x.notes || "")}"
-              placeholder="Notes"
-            >
-          </td>
-
-          <td>
-            <div class="actions">
-              <button data-vin="${escapeAttr(vin)}" class="save-row-btn">Update</button>
-              <button data-vin="${escapeAttr(vin)}" class="remove-row-btn">Remove from Fleet</button>
-            </div>
-          </td>
-        </tr>
-      `;
+              Remove
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
     });
 
     $("fleetTableBody").innerHTML = html;
@@ -378,8 +421,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const notes =
       document.getElementById(`notes-${safeId}`)?.value.trim() || "";
 
-    let status =
-      document.getElementById(`status-${safeId}`)?.value || "";
+    let status = document.getElementById(`status-${safeId}`)?.value || "";
 
     const fleetRow =
       fleetRows.find((x) => normalizeVin(x.vin) === cleanVin) || {};
@@ -388,7 +430,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (assignedRo && previousRo && previousRo !== assignedRo) {
       alert(
-        `This loaner is already assigned to RO # ${previousRo}. Return it first before assigning it to another RO.`
+        `This loaner is already assigned to RO # ${previousRo}. Return it first before assigning it to another RO.`,
       );
       return;
     }
@@ -410,7 +452,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         normalizeVin(roData.loanerVin) !== cleanVin
       ) {
         alert(
-          `RO # ${assignedRo} already has a different loaner assigned. Return that loaner first.`
+          `RO # ${assignedRo} already has a different loaner assigned. Return that loaner first.`,
         );
         return;
       }
@@ -425,9 +467,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           loanerVin: cleanVin,
           loanerStatus: "Out",
           loanerAssignedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
     }
 
@@ -443,9 +485,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             loanerVin: "",
             loanerStatus: "",
             loanerAssignedAt: null,
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
         );
       }
     }
@@ -461,9 +503,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         status,
         location,
         notes,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     await load();
@@ -478,11 +520,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       fleetRows.find((x) => normalizeVin(x.vin) === cleanVin) || {};
 
     const assignedRo = String(fleetRow.assignedRo || "").trim();
-    const status = String(fleetRow.status || "").trim().toUpperCase();
+    const status = String(fleetRow.status || "")
+      .trim()
+      .toUpperCase();
 
     if (assignedRo || status === "OUT") {
       alert(
-        "This loaner is currently out. Return it before removing it from the fleet."
+        "This loaner is currently out. Return it before removing it from the fleet.",
       );
       return;
     }
@@ -491,7 +535,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!skip) {
       const ok = window.confirm(
-        `Remove loaner ${cleanVin.slice(-8)} from fleet?`
+        `Remove loaner ${cleanVin.slice(-8)} from fleet?`,
       );
 
       if (!ok) return;
@@ -501,9 +545,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       doc(db, "loanerFleet", cleanVin),
       {
         status: "Removed",
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
     await load();
@@ -527,13 +571,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[c],
+    );
   }
 
   function escapeAttr(s) {
@@ -567,7 +615,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const q = query(
         collection(db, "loanerFleet"),
-        where("dealerId", "==", currentDealerId)
+        where("dealerId", "==", currentDealerId),
       );
 
       const snap = await getDocs(q);
@@ -583,7 +631,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       fleetRows.sort((a, b) =>
-        String(a.unitNumber || "").localeCompare(String(b.unitNumber || ""))
+        String(a.unitNumber || "").localeCompare(String(b.unitNumber || "")),
       );
 
       renderFleetTable();
