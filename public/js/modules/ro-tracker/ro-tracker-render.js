@@ -14,6 +14,13 @@ export function buildROTrackerRow(ro = {}, columns = []) {
 
   columns.forEach((column) => {
     const td = buildCell(ro, column.key);
+
+    const columnClass = getROTrackerColumnClass(column.key);
+
+    if (columnClass) {
+      td.classList.add(columnClass);
+    }
+
     tr.appendChild(td);
   });
 
@@ -21,27 +28,62 @@ export function buildROTrackerRow(ro = {}, columns = []) {
 }
 
 function buildCell(ro, key) {
-  if (key === "roNumber") return buildTextInputCell(ro, "roNumber", ro.roNumber);
-  if (key === "tagNumber") return buildTextInputCell(ro, "tagNumber", ro.tagNumber);
-  if (key === "advisorCompanyId") return buildPlainCell(ro.advisorCompanyId || ro.advisorNumber || "");
-  if (key === "customerName") return buildTextInputCell(ro, "customerName", ro.customerName, { hoverFull: true });
-  if (key === "customerPhone") return buildTextInputCell(ro, "customerPhone", ro.customerPhone, { phone: true });
+  if (key === "roNumber")
+    return buildTextInputCell(ro, "roNumber", ro.roNumber);
+  if (key === "tagNumber")
+    return buildTextInputCell(ro, "tagNumber", ro.tagNumber);
+  if (key === "advisorCompanyId")
+    return buildPlainCell(ro.advisorCompanyId || ro.advisorNumber || "");
+  if (key === "customerName")
+    return buildTextInputCell(ro, "customerName", ro.customerName, {
+      hoverFull: true,
+    });
+  if (key === "customerPhone")
+    return buildTextInputCell(ro, "customerPhone", ro.customerPhone, {
+      phone: true,
+    });
 
   if (key === "roDate") return buildDatePickerCell(ro, "roDate", ro.roDate);
-  if (key === "promiseTime") return buildDatePickerCell(ro, "promiseDate", ro.promiseDate || ro.promiseTime);
+  if (key === "promiseTime")
+    return buildDatePickerCell(
+      ro,
+      "promiseDate",
+      ro.promiseDate || ro.promiseTime,
+    );
 
   if (key === "model") return buildTextInputCell(ro, "model", ro.model);
-  if (key === "currentLocation") return buildPlainCell(ro.currentLocation || ro.location || "");
-  if (key === "loanerVin") return buildPlainCell(ro.loanerVin ? String(ro.loanerVin).slice(-8) : "");
+  if (key === "currentLocation")
+    return buildPlainCell(ro.currentLocation || ro.location || "");
+  if (key === "loanerVin")
+    return buildPlainCell(ro.loanerVin ? String(ro.loanerVin).slice(-8) : "");
 
-  if (key === "concern") return buildTextInputCell(ro, "concern", ro.concern || "", { longText: true });
-  if (key === "notes") return buildTextInputCell(ro, "notes", ro.notes || "", { longText: true });
+  if (key === "concern")
+    return buildTextInputCell(ro, "concern", ro.concern || "", {
+      longText: true,
+    });
+  if (key === "notes")
+    return buildTextInputCell(ro, "notes", ro.notes || "", { longText: true });
 
   if (key === "readyCalled") return buildReadyCalledCell(ro);
-  if (key === "techVideo") return buildCheckboxCell(ro, "techVideo", Boolean(ro.techVideo), { videoCell: true });
-  if (key === "calledTime") return buildDateTimeCell(ro, "calledAtMs", ro.calledAtMs, { showNow: true, stepMin: 5 });
-  if (key === "nextUpdateTime") return buildDateTimeCell(ro, "nextUpdateAtMs", ro.nextUpdateAtMs, { stepMin: 15 });
-  if (key === "isWaiter") return buildCheckboxCell(ro, "waiter", Boolean(ro.customerWaiting || ro.isWaiter));
+  if (key === "techVideo")
+    return buildCheckboxCell(ro, "techVideo", Boolean(ro.techVideo), {
+      videoCell: true,
+    });
+  if (key === "calledTime")
+    return buildDateTimeCell(ro, "calledAtMs", ro.calledAtMs, {
+      showNow: true,
+      stepMin: 5,
+    });
+  if (key === "nextUpdateTime")
+    return buildDateTimeCell(ro, "nextUpdateAtMs", ro.nextUpdateAtMs, {
+      stepMin: 15,
+    });
+  if (key === "isWaiter")
+    return buildCheckboxCell(
+      ro,
+      "waiter",
+      Boolean(ro.customerWaiting || ro.isWaiter),
+    );
   if (key === "techDone") return buildTechDoneCell(ro);
   if (key === "textSent") return buildButtonCell(ro, "textSent", "Text");
   if (key === "actions") return buildButtonCell(ro, "archive", "Archive");
@@ -65,7 +107,7 @@ function buildTextInputCell(ro, field, value, opts = {}) {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "cell-edit";
-  input.value = opts.phone ? formatPhoneInput(value) : (value || "");
+  input.value = opts.phone ? formatPhoneInput(value) : value || "";
   input.dataset.roId = getROId(ro);
   input.dataset.roTextField = field;
   input.title = input.value || "";
@@ -141,7 +183,9 @@ function buildReadyCalledCell(ro) {
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.checked = Boolean(ro.readyCalled || String(ro.status || "").toLowerCase() === "ready called");
+  checkbox.checked = Boolean(
+    ro.readyCalled || String(ro.status || "").toLowerCase() === "ready called",
+  );
   checkbox.disabled = !Boolean(ro.techVideo);
   checkbox.dataset.roId = getROId(ro);
   checkbox.dataset.roAction = "readyCalled";
@@ -200,7 +244,9 @@ function buildSmallButton(ro, action, label) {
 
 function getRowClass(ro = {}) {
   const videoSent = Boolean(ro.techVideo);
-  const readyCalled = Boolean(ro.readyCalled || String(ro.status || "").toLowerCase() === "ready called");
+  const readyCalled = Boolean(
+    ro.readyCalled || String(ro.status || "").toLowerCase() === "ready called",
+  );
   const waiter = Boolean(ro.customerWaiting || ro.isWaiter);
   const nextUpdateAtMs = Number(ro.nextUpdateAtMs || 0);
 
@@ -226,7 +272,9 @@ function getRowClass(ro = {}) {
 }
 
 function formatPhoneInput(value) {
-  const digits = String(value || "").replace(/\D/g, "").slice(0, 10);
+  const digits = String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
@@ -234,4 +282,32 @@ function formatPhoneInput(value) {
 
 function getROId(ro = {}) {
   return ro.id || ro.roNumber || "";
+}
+
+
+function getROTrackerColumnClass(key) {
+  const map = {
+    roNumber: "col-ro",
+    tagNumber: "col-tag",
+    advisorCompanyId: "col-advisor",
+    customerName: "col-customer",
+    customerPhone: "col-phone",
+    roDate: "col-date",
+    promiseTime: "col-date",
+    model: "col-model",
+    concern: "col-concern",
+    currentLocation: "col-location",
+    readyCalled: "col-ready",
+    notes: "col-notes",
+    techVideo: "col-video",
+    calledTime: "col-called",
+    nextUpdateTime: "col-next",
+    isWaiter: "col-wait",
+    loanerVin: "col-loanerlast6",
+    techDone: "col-repairdone",
+    textSent: "col-text",
+    actions: "col-archive",
+  };
+
+  return map[key] || "";
 }

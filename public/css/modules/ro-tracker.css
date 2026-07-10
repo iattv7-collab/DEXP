@@ -226,20 +226,20 @@
 /* COLUMN WIDTHS */
 
 .col-ro {
-  width: 90px;
+  width: 90px; /* fits up to 9 digits */
 }
 
 .col-tag {
-  width: 60px;
+  width: 70px; /* fits up to 6 digits */
 }
 
 .col-advisor {
-  width: 85px;
+  width: 80px; /* fits up to 6 digits */
   text-align: center;
 }
 
 .col-customer {
-  width: 170px;
+  width: 180px;
 }
 
 .col-phone {
@@ -247,11 +247,11 @@
 }
 
 .col-date {
-  width: 100px;
+  width: 105px;
 }
 
 .col-model {
-  width: 95px;
+  width: 150px;
 }
 
 .col-concern {
@@ -259,11 +259,11 @@
 }
 
 .col-location {
-  width: 110px;
+  width: 170px;
 }
 
 .col-ready {
-  width: 130px;
+  width: 105px;
 }
 
 .col-notes {
@@ -275,33 +275,33 @@
 }
 
 .col-called {
-  width: 160px;
+  width: 145px;
 }
 
 .col-next {
-  width: 110px;
+  width: 135px;
 }
 
 .col-wait {
-  width: 90px;
+  width: 62px;
 }
 
 .col-loanerlast6 {
-  width: 100px;
+  width: 90px;
   text-align: center;
 }
 
 .col-repairdone {
-  width: 100px;
+  width: 76px;
   text-align: center;
 }
 
 .col-text {
-  width: 90px;
+  width: 62px;
 }
 
 .col-archive {
-  width: 90px;
+  width: 78px;
 }
 
 /* FREEZE RO COLUMN */

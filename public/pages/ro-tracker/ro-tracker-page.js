@@ -285,8 +285,41 @@ function buildColumns() {
 
     th.textContent = column.label;
 
+    const columnClass = getROTrackerColumnClass(column.key);
+
+    if (columnClass) {
+      th.classList.add(columnClass);
+    }
+
     tableHead.appendChild(th);
   });
+}
+
+function getROTrackerColumnClass(key) {
+  const map = {
+    roNumber: "col-ro",
+    tagNumber: "col-tag",
+    advisorCompanyId: "col-advisor",
+    customerName: "col-customer",
+    customerPhone: "col-phone",
+    roDate: "col-date",
+    promiseTime: "col-date",
+    model: "col-model",
+    concern: "col-concern",
+    currentLocation: "col-location",
+    readyCalled: "col-ready",
+    notes: "col-notes",
+    techVideo: "col-video",
+    calledTime: "col-called",
+    nextUpdateTime: "col-next",
+    isWaiter: "col-wait",
+    loanerVin: "col-loanerlast6",
+    techDone: "col-repairdone",
+    textSent: "col-text",
+    actions: "col-archive",
+  };
+
+  return map[key] || "";
 }
 
 function renderRows(rows = []) {
