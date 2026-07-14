@@ -43,7 +43,8 @@
 /* TABLE */
 
 .loaner-fleet-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-family: "Times New Roman", Times, serif;
@@ -70,6 +71,8 @@
   border-right: 1px solid var(--lf-grid);
   border-bottom: 1px solid var(--lf-grid);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 16px;
   height: var(--lf-row-h);
   line-height: calc(var(--lf-row-h) - 4px);
@@ -177,7 +180,7 @@
 }
 
 .col-returned {
-  width: 130px;
+  width: 175px;
 }
 
 .col-received {
@@ -202,4 +205,36 @@
 
 .col-actions {
   width: 145px;
+}
+
+.loaner-row-available {
+  background: #eefbea;
+}
+
+.loaner-row-out {
+  background: #fdecec;
+}
+
+.loaner-row-disabled {
+  background: #f5c6cb;
+}
+
+.loaner-row-available .cell-edit,
+.loaner-row-available select {
+  background: #eefbea;
+}
+
+.loaner-row-out .cell-edit,
+.loaner-row-out select {
+  background: #fdecec;
+}
+
+.loaner-row-disabled .cell-edit,
+.loaner-row-disabled select {
+  background: #f5c6cb;
+}
+
+.loaner-fleet-table td.col-returned {
+  overflow: visible;
+  text-overflow: clip;
 }

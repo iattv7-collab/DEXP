@@ -1,0 +1,88 @@
+<!-- public/pages/loaner-wash/loaner-wash.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>Loaner Wash Queue</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaner-wash.css?v=1"
+    />
+  </head>
+
+  <body>
+    <div id="appHeader"></div>
+
+    <main id="loanerWashPage" class="loaner-wash-shell">
+      <section class="page-section">
+        <h1>Loaners</h1>
+
+        <div class="subtabs">
+          <a href="/pages/loaner-fleet/loaner-fleet.html">
+            Fleet
+          </a>
+
+          <a href="/pages/loaner-returns/loaner-returns.html">
+            Returns
+          </a>
+
+          <a
+            href="/pages/loaner-wash/loaner-wash.html"
+            class="active"
+          >
+            Wash Queue
+          </a>
+        </div>
+
+        <div id="loanerCounts" class="loaner-wash-counts">
+          Waiting for Wash: 0
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h2>Loaner Wash Queue</h2>
+
+        <div
+          id="loanerWashMessage"
+          class="small-muted"
+        ></div>
+
+        <div class="loaner-wash-table-wrap">
+          <table class="loaner-wash-table">
+            <thead>
+              <tr>
+                <th class="col-unit">Unit #</th>
+                <th class="col-last8">Last 8</th>
+                <th class="col-year">Year</th>
+                <th class="col-model">Model</th>
+                <th class="col-returned">Returned At</th>
+                <th class="col-received">Received By</th>
+                <th class="col-mileage">Mileage</th>
+                <th class="col-fuel">Fuel</th>
+                <th class="col-damage">Damage</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="loanerWashTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script
+      type="module"
+      src="/js/modules/loaners/loaner-wash-page.js?v=1"
+    ></script>
+  </body>
+</html>

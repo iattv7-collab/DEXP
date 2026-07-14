@@ -20,9 +20,11 @@ import {
   setDoc,
   getDocs,
   getDoc,
+  deleteDoc,
   collection,
   query,
   where,
+  onSnapshot,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -47,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let fleetRows = [];
   let currentSession = getSession();
   let currentDealerId = currentSession?.dealerId || "";
+  let unsubscribeFleet = null;
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -306,8 +309,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       const vin = x.vin || "";
       const safeId = makeSafeId(vin);
 
+      const rowStatus = String(x.status || "").toUpperCase();
+      const showReturnDetails = rowStatus !== "OUT";
+
+      let rowClass = "";
+
+      if (rowStatus === "AVAILABLE") {
+        rowClass = "loaner-row-available";
+      } else if (rowStatus === "OUT") {
+        rowClass = "loaner-row-out";
+      } else if (rowStatus === "DISABLED") {
+        rowClass = "loaner-row-disabled";
+      }
+
       html += `
-      <tr>
+      <tr class="${rowClass}">
         <td class="col-unit">${escapeHtml(x.unitNumber || "")}</td>
         <td class="col-last8">${escapeHtml(x.last8 || "")}</td>
         <td class="col-year">${escapeHtml(x.year || "")}</td>
@@ -344,15 +360,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         <td class="col-returned">
           ${escapeHtml(
-             String(x.status || "").toLowerCase() === "out"
-               ? x.outAt || ""
-               : x.lastReturnedAt || "",
-            )}
+            String(x.status || "").toLowerCase() === "out"
+              ? x.outAt || ""
+              : x.lastReturnedAt || "",
+          )}
         </td>
-        <td class="col-received">${escapeHtml(x.lastReceivedByName || "")}</td>
-        <td class="col-mileage">${escapeHtml(x.lastMileage || "")}</td>
-        <td class="col-fuel">${escapeHtml(x.lastFuelLevel || "")}</td>
-        <td class="col-damage">${escapeHtml(x.lastDamageNotes || "")}</td>
+        <td class="col-received">
+          ${showReturnDetails ? escapeHtml(x.lastReceivedByName || "") : ""}
+        </td>
+
+        <td class="col-mileage">
+          ${showReturnDetails ? escapeHtml(x.lastMileage || "") : ""}
+        </td>
+
+        <td class="col-fuel">
+          ${showReturnDetails ? escapeHtml(x.lastFuelLevel || "") : ""}
+        </td>
+
+        <td class="col-damage">
+          ${showReturnDetails ? escapeHtml(x.lastDamageNotes || "") : ""}
+        </td>
 
         <td class="col-notes">
           <input
@@ -423,6 +450,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let status = document.getElementById(`status-${safeId}`)?.value || "";
 
+    let loanerOutAt = "";
+
     const fleetRow =
       fleetRows.find((x) => normalizeVin(x.vin) === cleanVin) || {};
 
@@ -458,6 +487,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       status = "Out";
+      loanerOutAt = new Date().toLocaleString();
 
       await setDoc(
         roRef,
@@ -467,6 +497,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           loanerVin: cleanVin,
           loanerStatus: "Out",
           loanerAssignedAt: serverTimestamp(),
+          loanerOutAt,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -496,17 +527,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       status = status || "Available";
     }
 
-    await setDoc(
-      doc(db, "loanerFleet", cleanVin),
-      {
-        assignedRo,
-        status,
-        location,
-        notes,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const fleetUpdate = {
+      assignedRo,
+      status,
+      location,
+      notes,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (assignedRo && status === "Out") {
+      fleetUpdate.outAt = loanerOutAt;
+    }
+
+    await setDoc(doc(db, "loanerFleet", cleanVin), fleetUpdate, {
+      merge: true,
+    });
 
     await load();
   }
@@ -541,20 +576,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!ok) return;
     }
 
-    await setDoc(
-      doc(db, "loanerFleet", cleanVin),
-      {
-        status: "Removed",
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    await load();
+    await deleteDoc(doc(db, "loanerFleet", cleanVin));
   }
 
   function statusOptions(selected) {
-    const items = ["", "Out", "Returned", "At Wash", "Available", "Hold"];
+    const items = ["", "Available", "Out", "Disabled", "At Wash", "Hold"];
 
     return items
       .map((item) => {
@@ -610,39 +636,65 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function load() {
-    try {
-      if (!currentDealerId) return;
+    if (!currentDealerId || unsubscribeFleet) return;
 
-      const q = query(
-        collection(db, "loanerFleet"),
-        where("dealerId", "==", currentDealerId),
-      );
+    const q = query(
+      collection(db, "loanerFleet"),
+      where("dealerId", "==", currentDealerId),
+    );
 
-      const snap = await getDocs(q);
+    unsubscribeFleet = onSnapshot(
+      q,
+      (snap) => {
+        fleetRows = [];
 
-      fleetRows = [];
+        snap.forEach((d) => {
+          const row = d.data();
 
-      snap.forEach((d) => {
-        const row = d.data();
+          if ((row.status || "") === "Removed") return;
 
-        if ((row.status || "") === "Removed") return;
+          fleetRows.push(row);
+        });
 
-        fleetRows.push(row);
-      });
+        fleetRows.sort((a, b) => {
+          const aAvailable =
+            String(a.status || "").toUpperCase() === "AVAILABLE";
 
-      fleetRows.sort((a, b) =>
-        String(a.unitNumber || "").localeCompare(String(b.unitNumber || "")),
-      );
+          const bAvailable =
+            String(b.status || "").toUpperCase() === "AVAILABLE";
 
-      renderFleetTable();
-      updateCounts();
-    } catch (err) {
-      console.error("load() failed:", err);
-    }
+          if (aAvailable !== bAvailable) {
+            return aAvailable ? -1 : 1;
+          }
+
+          return String(a.unitNumber || "").localeCompare(
+            String(b.unitNumber || ""),
+            undefined,
+            {
+              numeric: true,
+              sensitivity: "base",
+            },
+          );
+        });
+
+        renderFleetTable();
+        updateCounts();
+      },
+      (err) => {
+        console.error("Fleet listener failed:", err);
+      },
+    );
   }
 
   currentSession = await waitForSession();
   currentDealerId = currentSession?.dealerId || "";
 
   await load();
+
+  window.addEventListener("beforeunload", () => {
+    if (unsubscribeFleet) {
+      unsubscribeFleet();
+      unsubscribeFleet = null;
+    }
+  });
 });

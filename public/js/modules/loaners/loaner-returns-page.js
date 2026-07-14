@@ -24,6 +24,7 @@ import {
   serverTimestamp,
   query,
   where,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
@@ -44,6 +45,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let currentSession = getSession();
   let currentDealerId = currentSession?.dealerId || "";
+  let unsubscribeReturns = null;
+  let unsubscribeFleetCounts = null;
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -95,13 +98,94 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new Date().toLocaleString();
   }
 
+  async function validateLoanerForReturn(vin) {
+    const cleanVin = normalizeVin(vin);
+
+    if (!cleanVin || !currentDealerId) {
+      return {
+        valid: false,
+        message: "Invalid VIN or dealer session.",
+        fleetRef: null,
+        fleetData: null,
+      };
+    }
+
+    const fleetRef = doc(db, "loanerFleet", cleanVin);
+    const fleetSnap = await getDoc(fleetRef);
+
+    if (!fleetSnap.exists()) {
+      return {
+        valid: false,
+        message: "This vehicle was not found in the loaner fleet.",
+        fleetRef,
+        fleetData: null,
+      };
+    }
+
+    const fleetData = fleetSnap.data() || {};
+
+    if (fleetData.dealerId !== currentDealerId) {
+      return {
+        valid: false,
+        message: "This vehicle does not belong to this dealer.",
+        fleetRef,
+        fleetData,
+      };
+    }
+
+    const fleetStatus = String(fleetData.status || "")
+      .trim()
+      .toUpperCase();
+
+    if (fleetStatus !== "OUT") {
+      return {
+        valid: false,
+        message: "Return rejected. This vehicle is not currently out on loan.",
+        fleetRef,
+        fleetData,
+      };
+    }
+
+    return {
+      valid: true,
+      message: "",
+      fleetRef,
+      fleetData,
+    };
+  }
+
   async function fillReturnFromVin(rawVin) {
-    const vin = normalizeVin(rawVin);
+  const vin = normalizeVin(rawVin);
+
+  $("vin").value = "";
 
     if (!vin) {
       $("returnMsg").textContent = "Invalid VIN";
       return;
     }
+
+    $("returnMsg").textContent = "Checking fleet status...";
+
+    const validation = await validateLoanerForReturn(vin);
+
+    if (!validation.valid) {
+  [
+    "manualVin",
+    "vin",
+    "year",
+    "model",
+    "returnedAt",
+    "receivedBy",
+    "mileage",
+    "fuelLevel",
+    "damageNotes",
+  ].forEach((id) => {
+    if ($(id)) $(id).value = "";
+  });
+
+  $("returnMsg").textContent = validation.message;
+  return;
+}
 
     $("returnMsg").textContent = "Decoding VIN...";
 
@@ -161,7 +245,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  $("saveReturnBtn").addEventListener("click", async () => {
+
+      $("saveReturnBtn").addEventListener("click", async () => {
     const vin = normalizeVin($("vin").value);
 
     if (!vin) {
@@ -174,38 +259,47 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const returnedAtText = $("returnedAt")?.value || "";
+    $("returnMsg").textContent = "Checking fleet status...";
+
+    const validation = await validateLoanerForReturn(vin);
+
+    if (!validation.valid) {
+      $("returnMsg").textContent = validation.message;
+      return;
+    }
+
+    const fleetRef = validation.fleetRef;
+    const fleetData = validation.fleetData || {};
+    const assignedRo = String(fleetData.assignedRo || "").trim();
+
+    const returnedAtText = $("returnedAt")?.value || stampNow();
     const receivedByName = $("receivedBy")?.value || "";
     const receivedByEmail =
       currentSession?.email || auth.currentUser?.email || "";
-    const receivedByUid = currentSession?.uid || auth.currentUser?.uid || "";
+    const receivedByUid =
+      currentSession?.uid || auth.currentUser?.uid || "";
     const mileage = $("mileage")?.value || "";
     const fuelLevel = $("fuelLevel")?.value || "";
     const damageNotes = $("damageNotes")?.value || "";
     const year = $("year")?.value || "";
     const model = $("model")?.value || "";
 
-    await addDoc(collection(db, "loanerReturns"), {
-      dealerId: currentDealerId,
-      vin,
-      year,
-      model,
-      returnedAtText,
-      receivedByName,
-      receivedByEmail,
-      receivedByUid,
-      mileage,
-      fuelLevel,
-      damageNotes,
-      createdAt: serverTimestamp(),
-    });
-
-    const fleetRef = doc(db, "loanerFleet", vin);
-    const fleetSnap = await getDoc(fleetRef);
-
-    if (fleetSnap.exists()) {
-      const fleetData = fleetSnap.data() || {};
-      const assignedRo = String(fleetData.assignedRo || "").trim();
+    try {
+      await addDoc(collection(db, "loanerReturns"), {
+        dealerId: currentDealerId,
+        vin,
+        year,
+        model,
+        returnedAtText,
+        receivedByName,
+        receivedByEmail,
+        receivedByUid,
+        mileage,
+        fuelLevel,
+        damageNotes,
+        assignedRo,
+        createdAt: serverTimestamp(),
+      });
 
       await setDoc(
         fleetRef,
@@ -229,28 +323,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       $("returnMsg").textContent = "Saved and moved to At Wash";
-    } else {
-      $("returnMsg").textContent =
-        "Return saved, but VIN was not found in Fleet";
+
+      [
+        "manualVin",
+        "vin",
+        "year",
+        "model",
+        "returnedAt",
+        "receivedBy",
+        "mileage",
+        "fuelLevel",
+        "damageNotes",
+      ].forEach((id) => {
+        if ($(id)) $(id).value = "";
+      });
+    } catch (err) {
+      console.error("Return save failed:", err);
+      $("returnMsg").textContent = "Return could not be saved.";
     }
-
-    [
-      "manualVin",
-      "vin",
-      "year",
-      "model",
-      "returnedAt",
-      "receivedBy",
-      "mileage",
-      "fuelLevel",
-      "damageNotes",
-    ].forEach((id) => {
-      if ($(id)) $(id).value = "";
-    });
-
-    await load();
-    await updateCounts();
   });
+
+
 
   async function clearLoanerFromRo(roNumber, vin) {
     const cleanRo = String(roNumber || "").trim();
@@ -317,83 +410,97 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function updateCounts() {
+    if (!currentDealerId || unsubscribeFleetCounts) return;
+
     const q = query(
       collection(db, "loanerFleet"),
       where("dealerId", "==", currentDealerId),
     );
 
-    const snap = await getDocs(q);
+    unsubscribeFleetCounts = onSnapshot(
+      q,
+      (snap) => {
+        let out = 0;
+        let available = 0;
+        let inShop = 0;
 
-    let out = 0;
-    let available = 0;
-    let inShop = 0;
+        snap.forEach((d) => {
+          const s = (d.data().status || "").toUpperCase();
 
-    snap.forEach((d) => {
-      const s = (d.data().status || "").toUpperCase();
+          if (s === "OUT") out++;
+          else if (s === "AVAILABLE") available++;
+          else if (s === "REMOVED") return;
+          else inShop++;
+        });
 
-      if (s === "OUT") out++;
-      else if (s === "AVAILABLE") available++;
-      else if (s === "REMOVED") return;
-      else inShop++;
-    });
+        const el = $("loanerCounts");
 
-    const el = $("loanerCounts");
-
-    if (el) {
-      el.textContent = `Out: ${out} | Available: ${available} | In Shop: ${inShop}`;
-    }
+        if (el) {
+          el.textContent = `Out: ${out} | Available: ${available} | In Shop: ${inShop}`;
+        }
+      },
+      (err) => {
+        console.error("Fleet count listener failed:", err);
+      },
+    );
   }
 
   async function load() {
-    if (!currentDealerId) return;
+    if (!currentDealerId || unsubscribeReturns) return;
 
     const q = query(
       collection(db, "loanerReturns"),
       where("dealerId", "==", currentDealerId),
     );
 
-    const snap = await getDocs(q);
+    unsubscribeReturns = onSnapshot(
+      q,
+      (snap) => {
+        let html = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>VIN</th>
+                <th>Year</th>
+                <th>Model</th>
+                <th>Returned At</th>
+                <th>Received By</th>
+                <th>Mileage</th>
+                <th>Fuel</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
 
-    let html = `
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>VIN</th>
-            <th>Year</th>
-            <th>Model</th>
-            <th>Returned At</th>
-            <th>Received By</th>
-            <th>Mileage</th>
-            <th>Fuel</th>
-            <th>Damage</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+        snap.forEach((d) => {
+          const x = d.data();
 
-    snap.forEach((d) => {
-      const x = d.data();
+          html += `
+            <tr>
+              <td>${escapeHtml(x.vin || "")}</td>
+              <td>${escapeHtml(x.year || "")}</td>
+              <td>${escapeHtml(x.model || "")}</td>
+              <td>${escapeHtml(x.returnedAtText || "")}</td>
+              <td>${escapeHtml(x.receivedByName || "")}</td>
+              <td>${escapeHtml(x.mileage || "")}</td>
+              <td>${escapeHtml(x.fuelLevel || "")}</td>
+              <td>${escapeHtml(x.damageNotes || "")}</td>
+            </tr>
+          `;
+        });
 
-      html += `
-        <tr>
-          <td>${escapeHtml(x.vin || "")}</td>
-          <td>${escapeHtml(x.year || "")}</td>
-          <td>${escapeHtml(x.model || "")}</td>
-          <td>${escapeHtml(x.returnedAtText || "")}</td>
-          <td>${escapeHtml(x.receivedBy || "")}</td>
-          <td>${escapeHtml(x.mileage || "")}</td>
-          <td>${escapeHtml(x.fuelLevel || "")}</td>
-          <td>${escapeHtml(x.damageNotes || "")}</td>
-        </tr>
-      `;
-    });
+        html += `
+            </tbody>
+          </table>
+        `;
 
-    html += `
-        </tbody>
-      </table>
-    `;
-
-    $("returnTable").innerHTML = html;
+        $("returnTable").innerHTML = html;
+      },
+      (err) => {
+        console.error("Returns listener failed:", err);
+      },
+    );
   }
 
   function escapeHtml(s) {
@@ -415,4 +522,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await load();
   await updateCounts();
+
+  window.addEventListener("beforeunload", () => {
+    if (unsubscribeReturns) {
+      unsubscribeReturns();
+      unsubscribeReturns = null;
+    }
+
+    if (unsubscribeFleetCounts) {
+      unsubscribeFleetCounts();
+      unsubscribeFleetCounts = null;
+    }
+  });
 });

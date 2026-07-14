@@ -1,0 +1,151 @@
+/* public/css/modules/loaner-wash.css */
+/* Loaner Wash Queue styling. */
+
+:root {
+  --lw-header: #4066e2;
+  --lw-grid: #c9c9c9;
+}
+
+.loaner-wash-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px;
+  box-sizing: border-box;
+}
+
+#loanerWashPage .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+.loaner-wash-counts {
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+.loaner-wash-table-wrap {
+  width: 100%;
+  margin-top: 12px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--lw-grid);
+  border-radius: 10px;
+}
+
+.loaner-wash-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #fff;
+}
+
+.loaner-wash-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+  background: var(--lw-header);
+  color: #fff;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.loaner-wash-table td {
+  height: 24px;
+  padding: 3px 6px;
+  border-right: 1px solid var(--lw-grid);
+  border-bottom: 1px solid var(--lw-grid);
+  font-size: 16px;
+  line-height: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.loaner-wash-table th:last-child,
+.loaner-wash-table td:last-child {
+  border-right: 0;
+}
+
+.loaner-wash-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.loaner-wash-table .center {
+  text-align: center;
+}
+
+.loaner-wash-empty {
+  padding: 18px !important;
+  text-align: center;
+}
+
+.wash-complete-button {
+  padding: 3px 9px;
+  border: 1px solid #777;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wash-complete-button:hover {
+  background: #e8e8e8;
+}
+
+.wash-complete-button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.col-unit {
+  width: 65px;
+}
+
+.col-last8 {
+  width: 85px;
+}
+
+.col-year {
+  width: 60px;
+}
+
+.col-model {
+  width: 150px;
+}
+
+.col-returned {
+  width: 180px;
+}
+
+.col-received {
+  width: 145px;
+}
+
+.col-mileage {
+  width: 90px;
+}
+
+.col-fuel {
+  width: 80px;
+}
+
+.col-damage {
+  width: 180px;
+}
+
+.col-actions {
+  width: 135px;
+}
