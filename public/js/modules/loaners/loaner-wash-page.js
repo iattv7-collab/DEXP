@@ -11,6 +11,7 @@
 import { auth } from "/js/services/firebase/auth-service.js";
 import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
+import { MODULES } from "/js/config/modules.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 
@@ -27,7 +28,9 @@ import {
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", async () => {
-  protectRoute();
+  protectRoute({
+    allowedModules: [MODULES.LOANER_WASH],
+  });
 
   renderAppHeader();
 
@@ -101,12 +104,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         washRows.sort((a, b) => {
           const aTime =
-            timestampToMs(a.updatedAt) ||
-            timestampToMs(a.lastReturnedAt);
+            timestampToMs(a.updatedAt) || timestampToMs(a.lastReturnedAt);
 
           const bTime =
-            timestampToMs(b.updatedAt) ||
-            timestampToMs(b.lastReturnedAt);
+            timestampToMs(b.updatedAt) || timestampToMs(b.lastReturnedAt);
 
           return bTime - aTime;
         });
@@ -194,13 +195,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function bindWashActions() {
-    document
-      .querySelectorAll(".wash-complete-button")
-      .forEach((button) => {
-        button.addEventListener("click", async () => {
-          await completeWash(button.dataset.vin, button);
-        });
+    document.querySelectorAll(".wash-complete-button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await completeWash(button.dataset.vin, button);
       });
+    });
   }
 
   async function completeWash(vin, button) {
@@ -241,15 +240,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
           washedAt: serverTimestamp(),
 
-          washedByUid:
-            currentSession?.uid ||
-            auth.currentUser?.uid ||
-            "",
+          washedByUid: currentSession?.uid || auth.currentUser?.uid || "",
 
           washedByName:
-            currentSession?.displayName ||
-            auth.currentUser?.displayName ||
-            "",
+            currentSession?.displayName || auth.currentUser?.displayName || "",
 
           updatedAt: serverTimestamp(),
         },
@@ -280,8 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!countElement) return;
 
-    countElement.textContent =
-      `Waiting for Wash: ${washRows.length}`;
+    countElement.textContent = `Waiting for Wash: ${washRows.length}`;
   }
 
   function escapeHtml(value) {

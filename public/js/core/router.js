@@ -71,6 +71,16 @@ function guardProtectedPage(redirectTo) {
 }
 
 function redirectToLogin(redirectTo = "/pages/auth/login.html") {
+  const currentPath = window.location.pathname;
+
+  const isPlatformAdminRoute =
+    currentPath.includes("/pages/platform-admin/");
+
+  if (isPlatformAdminRoute) {
+    window.location.replace("/pages/auth/platform-login.html");
+    return;
+  }
+
   const lastDealerId =
     sessionStorage.getItem("dexp_last_dealer_id") ||
     localStorage.getItem("dexp_last_dealer_id") ||

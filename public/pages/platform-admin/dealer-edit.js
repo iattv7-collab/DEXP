@@ -102,7 +102,7 @@ async function loadDealer() {
 
 function renderSellableModules(enabledModules) {
   const html = SELLABLE_MODULE_GROUPS.map((group) => {
-    const checked = group.modules.some((moduleId) =>
+    const checked = group.modules.every((moduleId) =>
       enabledModules.includes(moduleId),
     );
 
