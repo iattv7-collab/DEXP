@@ -1,0 +1,30 @@
+/* public/css/modules/loaner-returns.css */
+/* Loaner Returns page layout aligned with Loaner Fleet. */
+
+.loaner-returns-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px;
+  box-sizing: border-box;
+}
+
+#loanerReturnsPage .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+#loanerReturnsPage .table-wrap {
+  width: 100%;
+  margin-top: 12px;
+  overflow: auto;
+}
+
+#loanerReturnsPage .data-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}

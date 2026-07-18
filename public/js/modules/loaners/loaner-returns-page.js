@@ -47,6 +47,66 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentDealerId = currentSession?.dealerId || "";
   let unsubscribeReturns = null;
   let unsubscribeFleetCounts = null;
+  const RETURN_FORM_FIELD_IDS = [
+    "vin",
+    "year",
+    "model",
+    "returnedAt",
+    "receivedBy",
+    "mileage",
+    "fuelLevel",
+    "damageNotes",
+  ];
+
+  let validatedReturnVin = "";
+  let savedReturnSnapshot = "";
+  let returnSaveInProgress = false;
+
+  function getReturnFormSnapshot() {
+    return JSON.stringify(
+      RETURN_FORM_FIELD_IDS.reduce((values, id) => {
+        values[id] = String($(id)?.value || "").trim();
+        return values;
+      }, {}),
+    );
+  }
+
+  function isReturnFormEmpty() {
+    return RETURN_FORM_FIELD_IDS.every(
+      (id) => !String($(id)?.value || "").trim(),
+    );
+  }
+
+  function updateSaveReturnButton() {
+    const button = $("saveReturnBtn");
+
+    if (!button) return;
+
+    const currentVin = normalizeVin($("vin")?.value);
+    const currentSnapshot = getReturnFormSnapshot();
+
+    const hasValidatedVin =
+      Boolean(validatedReturnVin) && currentVin === validatedReturnVin;
+
+    const hasChanges =
+      !isReturnFormEmpty() && currentSnapshot !== savedReturnSnapshot;
+
+    button.disabled = returnSaveInProgress || !hasValidatedVin || !hasChanges;
+
+    button.textContent = returnSaveInProgress ? "Saving..." : "Save Return";
+  }
+
+  function clearReturnForm() {
+    ["manualVin", ...RETURN_FORM_FIELD_IDS].forEach((id) => {
+      if ($(id)) {
+        $(id).value = "";
+      }
+    });
+
+    validatedReturnVin = "";
+    savedReturnSnapshot = getReturnFormSnapshot();
+    updateSaveReturnButton();
+  }
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -155,9 +215,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function fillReturnFromVin(rawVin) {
-  const vin = normalizeVin(rawVin);
+    const vin = normalizeVin(rawVin);
 
-  $("vin").value = "";
+    validatedReturnVin = "";
+    $("vin").value = "";
+    updateSaveReturnButton();
 
     if (!vin) {
       $("returnMsg").textContent = "Invalid VIN";
@@ -169,23 +231,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const validation = await validateLoanerForReturn(vin);
 
     if (!validation.valid) {
-  [
-    "manualVin",
-    "vin",
-    "year",
-    "model",
-    "returnedAt",
-    "receivedBy",
-    "mileage",
-    "fuelLevel",
-    "damageNotes",
-  ].forEach((id) => {
-    if ($(id)) $(id).value = "";
-  });
-
-  $("returnMsg").textContent = validation.message;
-  return;
-}
+      clearReturnForm();
+      $("returnMsg").textContent = validation.message;
+      return;
+    }
 
     $("returnMsg").textContent = "Decoding VIN...";
 
@@ -199,7 +248,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("receivedBy").value =
         currentSession?.displayName || auth.currentUser?.displayName || "";
 
+      validatedReturnVin = vin;
       $("returnMsg").textContent = "";
+      updateSaveReturnButton();
       $("mileage")?.focus();
     } catch (err) {
       console.error("VIN decode failed:", err);
@@ -211,9 +262,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("receivedBy").value =
         currentSession?.displayName || auth.currentUser?.displayName || "";
 
+      validatedReturnVin = vin;
       $("returnMsg").textContent = "VIN scanned, decode failed";
+      updateSaveReturnButton();
     }
   }
+
+  RETURN_FORM_FIELD_IDS.forEach((id) => {
+    $(id)?.addEventListener("input", () => {
+      if (id === "vin") {
+        const currentVin = normalizeVin($("vin")?.value);
+
+        if (currentVin !== validatedReturnVin) {
+          validatedReturnVin = "";
+        }
+      }
+
+      updateSaveReturnButton();
+    });
+
+    $(id)?.addEventListener("change", updateSaveReturnButton);
+  });
+
+  savedReturnSnapshot = getReturnFormSnapshot();
+  updateSaveReturnButton();
 
   $("scanReturnBtn").addEventListener("click", async () => {
     try {
@@ -245,9 +317,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  $("saveReturnBtn").addEventListener("click", async () => {
+    if (returnSaveInProgress) return;
 
-      $("saveReturnBtn").addEventListener("click", async () => {
     const vin = normalizeVin($("vin").value);
+
+    if (!vin || vin !== validatedReturnVin) {
+      $("returnMsg").textContent =
+        "Scan or validate the loaner VIN before saving.";
+      updateSaveReturnButton();
+      return;
+    }
 
     if (!vin) {
       $("returnMsg").textContent = "VIN is required";
@@ -276,13 +356,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const receivedByName = $("receivedBy")?.value || "";
     const receivedByEmail =
       currentSession?.email || auth.currentUser?.email || "";
-    const receivedByUid =
-      currentSession?.uid || auth.currentUser?.uid || "";
+    const receivedByUid = currentSession?.uid || auth.currentUser?.uid || "";
     const mileage = $("mileage")?.value || "";
     const fuelLevel = $("fuelLevel")?.value || "";
     const damageNotes = $("damageNotes")?.value || "";
     const year = $("year")?.value || "";
     const model = $("model")?.value || "";
+
+    returnSaveInProgress = true;
+    updateSaveReturnButton();
 
     try {
       await addDoc(collection(db, "loanerReturns"), {
@@ -324,26 +406,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       $("returnMsg").textContent = "Saved and moved to At Wash";
 
-      [
-        "manualVin",
-        "vin",
-        "year",
-        "model",
-        "returnedAt",
-        "receivedBy",
-        "mileage",
-        "fuelLevel",
-        "damageNotes",
-      ].forEach((id) => {
-        if ($(id)) $(id).value = "";
-      });
+      clearReturnForm();
     } catch (err) {
       console.error("Return save failed:", err);
       $("returnMsg").textContent = "Return could not be saved.";
+    } finally {
+      returnSaveInProgress = false;
+      updateSaveReturnButton();
     }
   });
-
-
 
   async function clearLoanerFromRo(roNumber, vin) {
     const cleanRo = String(roNumber || "").trim();
@@ -409,7 +480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return null;
   }
 
-  async function updateCounts() {
+    async function updateCounts() {
     if (!currentDealerId || unsubscribeFleetCounts) return;
 
     const q = query(
@@ -425,18 +496,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         let inShop = 0;
 
         snap.forEach((d) => {
-          const s = (d.data().status || "").toUpperCase();
+          const status = String(d.data().status || "")
+            .trim()
+            .toUpperCase();
 
-          if (s === "OUT") out++;
-          else if (s === "AVAILABLE") available++;
-          else if (s === "REMOVED") return;
-          else inShop++;
+          if (status === "OUT") {
+            out++;
+          } else if (status === "AVAILABLE") {
+            available++;
+          } else if (status === "REMOVED") {
+            return;
+          } else {
+            inShop++;
+          }
         });
 
-        const el = $("loanerCounts");
+        const outCount = $("loanerOutCount");
+        const availableCount = $("loanerAvailableCount");
+        const inShopCount = $("loanerInShopCount");
 
-        if (el) {
-          el.textContent = `Out: ${out} | Available: ${available} | In Shop: ${inShop}`;
+        if (outCount) {
+          outCount.textContent = String(out);
+        }
+
+        if (availableCount) {
+          availableCount.textContent = String(available);
+        }
+
+        if (inShopCount) {
+          inShopCount.textContent = String(inShop);
         }
       },
       (err) => {

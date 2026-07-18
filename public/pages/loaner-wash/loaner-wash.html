@@ -1,4 +1,5 @@
 <!-- public/pages/loaner-wash/loaner-wash.html -->
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -13,7 +14,10 @@
 
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
-
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaners-shared.css?v=3"
+    />
     <link
       rel="stylesheet"
       href="/css/modules/loaner-wash.css?v=1"
@@ -23,7 +27,10 @@
   <body>
     <div id="appHeader"></div>
 
-    <main id="loanerWashPage" class="loaner-wash-shell">
+    <main
+      id="loanerWashPage"
+      class="loaner-wash-shell"
+    >
       <section class="page-section">
         <h1>Loaners</h1>
 
@@ -44,8 +51,12 @@
           </a>
         </div>
 
-        <div id="loanerCounts" class="loaner-wash-counts">
-          Waiting for Wash: 0
+        <div class="loaner-wash-counts">
+          <span class="loaner-count-label">
+            Waiting for Wash
+          </span>
+
+          <strong id="loanerWashCount">0</strong>
         </div>
       </section>
 
@@ -82,7 +93,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-wash-page.js?v=1"
+      src="/js/modules/loaners/loaner-wash-page.js?v=2"
     ></script>
   </body>
 </html>

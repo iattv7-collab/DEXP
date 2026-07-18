@@ -1,34 +1,90 @@
 <!-- public/pages/loaner-returns/loaner-returns.html -->
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
     <title>Loaner Returns</title>
 
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
+
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaners-shared.css?v=4"
+    />
+
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaner-returns.css?v=1"
+    />
   </head>
 
   <body>
     <div id="appHeader"></div>
 
-    <main class="page-shell">
+    <main
+      id="loanerReturnsPage"
+      class="loaner-returns-shell"
+    >
       <section class="page-section">
         <h1>Loaners</h1>
 
         <div class="subtabs">
-          <a href="/pages/loaner-fleet/loaner-fleet.html">Fleet</a>
+          <a href="/pages/loaner-fleet/loaner-fleet.html">
+            Fleet
+          </a>
 
-          <a href="/pages/loaner-returns/loaner-returns.html" class="active">
+          <a
+            href="/pages/loaner-returns/loaner-returns.html"
+            class="active"
+          >
             Returns
           </a>
 
-          <a href="/pages/loaner-wash/loaner-wash.html"> Wash Queue </a>
+          <a href="/pages/loaner-wash/loaner-wash.html">
+            Wash Queue
+          </a>
+        </div>
 
-          <div id="loanerCounts" style="margin: 10px 0; font-weight: bold">
-            Out: 0 | Available: 0 | In Shop: 0
+        <div
+          id="loanerCounts"
+          class="loaner-counts"
+        >
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">
+              Out
+            </span>
+
+            <strong id="loanerOutCount">
+              0
+            </strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">
+              Available
+            </span>
+
+            <strong id="loanerAvailableCount">
+              0
+            </strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">
+              In Shop
+            </span>
+
+            <strong id="loanerInShopCount">
+              0
+            </strong>
           </div>
         </div>
       </section>
@@ -37,8 +93,17 @@
         <h2>Return Intake</h2>
 
         <div class="form-row">
-          <button id="scanReturnBtn">Scan VIN</button>
-          <input id="manualVin" placeholder="Enter VIN" />
+          <button
+            id="scanReturnBtn"
+            type="button"
+          >
+            Scan VIN
+          </button>
+
+          <input
+            id="manualVin"
+            placeholder="Enter VIN"
+          />
         </div>
 
         <video
@@ -46,42 +111,92 @@
           autoplay
           playsinline
           muted
-          style="display: none"
+          style="display:none"
         ></video>
-        <div id="scannerStatus" class="small-muted"></div>
 
-        <div class="form-row" style="margin-top: 10px">
-          <input id="vin" placeholder="VIN" />
-          <input id="year" placeholder="Year" />
-          <input id="model" placeholder="Model" />
+        <div
+          id="scannerStatus"
+          class="small-muted"
+        ></div>
+
+        <div
+          class="form-row"
+          style="margin-top:10px"
+        >
+          <input
+            id="vin"
+            placeholder="VIN"
+          />
+
+          <input
+            id="year"
+            placeholder="Year"
+          />
+
+          <input
+            id="model"
+            placeholder="Model"
+          />
         </div>
 
         <div class="form-row">
-          <input id="returnedAt" placeholder="Returned At" />
-          <input id="receivedBy" placeholder="Received By" />
-          <input id="mileage" placeholder="Mileage" />
-          <input id="fuelLevel" placeholder="Fuel Level" />
+          <input
+            id="returnedAt"
+            placeholder="Returned At"
+          />
+
+          <input
+            id="receivedBy"
+            placeholder="Received By"
+          />
+
+          <input
+            id="mileage"
+            placeholder="Mileage"
+          />
+
+          <input
+            id="fuelLevel"
+            placeholder="Fuel Level"
+          />
         </div>
 
         <div class="form-row">
-          <textarea id="damageNotes" placeholder="Damage Notes"></textarea>
+          <textarea
+            id="damageNotes"
+            placeholder="Damage Notes"
+          ></textarea>
         </div>
 
         <div class="form-row">
-          <button id="saveReturnBtn">Save Return</button>
-          <div id="returnMsg" class="small-muted"></div>
+          <button
+            id="saveReturnBtn"
+            type="button"
+            disabled
+          >
+            Save Return
+          </button>
+
+          <div
+            id="returnMsg"
+            class="small-muted"
+          ></div>
         </div>
       </section>
 
       <section class="page-section">
         <h2>Return List</h2>
-        <div class="table-wrap" id="returnTable"></div>
+
+        <div
+          class="table-wrap"
+          id="returnTable"
+        ></div>
       </section>
     </main>
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=3"
+      src="/js/modules/loaners/loaner-returns-page.js?v=5"
     ></script>
   </body>
 </html>

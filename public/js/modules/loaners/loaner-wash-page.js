@@ -269,12 +269,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function updateCount() {
-    const countElement = $("loanerCounts");
+    function updateCount() {
+    const countElement = $("loanerWashCount");
 
     if (!countElement) return;
 
-    countElement.textContent = `Waiting for Wash: ${washRows.length}`;
+    countElement.textContent = String(washRows.length);
   }
 
   function escapeHtml(value) {

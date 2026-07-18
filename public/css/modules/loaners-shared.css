@@ -1,0 +1,228 @@
+/* public/css/modules/loaners-shared.css */
+/* Shared styling for all Loaners pages. */
+
+.subtabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.subtabs a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 110px;
+  min-height: 40px;
+  padding: 8px 18px;
+  box-sizing: border-box;
+
+  border: 2px solid #0b3d91;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #0b3d91;
+
+  font-family: "Times New Roman", Times, serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+
+  transition:
+    background-color .15s ease,
+    color .15s ease,
+    box-shadow .15s ease;
+}
+
+.subtabs a:hover {
+  background: #e7efff;
+  color: #082d6c;
+  text-decoration: none;
+}
+
+.subtabs a:focus-visible {
+  outline: 3px solid rgba(64,102,226,.35);
+  outline-offset: 2px;
+}
+
+.subtabs a.active {
+  background: #0b3d91;
+  color: #ffffff;
+  border-color: #0b3d91;
+  box-shadow: 0 3px 8px rgba(11,61,145,.25);
+  cursor: default;
+}
+
+.subtabs a.active:hover {
+  background: #0b3d91;
+  color: #ffffff;
+}
+
+/* FLEET / RETURNS SUMMARY COUNTS */
+
+.loaner-counts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+.loaner-count-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  min-height: 30px;
+  padding: 5px 10px;
+  box-sizing: border-box;
+
+  border: 1px solid #c9c9c9;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #111111;
+
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.loaner-count-label {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.loaner-count-card strong {
+  min-width: auto;
+  min-height: auto;
+  padding: 0;
+
+  background: transparent;
+  color: #008000;
+
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* WASH QUEUE SUMMARY */
+
+.loaner-wash-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  min-height: 30px;
+  margin: 0 0 18px;
+  padding: 5px 10px;
+  box-sizing: border-box;
+
+  border: 1px solid #c9c9c9;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #111111;
+
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.loaner-wash-counts strong {
+  min-width: auto;
+  min-height: auto;
+  padding: 0;
+
+  background: transparent;
+  color: #008000;
+
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* =======================================================
+   WASH QUEUE SUMMARY
+======================================================= */
+
+.loaner-wash-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 4px 8px;
+
+  background: #f6f8fc;
+
+  border: 1px solid #cfd7e6;
+  border-radius: 5px;
+
+  font-family: "Times New Roman", Times, serif;
+}
+
+.loaner-wash-counts strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 22px;
+  height: 22px;
+
+  padding: 0 5px;
+
+  border-radius: 4px;
+
+  background: #0b3d91;
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* =======================================================
+   MOBILE
+======================================================= */
+
+@media (max-width: 600px) {
+
+  .subtabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .subtabs a {
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 15px;
+  }
+
+  .loaner-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .loaner-count-card,
+  .loaner-wash-counts {
+    padding: 4px 7px;
+  }
+
+  .loaner-count-label {
+    font-size: 12px;
+  }
+
+  .loaner-count-card strong,
+  .loaner-wash-counts strong {
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+}

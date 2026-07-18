@@ -14,6 +14,7 @@
 
   <link rel="stylesheet" href="/css/core/reset.css" />
   <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
   <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=4" />
 </head>
 
@@ -21,6 +22,7 @@
   <div id="appHeader"></div>
 
   <main id="loanerFleetPage" class="loaner-fleet-shell">
+
     <section class="page-section">
       <h1>Loaners</h1>
 
@@ -40,11 +42,24 @@
           Wash Queue
         </a>
       </div>
-          id="loanerCounts"
-          style="margin: 10px 0; font-weight: bold;"
-        >
-          Out: 0 | Available: 0 | In Shop: 0
+
+      <div id="loanerCounts" class="loaner-counts">
+
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">Out</span>
+          <strong id="loanerOutCount">0</strong>
         </div>
+
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">Available</span>
+          <strong id="loanerAvailableCount">0</strong>
+        </div>
+
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">In Shop</span>
+          <strong id="loanerInShopCount">0</strong>
+        </div>
+
       </div>
     </section>
 
@@ -58,7 +73,7 @@
         />
 
         <label
-          style="display: flex; gap: 6px; align-items: center;"
+          style="display:flex; gap:6px; align-items:center;"
         >
           <input
             type="checkbox"
@@ -71,6 +86,7 @@
     </section>
 
     <section class="page-section">
+
       <button
         id="toggleAddLoanerBtn"
         type="button"
@@ -80,11 +96,13 @@
 
       <div
         id="addLoanerSection"
-        style="display: none; margin-top: 12px;"
+        style="display:none; margin-top:12px;"
       >
+
         <h2>Add Loaner</h2>
 
         <div class="form-row">
+
           <button
             id="scanFleetBtn"
             type="button"
@@ -96,6 +114,7 @@
             id="manualVin"
             placeholder="Enter VIN"
           />
+
         </div>
 
         <video
@@ -103,7 +122,7 @@
           autoplay
           playsinline
           muted
-          style="display: none;"
+          style="display:none;"
         ></video>
 
         <div
@@ -113,7 +132,7 @@
 
         <div
           class="form-row"
-          style="margin-top: 10px;"
+          style="margin-top:10px;"
         >
           <input id="vin" placeholder="VIN" />
           <input id="last8" placeholder="Last 8" readonly />
@@ -125,6 +144,7 @@
         </div>
 
         <div class="form-row">
+
           <button
             id="saveFleetBtn"
             type="button"
@@ -136,15 +156,20 @@
             id="fleetMsg"
             class="small-muted"
           ></div>
+
         </div>
+
       </div>
     </section>
 
     <section class="page-section">
+
       <h2>Fleet List</h2>
 
       <div class="loaner-fleet-table-wrap">
+
         <table class="loaner-fleet-table">
+
           <thead>
             <tr>
               <th class="col-unit">Unit #</th>
@@ -167,14 +192,19 @@
           </thead>
 
           <tbody id="fleetTableBody"></tbody>
+
         </table>
+
       </div>
+
     </section>
+
   </main>
 
   <script
     type="module"
-    src="/js/modules/loaners/loaners-page.js?v=6"
+    src="/js/modules/loaners/loaners-page.js?v=7"
   ></script>
+
 </body>
 </html>

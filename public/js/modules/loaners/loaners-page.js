@@ -1,5 +1,5 @@
 // ======================================================
-// FILE: /public/js/modules/loaners/loaner-page.js
+// FILE: /public/js/modules/loaners/loaners-page.js
 // MODULE: Loaners
 // PURPOSE:
 // DEXP Loaners Fleet page logic.
@@ -620,18 +620,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     let inShop = 0;
 
     fleetRows.forEach((x) => {
-      const s = (x.status || "").toUpperCase();
+      const s = String(x.status || "").toUpperCase();
 
-      if (s === "OUT") out++;
-      else if (s === "AVAILABLE") available++;
-      else if (s === "REMOVED") return;
-      else inShop++;
+      if (s === "OUT") {
+        out++;
+      } else if (s === "AVAILABLE") {
+        available++;
+      } else if (s === "REMOVED") {
+        return;
+      } else {
+        inShop++;
+      }
     });
 
-    const el = $("loanerCounts");
+    const outCount = $("loanerOutCount");
+    const availableCount = $("loanerAvailableCount");
+    const inShopCount = $("loanerInShopCount");
 
-    if (el) {
-      el.textContent = `Out: ${out} | Available: ${available} | In Shop: ${inShop}`;
+    if (outCount) {
+      outCount.textContent = String(out);
+    }
+
+    if (availableCount) {
+      availableCount.textContent = String(available);
+    }
+
+    if (inShopCount) {
+      inShopCount.textContent = String(inShop);
     }
   }
 
