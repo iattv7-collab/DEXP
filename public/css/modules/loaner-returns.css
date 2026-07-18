@@ -28,3 +28,14 @@
   min-width: 900px;
   border-collapse: collapse;
 }
+
+#loanerReturnsPage input[readonly] {
+  background: #eef1f5;
+  color: #555;
+  cursor: default;
+}
+
+#loanerReturnsPage input:not([readonly]),
+#loanerReturnsPage textarea {
+  background: #ffffff;
+}

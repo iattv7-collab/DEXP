@@ -238,3 +238,14 @@
   overflow: visible;
   text-overflow: clip;
 }
+
+#saveFleetBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+
+#saveFleetBtn:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}

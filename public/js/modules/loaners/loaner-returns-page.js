@@ -158,6 +158,92 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new Date().toLocaleString();
   }
 
+  async function resolveReturnVin(rawValue) {
+    const searchValue = String(rawValue || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase();
+
+    if (!searchValue) {
+      return {
+        valid: false,
+        message: "Enter a full VIN, last 8, or last 6.",
+        vin: "",
+      };
+    }
+
+    if (!currentDealerId) {
+      return {
+        valid: false,
+        message: "Dealer session not ready.",
+        vin: "",
+      };
+    }
+
+    /*
+     * A full 17-character VIN can be validated directly.
+     */
+    if (searchValue.length === 17) {
+      return {
+        valid: true,
+        message: "",
+        vin: normalizeVin(searchValue),
+      };
+    }
+
+    if (searchValue.length !== 8 && searchValue.length !== 6) {
+      return {
+        valid: false,
+        message: "Enter a full VIN, last 8, or last 6.",
+        vin: "",
+      };
+    }
+
+    const fleetQuery = query(
+      collection(db, "loanerFleet"),
+      where("dealerId", "==", currentDealerId),
+    );
+
+    const fleetSnapshot = await getDocs(fleetQuery);
+
+    const matches = [];
+
+    fleetSnapshot.forEach((fleetDocument) => {
+      const fleetData = fleetDocument.data() || {};
+
+      const fleetVin = normalizeVin(fleetData.vin || fleetDocument.id || "");
+
+      if (!fleetVin) return;
+
+      if (fleetVin.endsWith(searchValue)) {
+        matches.push(fleetVin);
+      }
+    });
+
+    if (!matches.length) {
+      return {
+        valid: false,
+        message: "No loaner was found with those VIN digits.",
+        vin: "",
+      };
+    }
+
+    if (matches.length > 1) {
+      return {
+        valid: false,
+        message:
+          "More than one loaner matches those digits. Enter the last 8 or full VIN.",
+        vin: "",
+      };
+    }
+
+    return {
+      valid: true,
+      message: "",
+      vin: matches[0],
+    };
+  }
+
   async function validateLoanerForReturn(vin) {
     const cleanVin = normalizeVin(vin);
 
@@ -215,16 +301,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function fillReturnFromVin(rawVin) {
-    const vin = normalizeVin(rawVin);
-
     validatedReturnVin = "";
     $("vin").value = "";
     updateSaveReturnButton();
 
-    if (!vin) {
-      $("returnMsg").textContent = "Invalid VIN";
+    $("returnMsg").textContent = "Searching loaner fleet...";
+
+    const resolvedVin = await resolveReturnVin(rawVin);
+
+    if (!resolvedVin.valid) {
+      clearReturnForm();
+      $("returnMsg").textContent = resolvedVin.message;
       return;
     }
+
+    const vin = resolvedVin.vin;
 
     $("returnMsg").textContent = "Checking fleet status...";
 
@@ -310,12 +401,61 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  $("manualVin")?.addEventListener("keydown", async (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      await fillReturnFromVin($("manualVin").value);
+  async function searchManualReturnVin() {
+    const manualVinInput = $("manualVin");
+    const findButton = $("findReturnVinBtn");
+
+    if (!manualVinInput || !findButton) return;
+
+    const searchValue = manualVinInput.value.trim();
+
+    if (!searchValue) {
+      $("returnMsg").textContent = "Enter a full VIN, last 8, or last 6.";
+
+      manualVinInput.focus();
+      return;
+    }
+
+    findButton.disabled = true;
+    findButton.textContent = "Finding...";
+
+    try {
+      await fillReturnFromVin(searchValue);
+    } finally {
+      findButton.disabled = false;
+      findButton.textContent = "Find";
+    }
+  }
+
+  $("manualVin")?.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    await searchManualReturnVin();
+  });
+
+  const manualVinInput = $("manualVin");
+  const findReturnVinBtn = $("findReturnVinBtn");
+
+  function updateFindButton() {
+    if (!manualVinInput || !findReturnVinBtn) return;
+
+    findReturnVinBtn.disabled = manualVinInput.value.trim().length === 0;
+  }
+
+  manualVinInput?.addEventListener("input", updateFindButton);
+
+  findReturnVinBtn?.addEventListener("click", async () => {
+    findReturnVinBtn.disabled = true;
+
+    try {
+      await searchManualReturnVin();
+    } finally {
+      updateFindButton();
     }
   });
+
+  updateFindButton();
 
   $("saveReturnBtn").addEventListener("click", async () => {
     if (returnSaveInProgress) return;
@@ -480,7 +620,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return null;
   }
 
-    async function updateCounts() {
+  async function updateCounts() {
     if (!currentDealerId || unsubscribeFleetCounts) return;
 
     const q = query(
@@ -491,29 +631,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     unsubscribeFleetCounts = onSnapshot(
       q,
       (snap) => {
+        let total = 0;
         let out = 0;
         let available = 0;
+        let atWash = 0;
         let inShop = 0;
 
-        snap.forEach((d) => {
-          const status = String(d.data().status || "")
+        snap.forEach((documentSnapshot) => {
+          const status = String(documentSnapshot.data().status || "")
             .trim()
             .toUpperCase();
+
+          if (status === "REMOVED") {
+            return;
+          }
+
+          total++;
 
           if (status === "OUT") {
             out++;
           } else if (status === "AVAILABLE") {
             available++;
-          } else if (status === "REMOVED") {
-            return;
-          } else {
+          } else if (status === "AT WASH") {
+            atWash++;
+          } else if (status === "DISABLED" || status === "HOLD") {
             inShop++;
           }
         });
 
+        const totalCount = $("loanerTotalCount");
         const outCount = $("loanerOutCount");
         const availableCount = $("loanerAvailableCount");
+        const atWashCount = $("loanerAtWashCount");
         const inShopCount = $("loanerInShopCount");
+
+        if (totalCount) {
+          totalCount.textContent = String(total);
+        }
 
         if (outCount) {
           outCount.textContent = String(out);
@@ -521,6 +675,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         if (availableCount) {
           availableCount.textContent = String(available);
+        }
+
+        if (atWashCount) {
+          atWashCount.textContent = String(atWash);
         }
 
         if (inShopCount) {

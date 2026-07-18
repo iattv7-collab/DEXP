@@ -1,210 +1,157 @@
 <!-- public/pages/loaner-fleet/loaner-fleet.html -->
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
+  <head>
+    <meta charset="UTF-8" />
 
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Loaners</title>
+    <title>Loaners</title>
 
-  <link rel="stylesheet" href="/css/core/reset.css" />
-  <link rel="stylesheet" href="/css/core/base.css" />
-  <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
-  <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=4" />
-</head>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
+    <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=4" />
+  </head>
 
-<body>
-  <div id="appHeader"></div>
+  <body>
+    <div id="appHeader"></div>
 
-  <main id="loanerFleetPage" class="loaner-fleet-shell">
+    <main id="loanerFleetPage" class="loaner-fleet-shell">
+      <section class="page-section">
+        <h1>Loaners</h1>
 
-    <section class="page-section">
-      <h1>Loaners</h1>
+        <div class="subtabs">
+          <a href="/pages/loaner-fleet/loaner-fleet.html" class="active">
+            Fleet
+          </a>
 
-      <div class="subtabs">
-        <a
-          href="/pages/loaner-fleet/loaner-fleet.html"
-          class="active"
-        >
-          Fleet
-        </a>
+          <a href="/pages/loaner-returns/loaner-returns.html"> Returns </a>
 
-        <a href="/pages/loaner-returns/loaner-returns.html">
-          Returns
-        </a>
-
-        <a href="/pages/loaner-wash/loaner-wash.html">
-          Wash Queue
-        </a>
-      </div>
-
-      <div id="loanerCounts" class="loaner-counts">
-
-        <div class="loaner-count-card">
-          <span class="loaner-count-label">Out</span>
-          <strong id="loanerOutCount">0</strong>
+          <a href="/pages/loaner-wash/loaner-wash.html"> Wash Queue </a>
         </div>
 
-        <div class="loaner-count-card">
-          <span class="loaner-count-label">Available</span>
-          <strong id="loanerAvailableCount">0</strong>
+        <div id="loanerCounts" class="loaner-counts">
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">Total</span>
+            <strong id="loanerTotalCount">0</strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">Out</span>
+            <strong id="loanerOutCount">0</strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">Available</span>
+            <strong id="loanerAvailableCount">0</strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">At Wash</span>
+            <strong id="loanerAtWashCount">0</strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">In Shop</span>
+            <strong id="loanerInShopCount">0</strong>
+          </div>
         </div>
+      </section>
 
-        <div class="loaner-count-card">
-          <span class="loaner-count-label">In Shop</span>
-          <strong id="loanerInShopCount">0</strong>
-        </div>
-
-      </div>
-    </section>
-
-    <section class="page-section">
-      <h2>Find Loaner</h2>
-
-      <div class="form-row">
-        <input
-          id="fleetSearch"
-          placeholder="Search by VIN, last 8, unit #, plate, model, status, location or RO"
-        />
-
-        <label
-          style="display:flex; gap:6px; align-items:center;"
-        >
-          <input
-            type="checkbox"
-            id="skipRemoveConfirm"
-          />
-
-          Skip remove confirmation
-        </label>
-      </div>
-    </section>
-
-    <section class="page-section">
-
-      <button
-        id="toggleAddLoanerBtn"
-        type="button"
-      >
-        + Add Loaner
-      </button>
-
-      <div
-        id="addLoanerSection"
-        style="display:none; margin-top:12px;"
-      >
-
-        <h2>Add Loaner</h2>
+      <section class="page-section">
+        <h2>Find Loaner</h2>
 
         <div class="form-row">
-
-          <button
-            id="scanFleetBtn"
-            type="button"
-          >
-            Scan VIN
-          </button>
-
           <input
-            id="manualVin"
-            placeholder="Enter VIN"
+            id="fleetSearch"
+            placeholder="Search by VIN, last 8, unit #, plate, model, status, location or RO"
           />
 
+          <label style="display: flex; gap: 6px; align-items: center">
+            <input type="checkbox" id="skipRemoveConfirm" />
+
+            Skip remove confirmation
+          </label>
         </div>
+      </section>
 
-        <video
-          id="scannerVideo"
-          autoplay
-          playsinline
-          muted
-          style="display:none;"
-        ></video>
+      <section class="page-section">
+        <button id="toggleAddLoanerBtn" type="button">+ Add Loaner</button>
 
-        <div
-          id="scannerStatus"
-          class="small-muted"
-        ></div>
+        <div id="addLoanerSection" style="display: none; margin-top: 12px">
+          <h2>Add Loaner</h2>
 
-        <div
-          class="form-row"
-          style="margin-top:10px;"
-        >
-          <input id="vin" placeholder="VIN" />
-          <input id="last8" placeholder="Last 8" readonly />
-          <input id="year" placeholder="Year" />
-          <input id="make" placeholder="Make" />
-          <input id="model" placeholder="Model" />
-          <input id="unitNumber" placeholder="Unit #" />
-          <input id="plate" placeholder="Plate" />
+          <div class="form-row">
+            <button id="scanFleetBtn" type="button">Scan VIN</button>
+
+            <input id="manualVin" placeholder="Enter VIN" />
+          </div>
+
+          <video
+            id="scannerVideo"
+            autoplay
+            playsinline
+            muted
+            style="display: none"
+          ></video>
+
+          <div id="scannerStatus" class="small-muted"></div>
+
+          <div class="form-row" style="margin-top: 10px">
+            <input id="vin" placeholder="VIN" />
+            <input id="last8" placeholder="Last 8" readonly />
+            <input id="year" placeholder="Year" />
+            <input id="make" placeholder="Make" />
+            <input id="model" placeholder="Model" />
+            <input id="unitNumber" placeholder="Unit #" />
+            <input id="plate" placeholder="Plate" />
+          </div>
+
+          <div class="form-row">
+            <button id="saveFleetBtn" type="button" disabled>Save</button>
+
+            <div id="fleetMsg" class="small-muted"></div>
+          </div>
         </div>
+      </section>
 
-        <div class="form-row">
+      <section class="page-section">
+        <h2>Fleet List</h2>
 
-          <button
-            id="saveFleetBtn"
-            type="button"
-          >
-            Save
-          </button>
+        <div class="loaner-fleet-table-wrap">
+          <table class="loaner-fleet-table">
+            <thead>
+              <tr>
+                <th class="col-unit">Unit #</th>
+                <th class="col-last8">Last 8</th>
+                <th class="col-year">Year</th>
+                <th class="col-make">Make</th>
+                <th class="col-model">Model</th>
+                <th class="col-plate">Plate</th>
+                <th class="col-ro">RO</th>
+                <th class="col-status">Status</th>
+                <th class="col-location">Location</th>
+                <th class="col-returned">Status Date</th>
+                <th class="col-received">Received By</th>
+                <th class="col-mileage">Mileage</th>
+                <th class="col-fuel">Fuel</th>
+                <th class="col-damage">Damage</th>
+                <th class="col-notes">Notes</th>
+                <th class="col-actions">Actions</th>
+              </tr>
+            </thead>
 
-          <div
-            id="fleetMsg"
-            class="small-muted"
-          ></div>
-
+            <tbody id="fleetTableBody"></tbody>
+          </table>
         </div>
+      </section>
+    </main>
 
-      </div>
-    </section>
-
-    <section class="page-section">
-
-      <h2>Fleet List</h2>
-
-      <div class="loaner-fleet-table-wrap">
-
-        <table class="loaner-fleet-table">
-
-          <thead>
-            <tr>
-              <th class="col-unit">Unit #</th>
-              <th class="col-last8">Last 8</th>
-              <th class="col-year">Year</th>
-              <th class="col-make">Make</th>
-              <th class="col-model">Model</th>
-              <th class="col-plate">Plate</th>
-              <th class="col-ro">RO</th>
-              <th class="col-status">Status</th>
-              <th class="col-location">Location</th>
-              <th class="col-returned">Status Date</th>
-              <th class="col-received">Received By</th>
-              <th class="col-mileage">Mileage</th>
-              <th class="col-fuel">Fuel</th>
-              <th class="col-damage">Damage</th>
-              <th class="col-notes">Notes</th>
-              <th class="col-actions">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody id="fleetTableBody"></tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  </main>
-
-  <script
-    type="module"
-    src="/js/modules/loaners/loaners-page.js?v=7"
-  ></script>
-
-</body>
+    <script
+      type="module"
+      src="/js/modules/loaners/loaners-page.js?v=9"
+    ></script>
+  </body>
 </html>

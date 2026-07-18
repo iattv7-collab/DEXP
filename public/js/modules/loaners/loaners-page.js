@@ -50,6 +50,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentSession = getSession();
   let currentDealerId = currentSession?.dealerId || "";
   let unsubscribeFleet = null;
+  let validatedFleetVin = "";
+  let fleetSaveInProgress = false;
+
+  function updateSaveFleetButton() {
+    const button = $("saveFleetBtn");
+
+    if (!button) return;
+
+    const currentVin = normalizeVin($("vin")?.value);
+
+    button.disabled =
+      fleetSaveInProgress ||
+      !validatedFleetVin ||
+      currentVin !== validatedFleetVin;
+
+    button.textContent = fleetSaveInProgress ? "Saving..." : "Save";
+  }
+
+  function clearAddLoanerForm() {
+    [
+      "manualVin",
+      "vin",
+      "last8",
+      "year",
+      "make",
+      "model",
+      "unitNumber",
+      "plate",
+    ].forEach((id) => {
+      if ($(id)) {
+        $(id).value = "";
+      }
+    });
+
+    validatedFleetVin = "";
+    $("fleetMsg").textContent = "";
+    updateSaveFleetButton();
+  }
+
+  function closeAddLoanerForm() {
+    const section = $("addLoanerSection");
+    const toggleButton = $("toggleAddLoanerBtn");
+
+    if (section) {
+      section.style.display = "none";
+    }
+
+    if (toggleButton) {
+      toggleButton.style.display = "";
+    }
+
+    clearAddLoanerForm();
+  }
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -99,11 +152,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   $("toggleAddLoanerBtn")?.addEventListener("click", () => {
     const section = $("addLoanerSection");
+    const toggleButton = $("toggleAddLoanerBtn");
 
-    if (!section) return;
+    if (!section || !toggleButton) return;
 
-    const open = section.style.display !== "none";
-    section.style.display = open ? "none" : "block";
+    clearAddLoanerForm();
+
+    section.style.display = "block";
+    toggleButton.style.display = "none";
+
+    $("manualVin")?.focus();
   });
 
   $("scanFleetBtn").onclick = async () => {
@@ -137,95 +195,167 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   $("fleetSearch")?.addEventListener("input", renderFleetTable);
 
-  async function fill(vin) {
-    vin = normalizeVin(vin);
+  async function fill(rawVin) {
+    const vin = normalizeVin(rawVin);
+
+    validatedFleetVin = "";
+    updateSaveFleetButton();
 
     $("vin").value = vin;
-    $("last8").value = vin.slice(-8);
+    $("last8").value = vin ? vin.slice(-8) : "";
 
-    try {
-      const d = await decodeVinLive(vin);
-
-      $("year").value = d?.year || "";
-      $("make").value = d?.make || "";
-      $("model").value = d?.model || "";
-
-      $("fleetMsg").textContent = "";
-    } catch (err) {
-      console.error("VIN decode failed:", err);
-
-      $("year").value = "";
-      $("make").value = "";
-      $("model").value = "";
-
-      $("fleetMsg").textContent = "VIN scanned, but decode failed";
-    }
-  }
-
-  $("saveFleetBtn").onclick = async () => {
-    const vin = normalizeVin($("vin").value);
+    $("year").value = "";
+    $("make").value = "";
+    $("model").value = "";
 
     if (!vin) {
-      $("fleetMsg").textContent = "VIN is required";
+      $("fleetMsg").textContent = "Enter or scan a valid VIN.";
       return;
     }
 
     if (!currentDealerId) {
-      $("fleetMsg").textContent = "Dealer session not ready";
+      $("fleetMsg").textContent = "Dealer session not ready.";
       return;
     }
 
-    const ref = doc(db, "loanerFleet", vin);
-    const snap = await getDoc(ref);
-    const existing = snap.exists() ? snap.data() : {};
+    $("fleetMsg").textContent = "Checking VIN...";
 
-    await setDoc(
-      ref,
-      {
+    try {
+      const fleetRef = doc(db, "loanerFleet", vin);
+      const fleetSnapshot = await getDoc(fleetRef);
+
+      if (fleetSnapshot.exists()) {
+        $("fleetMsg").textContent = "This VIN is already in the loaner fleet.";
+
+        updateSaveFleetButton();
+        return;
+      }
+
+      $("fleetMsg").textContent = "Decoding VIN...";
+
+      try {
+        const decoded = await decodeVinLive(vin);
+
+        $("year").value = decoded?.year || "";
+        $("make").value = decoded?.make || "";
+        $("model").value = decoded?.model || "";
+
+        $("fleetMsg").textContent = "";
+      } catch (error) {
+        console.error("VIN decode failed:", error);
+
+        $("year").value = "";
+        $("make").value = "";
+        $("model").value = "";
+
+        $("fleetMsg").textContent =
+          "VIN is valid, but vehicle details could not be decoded.";
+      }
+
+      validatedFleetVin = vin;
+      updateSaveFleetButton();
+
+      $("unitNumber")?.focus();
+    } catch (error) {
+      console.error("VIN validation failed:", error);
+
+      $("fleetMsg").textContent = "The VIN could not be validated.";
+
+      validatedFleetVin = "";
+      updateSaveFleetButton();
+    }
+  }
+
+  $("vin")?.addEventListener("input", () => {
+    const currentVin = normalizeVin($("vin").value);
+
+    if (currentVin !== validatedFleetVin) {
+      validatedFleetVin = "";
+    }
+
+    updateSaveFleetButton();
+  });
+
+  updateSaveFleetButton();
+
+  $("saveFleetBtn").onclick = async () => {
+    if (fleetSaveInProgress) return;
+
+    const vin = normalizeVin($("vin").value);
+
+    if (!vin || vin !== validatedFleetVin) {
+      $("fleetMsg").textContent = "Scan or validate the VIN before saving.";
+
+      updateSaveFleetButton();
+      return;
+    }
+
+    if (!currentDealerId) {
+      $("fleetMsg").textContent = "Dealer session not ready.";
+      return;
+    }
+
+    fleetSaveInProgress = true;
+    updateSaveFleetButton();
+
+    try {
+      const fleetRef = doc(db, "loanerFleet", vin);
+      const fleetSnapshot = await getDoc(fleetRef);
+
+      /*
+       * Recheck immediately before saving so two users
+       * cannot add the same VIN at nearly the same time.
+       */
+      if (fleetSnapshot.exists()) {
+        validatedFleetVin = "";
+
+        $("fleetMsg").textContent = "This VIN is already in the loaner fleet.";
+
+        return;
+      }
+
+      await setDoc(fleetRef, {
         vin,
         dealerId: currentDealerId,
         last8: vin.slice(-8),
+
         unitNumber: $("unitNumber").value.trim(),
         plate: $("plate").value.trim(),
         year: $("year").value.trim(),
         make: $("make").value.trim(),
         model: $("model").value.trim(),
 
-        status: existing.status || "Available",
-        location: existing.location || "Front Line",
-        assignedRo: existing.assignedRo || "",
+        status: "Available",
+        location: "Front Line",
+        assignedRo: "",
 
-        lastReturnedAt: existing.lastReturnedAt || "",
-        lastReceivedByName: existing.lastReceivedByName || "",
-        lastReceivedByEmail: existing.lastReceivedByEmail || "",
-        lastReceivedByUid: existing.lastReceivedByUid || "",
-        lastMileage: existing.lastMileage || "",
-        lastFuelLevel: existing.lastFuelLevel || "",
-        lastDamageNotes: existing.lastDamageNotes || "",
+        lastReturnedAt: "",
+        lastReceivedByName: "",
+        lastReceivedByEmail: "",
+        lastReceivedByUid: "",
+        lastMileage: "",
+        lastFuelLevel: "",
+        lastDamageNotes: "",
 
-        washedAt: existing.washedAt || "",
-        washedBy: existing.washedBy || "",
-        outAt: existing.outAt || "",
-        notes: existing.notes || "",
-        holdReason: existing.holdReason || "",
+        washedAt: "",
+        washedBy: "",
+        outAt: "",
+        notes: "",
+        holdReason: "",
 
+        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+      });
 
-    $("fleetMsg").textContent = "Saved";
+      closeAddLoanerForm();
+    } catch (error) {
+      console.error("Loaner save failed:", error);
 
-    $("manualVin").value = "";
-    $("vin").value = "";
-    $("last8").value = "";
-    $("year").value = "";
-    $("make").value = "";
-    $("model").value = "";
-    $("unitNumber").value = "";
-    $("plate").value = "";
-
-    await load();
+      $("fleetMsg").textContent = "The loaner could not be saved.";
+    } finally {
+      fleetSaveInProgress = false;
+      updateSaveFleetButton();
+    }
   };
 
   async function findRoByNumber(roNumber) {
@@ -614,28 +744,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     return escapeHtml(s);
   }
 
-  function updateCounts() {
+    function updateCounts() {
+    let total = 0;
     let out = 0;
     let available = 0;
+    let atWash = 0;
     let inShop = 0;
 
-    fleetRows.forEach((x) => {
-      const s = String(x.status || "").toUpperCase();
+    fleetRows.forEach((row) => {
+      const status = String(row.status || "")
+        .trim()
+        .toUpperCase();
 
-      if (s === "OUT") {
-        out++;
-      } else if (s === "AVAILABLE") {
-        available++;
-      } else if (s === "REMOVED") {
+      if (status === "REMOVED") {
         return;
-      } else {
+      }
+
+      total++;
+
+      if (status === "OUT") {
+        out++;
+      } else if (status === "AVAILABLE") {
+        available++;
+      } else if (status === "AT WASH") {
+        atWash++;
+      } else if (
+        status === "DISABLED" ||
+        status === "HOLD"
+      ) {
         inShop++;
       }
     });
 
+    const totalCount = $("loanerTotalCount");
     const outCount = $("loanerOutCount");
     const availableCount = $("loanerAvailableCount");
+    const atWashCount = $("loanerAtWashCount");
     const inShopCount = $("loanerInShopCount");
+
+    if (totalCount) {
+      totalCount.textContent = String(total);
+    }
 
     if (outCount) {
       outCount.textContent = String(out);
@@ -643,6 +792,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (availableCount) {
       availableCount.textContent = String(available);
+    }
+
+    if (atWashCount) {
+      atWashCount.textContent = String(atWash);
     }
 
     if (inShopCount) {

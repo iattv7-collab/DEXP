@@ -22,7 +22,7 @@
 
     <link
       rel="stylesheet"
-      href="/css/modules/loaner-returns.css?v=1"
+      href="/css/modules/loaner-returns.css?v=2"
     />
   </head>
 
@@ -59,6 +59,16 @@
         >
           <div class="loaner-count-card">
             <span class="loaner-count-label">
+              Total
+            </span>
+
+            <strong id="loanerTotalCount">
+              0
+            </strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">
               Out
             </span>
 
@@ -73,6 +83,16 @@
             </span>
 
             <strong id="loanerAvailableCount">
+              0
+            </strong>
+          </div>
+
+          <div class="loaner-count-card">
+            <span class="loaner-count-label">
+              At Wash
+            </span>
+
+            <strong id="loanerAtWashCount">
               0
             </strong>
           </div>
@@ -102,8 +122,21 @@
 
           <input
             id="manualVin"
-            placeholder="Enter VIN"
+            type="search"
+            inputmode="text"
+            enterkeyhint="search"
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="Enter full VIN, last 8, or last 6"
           />
+
+          <button
+            id="findReturnVinBtn"
+            type="button"
+            disabled
+          >
+            Find
+          </button>
         </div>
 
         <video
@@ -111,7 +144,7 @@
           autoplay
           playsinline
           muted
-          style="display:none"
+          style="display: none"
         ></video>
 
         <div
@@ -121,21 +154,24 @@
 
         <div
           class="form-row"
-          style="margin-top:10px"
+          style="margin-top: 10px"
         >
           <input
             id="vin"
             placeholder="VIN"
+            readonly
           />
 
           <input
             id="year"
             placeholder="Year"
+            readonly
           />
 
           <input
             id="model"
             placeholder="Model"
+            readonly
           />
         </div>
 
@@ -143,15 +179,20 @@
           <input
             id="returnedAt"
             placeholder="Returned At"
+            readonly
           />
 
           <input
             id="receivedBy"
             placeholder="Received By"
+            readonly
           />
 
           <input
             id="mileage"
+            type="number"
+            inputmode="numeric"
+            min="0"
             placeholder="Mileage"
           />
 
@@ -196,7 +237,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=5"
+      src="/js/modules/loaners/loaner-returns-page.js?v=7"
     ></script>
   </body>
 </html>

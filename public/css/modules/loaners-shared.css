@@ -63,7 +63,9 @@
   color: #ffffff;
 }
 
-/* FLEET / RETURNS SUMMARY COUNTS */
+/* =======================================================
+   FLEET / RETURNS SUMMARY COUNTS
+======================================================= */
 
 .loaner-counts {
   display: flex;
@@ -112,7 +114,9 @@
   line-height: 1;
 }
 
-/* WASH QUEUE SUMMARY */
+/* =======================================================
+   WASH QUEUE SUMMARY
+======================================================= */
 
 .loaner-wash-counts {
   display: inline-flex;
@@ -149,41 +153,21 @@
 }
 
 /* =======================================================
-   WASH QUEUE SUMMARY
+   DISABLED ACTION BUTTONS
 ======================================================= */
 
-.loaner-wash-counts {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 4px 8px;
-
-  background: #f6f8fc;
-
-  border: 1px solid #cfd7e6;
-  border-radius: 5px;
-
-  font-family: "Times New Roman", Times, serif;
+#saveFleetBtn:disabled,
+#saveReturnBtn:disabled,
+#findReturnVinBtn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(.35);
 }
 
-.loaner-wash-counts strong {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  min-width: 22px;
-  height: 22px;
-
-  padding: 0 5px;
-
-  border-radius: 4px;
-
-  background: #0b3d91;
-  color: #ffffff;
-
-  font-size: 13px;
-  font-weight: bold;
+#saveFleetBtn:not(:disabled),
+#saveReturnBtn:not(:disabled),
+#findReturnVinBtn:not(:disabled) {
+  opacity: 1;
 }
 
 /* =======================================================
