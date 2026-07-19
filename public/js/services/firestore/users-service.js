@@ -19,27 +19,52 @@ import { MODULES } from "../../config/modules.js";
 
 import { acceptDealerAdminInvite } from "../firebase/admin-functions-service.js";
 
-import {
-  refreshCurrentUserToken,
-} from "../firebase/auth-service.js";
+import { refreshCurrentUserToken } from "../firebase/auth-service.js";
 
 export async function ensureUserProfile(user, options = {}) {
   const userRef = doc(db, "users", user.uid);
 
   const email = (user.email || "").trim().toLowerCase();
 
+  /*
+   * Check the normal profile first.
+   *
+   * Existing approved users should not call the dealer-admin
+   * invitation Cloud Function during every page load.
+   */
+  const snapshot = await getDoc(userRef);
+
+  if (snapshot.exists()) {
+    const existingProfile = snapshot.data();
+
+    /*
+     * A pending user may have received a dealer-admin invitation
+     * after the pending profile was originally created.
+     */
+    if (existingProfile.role === ROLES.PENDING) {
+      const dealerAdminInviteAcceptance = await acceptDealerAdminInvite();
+
+      if (dealerAdminInviteAcceptance?.data?.accepted) {
+        await refreshCurrentUserToken();
+
+        return dealerAdminInviteAcceptance.data.profile;
+      }
+    }
+
+    return existingProfile;
+  }
+
+  /*
+   * A new authenticated user may be the primary admin invited
+   * during dealer creation. Check that before creating a normal
+   * pending profile.
+   */
   const dealerAdminInviteAcceptance = await acceptDealerAdminInvite();
 
   if (dealerAdminInviteAcceptance?.data?.accepted) {
     await refreshCurrentUserToken();
 
     return dealerAdminInviteAcceptance.data.profile;
-  }
-
-  const snapshot = await getDoc(userRef);
-
-  if (snapshot.exists()) {
-    return snapshot.data();
   }
 
   const pendingRegistration = options.pendingRegistration || {};

@@ -1,14 +1,27 @@
 // public/js/core/session.js
+// Stores and validates the current DEXP application session.
 
 import {
   getPermissionsForRole
 } from "../config/role-permissions.js";
 
+import {
+  DEXP_APP_VERSION
+} from "../config/app-version.js";
+
 const SESSION_KEY = "dexp_session";
+
+const SESSION_DURATION_MS =
+  30 * 60 * 1000;
 
 let currentSession = null;
 
-export function setSession({ user, profile, dealer, modules }) {
+export function setSession({
+  user,
+  profile,
+  dealer,
+  modules
+}) {
   const role = profile?.role || "pending";
 
   const permissions = buildSessionPermissions({
@@ -16,8 +29,11 @@ export function setSession({ user, profile, dealer, modules }) {
     dealer
   });
 
+  const loadedAt = Date.now();
+
   currentSession = {
-    uid: user?.uid || null,
+    uid:
+      user?.uid || null,
 
     companyId:
       profile?.companyId || "",
@@ -58,13 +74,24 @@ export function setSession({ user, profile, dealer, modules }) {
     permissions,
 
     profile,
-    dealer
+    dealer,
+
+    // Session validation metadata.
+    appVersion:
+      DEXP_APP_VERSION,
+
+    loadedAt,
+
+    expiresAt:
+      loadedAt + SESSION_DURATION_MS
   };
 
   localStorage.setItem(
     SESSION_KEY,
     JSON.stringify(currentSession)
   );
+
+  return currentSession;
 }
 
 function buildSessionPermissions({
@@ -115,10 +142,60 @@ export function getSession() {
       localStorage.getItem(SESSION_KEY) || "null"
     );
   } catch (error) {
+    console.error(
+      "Unable to read the stored DEXP session:",
+      error
+    );
+
     currentSession = null;
   }
 
   return currentSession;
+}
+
+export function getValidSession({
+  uid,
+  dealerId
+} = {}) {
+  const session = getSession();
+
+  if (!session) {
+    return null;
+  }
+
+  if (!uid || session.uid !== uid) {
+    clearSession();
+    return null;
+  }
+
+  if (
+    session.appVersion !==
+    DEXP_APP_VERSION
+  ) {
+    clearSession();
+    return null;
+  }
+
+  const expiresAt =
+    Number(session.expiresAt || 0);
+
+  if (
+    !expiresAt ||
+    Date.now() >= expiresAt
+  ) {
+    clearSession();
+    return null;
+  }
+
+  if (
+    dealerId !== undefined &&
+    dealerId !== null &&
+    session.dealerId !== dealerId
+  ) {
+    return null;
+  }
+
+  return session;
 }
 
 export function clearSession() {
