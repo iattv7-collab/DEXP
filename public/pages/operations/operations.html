@@ -5,16 +5,23 @@
   <head>
     <meta charset="UTF-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
     <title>DEXP Operations</title>
 
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
+    <link
+      rel="stylesheet"
+      href="/css/modules/operations.css?v=1"
+    />
   </head>
 
   <body>
-    <main class="page-shell">
+    <main id="operationsPage" class="operations-shell">
       <section class="page-section">
         <div class="page-title-row">
           <div>
@@ -48,10 +55,16 @@
           </button>
         </div>
 
-        <div id="operationsGroupFilterRow" class="action-row"></div>
+        <div
+          id="operationsGroupFilterRow"
+          class="action-row"
+        ></div>
       </section>
 
-      <section id="liveOperationsSection" class="page-section">
+      <section
+        id="liveOperationsSection"
+        class="page-section"
+      >
         <div class="dexp-admin-card">
           <h3>Live Operations</h3>
 
@@ -72,7 +85,9 @@
 
               <tbody id="liveOperationsTableBody">
                 <tr>
-                  <td colspan="7">Loading live operations...</td>
+                  <td colspan="8">
+                    Loading live operations...
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -80,13 +95,16 @@
         </div>
       </section>
 
-      <section id="operationsHistorySection" class="page-section hidden">
+      <section
+        id="operationsHistorySection"
+        class="page-section hidden"
+      >
         <div class="dexp-admin-card">
           <h3>History</h3>
 
           <p class="tool-help">
-            Completed operations will move here after the live visibility
-            window.
+            Completed operations will move here after the
+            live visibility window.
           </p>
 
           <div class="table-wrap">
@@ -104,7 +122,9 @@
 
               <tbody id="operationsHistoryTableBody">
                 <tr>
-                  <td colspan="6">History coming next.</td>
+                  <td colspan="6">
+                    History coming next.
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -113,7 +133,11 @@
       </section>
     </main>
 
-    <script type="module" src="/js/core/app.js"></script>
+    <script
+      type="module"
+      src="/js/core/app.js"
+    ></script>
+
     <script
       type="module"
       src="/pages/operations/operations-page.js?v=2"

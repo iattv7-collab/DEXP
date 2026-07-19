@@ -1,0 +1,38 @@
+/* public/css/modules/operations.css */
+/* Operations page full-width layout. */
+
+.operations-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px;
+  box-sizing: border-box;
+}
+
+#operationsPage .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+#operationsPage .dexp-admin-card {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+#operationsPage .table-wrap {
+  width: 100%;
+}
+
+#operationsPage .data-table {
+  min-width: 100%;
+}
+
+@media (max-width: 700px) {
+  .operations-shell {
+    padding: 10px;
+  }
+}
