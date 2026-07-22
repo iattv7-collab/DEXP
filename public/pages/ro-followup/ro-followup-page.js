@@ -51,6 +51,13 @@ function initializePage() {
       return ro.followupStatus === "pending";
     });
 
+    filtered.sort((a, b) => {
+      const dueA = Number(a.followupDueAtMs || Number.MAX_SAFE_INTEGER);
+      const dueB = Number(b.followupDueAtMs || Number.MAX_SAFE_INTEGER);
+
+      return dueA - dueB;
+    });
+
     allRows = filtered;
 
     renderRows();

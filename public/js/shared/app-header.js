@@ -2,10 +2,15 @@
 
 import { logoutUser } from "/js/services/firebase/auth-service.js";
 import { clearSession, getSession } from "/js/core/session.js";
+
 import {
   getCurrentNotificationStatus,
   registerCurrentDeviceForNotifications,
 } from "/js/services/firebase/messaging-service.js";
+
+import { watchArchivedROs } from "/js/services/firestore/ros-service.js";
+
+let unsubscribeHeaderFollowUps = null;
 
 export function renderAppHeader(options = {}) {
   const { showHome = true, platformMode = false } = options;
@@ -38,6 +43,9 @@ export function renderAppHeader(options = {}) {
   const roleLabel = platformMode
     ? "Owner Console"
     : roleMap[session?.role] || session?.role || "";
+
+  const showFollowUpCounter =
+    !platformMode && session?.role === "advisor" && Boolean(session?.uid);
 
   const header = document.createElement("header");
   header.id = "appHeader";
@@ -81,12 +89,27 @@ export function renderAppHeader(options = {}) {
           : ""
       }
 
+      ${
+        showFollowUpCounter
+          ? `
+            <button
+              id="roReminderCounterButton"
+              type="button"
+              title="Due RO follow-ups"
+            >
+              Follow Ups
+              (<span id="roReminderCounter">0</span>)
+            </button>
+          `
+          : ""
+      }
+
       <button
         id="notificationStatusButton"
         type="button"
         title="Checking notification status..."
       >
-        🔔 Notifications
+        Notifications
       </button>
 
       <button
@@ -133,6 +156,52 @@ export function renderAppHeader(options = {}) {
     });
   }
 
+  const roReminderCounterButton = document.getElementById(
+    "roReminderCounterButton",
+  );
+
+  const roReminderCounter = document.getElementById("roReminderCounter");
+
+  if (roReminderCounterButton) {
+    roReminderCounterButton.addEventListener("click", () => {
+      window.location.href = "/pages/ro-followup/index.html";
+    });
+  }
+
+  if (unsubscribeHeaderFollowUps) {
+    unsubscribeHeaderFollowUps();
+    unsubscribeHeaderFollowUps = null;
+  }
+
+  if (showFollowUpCounter && roReminderCounterButton && roReminderCounter) {
+    unsubscribeHeaderFollowUps = watchArchivedROs((archivedROs) => {
+      const now = Date.now();
+
+      const dueFollowUps = (
+        Array.isArray(archivedROs) ? archivedROs : []
+      ).filter((ro) => {
+        const followupStatus = String(ro.followupStatus || "")
+          .trim()
+          .toLowerCase();
+
+        const followupDueAtMs = Number(ro.followupDueAtMs || 0);
+
+        return (
+          followupStatus === "pending" &&
+          followupDueAtMs > 0 &&
+          followupDueAtMs <= now
+        );
+      });
+
+      const count = dueFollowUps.length;
+
+      roReminderCounter.textContent = String(count);
+
+      roReminderCounterButton.title =
+        count === 1 ? "1 due RO follow-up" : `${count} due RO follow-ups`;
+    }, session.uid);
+  }
+
   const notificationStatusButton = document.getElementById(
     "notificationStatusButton",
   );
@@ -160,6 +229,7 @@ export function renderAppHeader(options = {}) {
         await refreshNotificationButton();
       } catch (error) {
         console.error("Could not update notification status:", error);
+
         alert("Could not update notification status on this device.");
       } finally {
         notificationStatusButton.disabled = false;
@@ -169,32 +239,41 @@ export function renderAppHeader(options = {}) {
 
   const logoutButton = document.getElementById("logoutButton");
 
-  logoutButton.addEventListener("click", async () => {
-    const logoutDealerId = platformMode ? "" : session?.dealerId || "";
+  if (logoutButton) {
+    logoutButton.addEventListener("click", async () => {
+      const logoutDealerId = platformMode ? "" : session?.dealerId || "";
 
-    if (logoutDealerId) {
-      sessionStorage.setItem("dexp_last_dealer_id", logoutDealerId);
-      localStorage.setItem("dexp_last_dealer_id", logoutDealerId);
-    }
+      if (logoutDealerId) {
+        sessionStorage.setItem("dexp_last_dealer_id", logoutDealerId);
 
-    clearSession();
+        localStorage.setItem("dexp_last_dealer_id", logoutDealerId);
+      }
 
-    sessionStorage.removeItem("dexp_platform_selected_dealer");
+      if (unsubscribeHeaderFollowUps) {
+        unsubscribeHeaderFollowUps();
+        unsubscribeHeaderFollowUps = null;
+      }
 
-    await logoutUser();
+      clearSession();
 
-    if (platformMode) {
-      window.location.href = "/pages/auth/platform-login.html";
-      return;
-    }
+      sessionStorage.removeItem("dexp_platform_selected_dealer");
 
-    if (logoutDealerId) {
-      window.location.href = `/pages/auth/login.html?dealerId=${encodeURIComponent(
-        logoutDealerId,
-      )}`;
-      return;
-    }
+      await logoutUser();
 
-    window.location.href = "/pages/auth/login.html";
-  });
+      if (platformMode) {
+        window.location.href = "/pages/auth/platform-login.html";
+        return;
+      }
+
+      if (logoutDealerId) {
+        window.location.href = `/pages/auth/login.html?dealerId=${encodeURIComponent(
+          logoutDealerId,
+        )}`;
+
+        return;
+      }
+
+      window.location.href = "/pages/auth/login.html";
+    });
+  }
 }
