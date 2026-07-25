@@ -269,7 +269,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await updateDoc(doc(db, "ros", ticket.id), {
       customerWaiting: waiter,
       washNotes: notes,
-      washStatus: "queued",
+      washStatus: "pending",
       washQueuedAt: serverTimestamp(),
       washQueuedAtMs: nowMs,
       washQueuedBy: user.uid,

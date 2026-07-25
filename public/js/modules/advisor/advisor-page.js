@@ -260,8 +260,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   function washLabel(ticket) {
     const status = clean(ticket.washStatus).toLowerCase();
 
-    if (status === "queued") {
-      return "Queued";
+    if (status === "pending") {
+      return "Pending";
     }
 
     if (status === "washing") {
@@ -465,6 +465,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <th>Washed</th>
           <th>QC</th>
           <th>Pickup Status</th>
+          <th>Need By</th>
           <th>Request Pickup</th>
           <th>Rewash</th>
           <th>CP Booked</th>
@@ -550,13 +551,22 @@ document.addEventListener("DOMContentLoaded", async () => {
                         ${escapeHtml(qcLabel(ticket))}
                       </td>
 
-                      <td>
-                        ${escapeHtml(pickupLabel(ticket))}
-                      </td>
+                       <td>
+                         ${escapeHtml(pickupLabel(ticket))}
+                       </td>
 
-                      <td>
-                        <button
-                          class="pickupBtn"
+                       <td>
+                         <button
+                           class="needByBtn"
+                           type="button"
+                         >
+                           Need By
+                         </button>
+                       </td>
+
+                       <td>
+                         <button
+                           class="pickupBtn"
                           ${
                             !canRequestPickup || pickupRequested
                               ? "disabled"
@@ -625,7 +635,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .join("")
             : `
               <tr>
-                <td colspan="17">
+                <td colspan="18">
                   No repair orders found.
                 </td>
               </tr>

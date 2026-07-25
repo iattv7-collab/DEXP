@@ -24,14 +24,14 @@ import {
   query,
   serverTimestamp,
   updateDoc,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({
-    allowedModules: ["wash"]
+    allowedModules: ["wash"],
   });
 
   renderAppHeader();
@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.addEventListener(
         "dexp-session-ready",
         () => resolve(getSession()),
-        { once: true }
+        { once: true },
       );
     });
   }
@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         day: "numeric",
         year: "numeric",
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     }
 
@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         day: "numeric",
         year: "numeric",
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     }
 
@@ -108,10 +108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function priorityLabel(t) {
     if (t.customerWaiting === true) return "WAITER";
 
-    if (
-      typeof t.needByAtMs === "number" &&
-      t.needByAtMs > 0
-    ) {
+    if (typeof t.needByAtMs === "number" && t.needByAtMs > 0) {
       return "NEED BY";
     }
 
@@ -123,13 +120,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[c],
+    );
   }
 
   function washEvent(type) {
@@ -138,7 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       atMs: Date.now(),
       by: auth.currentUser?.uid || "",
       role: currentSession?.role || "unknown",
-      cycle: "wash"
+      cycle: "wash",
     };
   }
 
@@ -152,7 +153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       updatedByEmail: clean(user?.email || ""),
       lastEditedAtMs: Date.now(),
       lastEditedBy: user?.uid || "",
-      lastEditedRole: currentSession?.role || "unknown"
+      lastEditedRole: currentSession?.role || "unknown",
     };
   }
 
@@ -174,7 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const patch = {
       washStatus: status,
-      ...auditPatch()
+      ...auditPatch(),
     };
 
     if (status === "washing") {
@@ -186,7 +187,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washStatus",
         "washingStartedAt",
         "washingStartedAtMs",
-        "washingStartedBy"
+        "washingStartedBy",
       ];
     }
 
@@ -208,7 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washedBy",
         "priorityType",
         "customerWaiting",
-        "washWaiterAtMs"
+        "washWaiterAtMs",
       ];
     }
 
@@ -263,8 +264,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         "needBySetBy",
         "isRewashCycle",
         "rewashRequestedAtMs",
-        "rewashRequestedBy"
-      ]
+        "rewashRequestedBy",
+      ],
     });
   }
 
@@ -315,17 +316,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    rowsEl.innerHTML = sorted.map((t) => {
-      const status = clean(t.washStatus).toLowerCase();
-      const startDisabled = status !== "queued" ? "disabled" : "";
-      const doneDisabled = status !== "washing" ? "disabled" : "";
+    rowsEl.innerHTML = sorted
+      .map((t) => {
+        const status = clean(t.washStatus).toLowerCase();
+        const startDisabled = status !== "pending" ? "disabled" : "";
+        const doneDisabled = status !== "washing" ? "disabled" : "";
 
-      return `
+        return `
         <tr data-id="${escapeHtml(t.id)}">
           <td><b>${escapeHtml(tagValue(t))}</b></td>
           <td>${escapeHtml(roValue(t))}</td>
           <td>${escapeHtml(t.model || "")}</td>
-          <td>${escapeHtml(t.location || "")}</td>
+          <td>${escapeHtml(t.currentLocation || t.location || "")}</td>
           <td>${escapeHtml(priorityLabel(t))}</td>
           <td>${escapeHtml(fmtTime(t.needByAtMs))}</td>
           <td>${escapeHtml(status)}</td>
@@ -343,20 +345,21 @@ document.addEventListener("DOMContentLoaded", async () => {
           </td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   function listenWashRows() {
     const q = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("washStatus", "in", ["queued", "washing"])
+      where("washStatus", "in", ["pending", "washing"]),
     );
 
     onSnapshot(q, (snap) => {
       const rows = snap.docs.map((docSnap) => ({
         id: docSnap.id,
-        ...docSnap.data()
+        ...docSnap.data(),
       }));
 
       renderRows(rows);
@@ -375,7 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   openBtn.addEventListener("click", async () => {
     await updateDoc(doc(db, "settings", "system"), {
       isOpen: true,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     setMsg("Wash day opened.");
@@ -384,7 +387,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   closeBtn.addEventListener("click", async () => {
     await updateDoc(doc(db, "settings", "system"), {
       isOpen: false,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     setMsg("Wash day closed.");
@@ -410,9 +413,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (btn.classList.contains("removeWashBtn")) {
-        const ok = confirm(
-          "Remove this vehicle from the wash queue?"
-        );
+        const ok = confirm("Remove this vehicle from the wash queue?");
 
         if (!ok) return;
 
