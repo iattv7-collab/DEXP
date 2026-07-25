@@ -1,4 +1,4 @@
-// public/js/modules/ro-tracker/ro-tracker-datetime.js
+// public/js/shared/date-time-picker.js
 
 function pad2(n) {
   return String(n).padStart(2, "0");

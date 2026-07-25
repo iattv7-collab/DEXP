@@ -1,0 +1,83 @@
+/* public/css/components/date-time-picker.css */
+/* Shared DEXP date/time picker presentation */
+
+/* DATE-TIME PICKER MODAL */
+
+.rtp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.rtp-modal {
+  background: #fff;
+  border: 1px solid #cfcfcf;
+  border-radius: 12px;
+  width: min(520px, calc(100vw - 24px));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  font-family: "Times New Roman", Times, serif;
+  padding: 14px;
+}
+
+.rtp-title {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 10px;
+  background: var(--rt-blue, #0b3d91);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.rtp-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.rtp-row label {
+  width: 90px;
+}
+
+.rtp-row input,
+.rtp-row select {
+  font-family: "Times New Roman", Times, serif;
+  padding: 8px 10px;
+  border: 1px solid #c8d0d9;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.rtp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rtp-btn {
+  font-family: "Times New Roman", Times, serif;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #888;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+}
+
+.rtp-btn.primary {
+  background: #0b3d91;
+  color: #fff;
+  border-color: #0b3d91;
+}
+
+.rtp-note {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #444;
+}

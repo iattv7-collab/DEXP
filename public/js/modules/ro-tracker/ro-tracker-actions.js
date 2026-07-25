@@ -7,7 +7,7 @@ import {
   formatNoYearDate,
   formatNoYearDateTime,
   pickDateTimeMs,
-} from "/js/modules/ro-tracker/ro-tracker-datetime.js";
+} from "/js/shared/date-time-picker.js";
 
 export function setupROTrackerActions({ tableBody, getROById }) {
   if (!tableBody) return;
