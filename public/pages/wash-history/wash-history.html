@@ -1,0 +1,113 @@
+<!-- FILE: /public/pages/wash-history/wash-history.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Wash History</title>
+
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/wash.css?v=1" />
+</head>
+
+<body>
+  <div id="appHeader"></div>
+
+  <main class="wash-shell">
+    <section class="page-section">
+      <h1>Wash Team</h1>
+
+      <p>
+        Search completed wash records by repair order, tag, vehicle, customer,
+        advisor, or completion date.
+      </p>
+
+      <div class="wash-tabs">
+        <a href="/pages/wash/wash.html">
+          Active
+        </a>
+
+        <a
+          href="/pages/wash-history/wash-history.html"
+          class="active"
+        >
+          History
+        </a>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <h2>Wash History</h2>
+
+      <div class="form-row">
+        <label for="washHistorySearch">
+          Search:
+        </label>
+
+        <input
+          id="washHistorySearch"
+          type="search"
+          placeholder="RO, tag, customer, advisor, model..."
+        />
+
+        <label for="washHistoryFrom">
+          From:
+        </label>
+
+        <input
+          id="washHistoryFrom"
+          type="date"
+        />
+
+        <label for="washHistoryTo">
+          To:
+        </label>
+
+        <input
+          id="washHistoryTo"
+          type="date"
+        />
+
+        <button
+          id="clearWashHistoryFiltersBtn"
+          type="button"
+        >
+          Clear
+        </button>
+      </div>
+
+      <div class="table-wrap" style="margin-top: 10px">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>RO</th>
+              <th>Vehicle</th>
+              <th>Customer</th>
+              <th>Advisor</th>
+              <th>Location</th>
+              <th>Priority</th>
+              <th>Need By</th>
+              <th>Dropped Off</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th>Completed By</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+
+          <tbody id="washHistoryRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script
+    type="module"
+    src="/js/modules/wash/wash-history-page.js"
+  ></script>
+</body>
+</html>

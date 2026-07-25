@@ -36,6 +36,10 @@ import {
 
 import { watchDealerROs } from "/js/services/firestore/ros-service.js";
 
+import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
+
+import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
+
 import {
   markCpBooked,
   markWarrantyBooked,
@@ -68,6 +72,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const canRequestQc = hasPermission(PERMISSIONS.QC_REQUEST);
 
   const canMarkNoQc = hasPermission(PERMISSIONS.QC_NO_QC);
+
+  const canSetNeedBy = hasPermission(PERMISSIONS.WASH_NEED_BY_SET);
 
   const tableEl = $("ticketsTable");
   const msgEl = $("msg");
@@ -197,7 +203,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       rewashRequestedBy: auth.currentUser?.uid || "",
 
-      washStatus: "queued",
+      washStatus: "rewash_requested",
 
       washEvents: arrayUnion(washEvent("rewash_requested")),
 
@@ -235,6 +241,71 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg("Pickup requested.");
   }
 
+  async function setNeedBy(id, ticket, anchorButton) {
+    if (!ticket) {
+      throw new Error("Repair order not found.");
+    }
+
+    const washStatus = clean(ticket.washStatus).toLowerCase();
+
+    if (!["pending", "washing"].includes(washStatus)) {
+      throw new Error("The vehicle must be in Wash before setting Need By.");
+    }
+
+    const settings = await getWashSettings();
+
+    const schedule = {
+      monFri:
+        Number(settings.mfBays || 0) > 0
+          ? {
+              start: settings.mfOpen || "07:30",
+              end: settings.mfClose || "19:00",
+            }
+          : null,
+
+      sat:
+        Number(settings.satBays || 0) > 0
+          ? {
+              start: settings.satOpen || "08:00",
+              end: settings.satClose || "15:00",
+            }
+          : null,
+
+      sun:
+        Number(settings.sunBays || 0) > 0
+          ? {
+              start: settings.sunOpen || "00:00",
+              end: settings.sunClose || "00:00",
+            }
+          : null,
+    };
+
+    const selectedMs = await pickDateTimeMs(
+      "Need By",
+      Number(ticket.needByAtMs || 0) || null,
+      30,
+      {
+        schedule,
+        anchorEl: anchorButton,
+      },
+    );
+
+    if (!selectedMs) {
+      return;
+    }
+
+    await updateDoc(doc(db, "ros", id), {
+      needByAtMs: selectedMs,
+      needBySetBy: auth.currentUser?.uid || "",
+
+      washEvents: arrayUnion(washEvent("wash_need_by_set")),
+
+      ...auditPatch(["needByAtMs", "needBySetBy"]),
+    });
+
+    setMsg(`Need By set for ${fmtTime(selectedMs)}.`);
+  }
+
   function qcLabel(ticket) {
     const status = clean(ticket.qcStatus).toLowerCase();
 
@@ -262,6 +333,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (status === "pending") {
       return "Pending";
+    }
+
+    if (status === "rewash_requested") {
+     return "Rewash Requested";
     }
 
     if (status === "washing") {
@@ -466,12 +541,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           <th>QC</th>
           <th>Pickup Status</th>
           <th>Need By</th>
-          <th>Request Pickup</th>
           <th>Rewash</th>
           <th>CP Booked</th>
           <th>WTY Booked</th>
           <th>Request QC</th>
           <th>No QC</th>
+          <th>Request Pickup</th>
         </tr>
       </thead>
 
@@ -559,27 +634,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                          <button
                            class="needByBtn"
                            type="button"
+                           ${
+                             !canSetNeedBy ||
+                             ticket.customerWaiting === true ||
+                             ticket.isWaiter === true ||
+                             !["pending", "rewash_requested"].includes(washStatus)
+                               ? "disabled"
+                               : ""
+                           }
                          >
-                           Need By
+                           ${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}
                          </button>
                        </td>
-
-                       <td>
-                         <button
-                           class="pickupBtn"
-                          ${
-                            !canRequestPickup || pickupRequested
-                              ? "disabled"
-                              : ""
-                          }
-                        >
-                          ${
-                            pickupRequested
-                              ? "Pickup Requested"
-                              : "Request Pickup"
-                          }
-                        </button>
-                      </td>
 
                       <td>
                         <button
@@ -629,6 +695,24 @@ document.addEventListener("DOMContentLoaded", async () => {
                           No QC Required
                         </button>
                       </td>
+
+                      <td>
+                        <button
+                          class="pickupBtn"
+                          ${
+                            !canRequestPickup || pickupRequested
+                              ? "disabled"
+                              : ""
+                          }
+                       >
+                          ${
+                            pickupRequested
+                              ? "Pickup Requested"
+                              : "Request Pickup"
+                          }
+                        </button>
+                      </td>
+
                     </tr>
                   `;
                 })
@@ -655,8 +739,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const id = tableRow.dataset.id;
+    const ticket = rows.find((r) => r.id === id);
 
     try {
+      if (button.classList.contains("needByBtn")) {
+        await setNeedBy(id, ticket, button);
+      }
       if (button.classList.contains("pickupBtn")) {
         await requestPickup(id);
       }

@@ -14,12 +14,15 @@ import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+import {
+  getWashSettings,
+  setWashOpen,
+} from "/js/services/firestore/wash-settings-service.js";
 
 import {
   arrayUnion,
   collection,
   doc,
-  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -44,6 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let currentSession = await waitForSession();
   let currentDealerId = currentSession?.dealerId || "";
+  let washIsOpen = true;
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -285,6 +289,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (aWaiter !== bWaiter) {
         return aWaiter ? -1 : 1;
       }
+      const aRewash = aStatus === "rewash_requested";
+      const bRewash = bStatus === "rewash_requested";
+
+      if (aRewash !== bRewash) {
+        return aRewash ? -1 : 1;
+      }
 
       const aNeedBy =
         typeof a.needByAtMs === "number" && a.needByAtMs > 0
@@ -309,17 +319,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!sorted.length) {
       rowsEl.innerHTML = `
-        <tr>
-          <td colspan="13">No active wash tickets.</td>
-        </tr>
-      `;
+      <tr>
+        <td colspan="13">
+          No active wash tickets.
+        </td>
+      </tr>
+    `;
+
       return;
     }
 
     rowsEl.innerHTML = sorted
       .map((t) => {
         const status = clean(t.washStatus).toLowerCase();
-        const startDisabled = status !== "pending" ? "disabled" : "";
+
+        const statusLabel =
+          status === "rewash_requested" ? "Rewash Requested" : status;
+
+        const startDisabled =
+          !washIsOpen || !["pending", "rewash_requested"].includes(status)
+            ? "disabled"
+            : "";
+
         const doneDisabled = status !== "washing" ? "disabled" : "";
 
         return `
@@ -330,18 +351,27 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>${escapeHtml(t.currentLocation || t.location || "")}</td>
           <td>${escapeHtml(priorityLabel(t))}</td>
           <td>${escapeHtml(fmtTime(t.needByAtMs))}</td>
-          <td>${escapeHtml(status)}</td>
+          <td>${escapeHtml(statusLabel)}</td>
           <td>${escapeHtml(fmtTime(t.washQueuedAtMs))}</td>
           <td>${escapeHtml(fmtTime(t.washingStartedAtMs))}</td>
           <td>${escapeHtml(t.washNotes || t.notes || "")}</td>
+
           <td>
-            <button class="startWashBtn" ${startDisabled}>Start</button>
+            <button class="startWashBtn" ${startDisabled}>
+              Start
+            </button>
           </td>
+
           <td>
-            <button class="markWashedBtn" ${doneDisabled}>Done</button>
+            <button class="markWashedBtn" ${doneDisabled}>
+              Done
+            </button>
           </td>
+
           <td>
-            <button class="removeWashBtn">Remove</button>
+            <button class="removeWashBtn">
+              Remove
+            </button>
           </td>
         </tr>
       `;
@@ -353,7 +383,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const q = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("washStatus", "in", ["pending", "washing"]),
+      where("washStatus", "in", ["pending", "rewash_requested", "washing"]),
     );
 
     onSnapshot(q, (snap) => {
@@ -366,31 +396,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  function listenWashSettings() {
-    const ref = doc(db, "settings", "system");
+  async function loadWashSettings() {
+    const settings = await getWashSettings();
 
-    onSnapshot(ref, (snap) => {
-      const data = snap.exists() ? snap.data() : {};
-      badge.textContent = data.isOpen === false ? "CLOSED" : "OPEN";
-    });
+    updateWashDayControls(settings.isOpen);
+  }
+
+  function updateWashDayControls(isOpen) {
+    washIsOpen = Boolean(isOpen);
+
+    badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
+
+    openBtn.disabled = washIsOpen;
+    closeBtn.disabled = !washIsOpen;
   }
 
   openBtn.addEventListener("click", async () => {
-    await updateDoc(doc(db, "settings", "system"), {
-      isOpen: true,
-      updatedAt: serverTimestamp(),
-    });
+    try {
+      const settings = await setWashOpen(true);
 
-    setMsg("Wash day opened.");
+      updateWashDayControls(settings.isOpen);
+      setMsg("Wash day opened.");
+    } catch (error) {
+      console.error(error);
+      setMsg("Could not open the wash day.", false);
+    }
   });
 
   closeBtn.addEventListener("click", async () => {
-    await updateDoc(doc(db, "settings", "system"), {
-      isOpen: false,
-      updatedAt: serverTimestamp(),
-    });
+    try {
+      const settings = await setWashOpen(false);
 
-    setMsg("Wash day closed.");
+      updateWashDayControls(settings.isOpen);
+      setMsg("Wash day closed.");
+    } catch (error) {
+      console.error(error);
+      setMsg("Could not close the wash day.", false);
+    }
   });
 
   rowsEl.addEventListener("click", async (event) => {
@@ -403,6 +445,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       if (btn.classList.contains("startWashBtn")) {
+        if (!washIsOpen) {
+          setMsg("Wash is closed.", false);
+          return;
+        }
         await setWashStatus(ticketId, "washing");
         setMsg("Marked as washing.");
       }
@@ -426,6 +472,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  listenWashSettings();
+  await loadWashSettings();
   listenWashRows();
 });

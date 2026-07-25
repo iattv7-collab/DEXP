@@ -1,0 +1,41 @@
+/* public/css/modules/wash.css */
+/* Shared Wash module layout and tab navigation */
+
+.wash-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 24px 28px;
+  box-sizing: border-box;
+}
+
+.wash-shell .page-section {
+  width: 100%;
+}
+
+.wash-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+}
+
+.wash-tabs a {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid #0b3d91;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0b3d91;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.wash-tabs a:hover {
+  background: #e7efff;
+}
+
+.wash-tabs a.active {
+  background: #0b3d91;
+  color: #ffffff;
+}

@@ -13,6 +13,7 @@ import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
 
 import {
   collection,
@@ -23,12 +24,12 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  arrayUnion
+  arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({
-    allowedModules: ["send-to-wash"]
+    allowedModules: ["send-to-wash"],
   });
 
   renderAppHeader();
@@ -38,9 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const searchInputEl = $("searchInput");
   const findBtn = $("findBtn");
   const notesEl = $("notes");
-  const waiterEl = $("waiter");
   const msgEl = $("msg");
-  const rowsEl = $("rows");
   const sendBtn = $("sendBtn");
 
   const previewCard = $("previewCard");
@@ -56,6 +55,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   let selectedTicket = null;
   let currentSession = await waitForSession();
   let currentDealerId = currentSession?.dealerId || "";
+  let washIsOpen = true;
+
+  const washSettings = await getWashSettings();
+  washIsOpen = Boolean(washSettings.isOpen);
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -69,7 +72,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       window.addEventListener(
         "dexp-session-ready",
         () => resolve(getSession()),
-        { once: true }
+        { once: true },
       );
     });
   }
@@ -91,13 +94,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
+    return String(s).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#039;",
+        })[c],
+    );
   }
 
   function fmtTime(value) {
@@ -109,7 +116,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         month: "numeric",
         day: "numeric",
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     }
 
@@ -119,7 +126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         month: "numeric",
         day: "numeric",
         hour: "numeric",
-        minute: "2-digit"
+        minute: "2-digit",
       });
     }
 
@@ -145,7 +152,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     pWaiter.textContent = "";
 
     notesEl.value = "";
-    waiterEl.value = "false";
   }
 
   function fillPreview(ticket) {
@@ -161,11 +167,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     pLocation.textContent = clean(ticket.location || "");
     pWaiter.textContent = ticket.customerWaiting ? "Yes" : "No";
 
-    waiterEl.value = ticket.customerWaiting ? "true" : "false";
+    const alreadyInWash = [
+      "queued",
+      "pending",
+      "rewash_requested",
+      "washing",
+    ].includes(washStatus);
 
-    const alreadyInWash = ["queued", "washing"].includes(washStatus);
     alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
     sendBtn.disabled = alreadyInWash;
+
+    return alreadyInWash;
   }
 
   async function findByField(fieldName, value) {
@@ -173,8 +185,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       query(
         collection(db, "ros"),
         where("dealerId", "==", currentDealerId),
-        where(fieldName, "==", value)
-      )
+        where(fieldName, "==", value),
+      ),
     );
 
     return snap;
@@ -211,8 +223,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         const docSnap = snap.docs[0];
-        fillPreview({ id: docSnap.id, ...docSnap.data() });
-        setMsg("Ticket found.");
+
+        const alreadyInWash = fillPreview({
+          id: docSnap.id,
+          ...docSnap.data(),
+        });
+
+        if (!washIsOpen) {
+          sendBtn.disabled = true;
+          setMsg("Wash is currently closed.", false);
+        } else if (alreadyInWash) {
+          sendBtn.disabled = true;
+          setMsg("This ticket is already in the Wash queue.", false);
+        } else {
+          sendBtn.disabled = false;
+          setMsg("Ticket found.");
+        }
+
         return;
       }
 
@@ -234,7 +261,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const docSnap = snap.docs[0];
       fillPreview({ id: docSnap.id, ...docSnap.data() });
-      setMsg("Ticket found.");
+
+      if (!washIsOpen) {
+        sendBtn.disabled = true;
+        setMsg("Wash is currently closed.", false);
+      } else {
+        sendBtn.disabled = false;
+        setMsg("Ticket found.");
+      }
     } catch (error) {
       console.error(error);
       setMsg(error?.message || "Error searching ticket.", false);
@@ -247,7 +281,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       atMs: Date.now(),
       by: user?.uid || "",
       role: currentSession?.role || "unknown",
-      cycle: "wash"
+      cycle: "wash",
     };
   }
 
@@ -284,8 +318,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       washEvents: arrayUnion(
         makeWashEvent({
           type: "wash_queued",
-          user
-        })
+          user,
+        }),
       ),
 
       lastEditedAtMs: nowMs,
@@ -299,8 +333,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washQueuedAtMs",
         "washQueuedBy",
         "priorityType",
-        "washWaiterAtMs"
-      ]
+        "washWaiterAtMs",
+      ],
     });
 
     return ticket.id;
@@ -323,7 +357,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const waiter = waiterEl.value === "true";
+    const selectedWashStatus = clean(selectedTicket.washStatus).toLowerCase();
+
+    if (
+      ["queued", "pending", "rewash_requested", "washing"].includes(
+        selectedWashStatus,
+      )
+    ) {
+      sendBtn.disabled = true;
+      setMsg("This ticket is already in the Wash queue.", false);
+      return;
+    }
+
+    const waiter = Boolean(selectedTicket.customerWaiting);
     const notes = clean(notesEl.value);
 
     try {
@@ -331,7 +377,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const id = await createWashTicket(selectedTicket, {
         waiter,
-        notes
+        notes,
       });
 
       setMsg(`Sent to wash: ${id}`);
@@ -347,45 +393,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  function listenQueuedTickets() {
-    if (!currentDealerId) return;
-
-    const q = query(
-      collection(db, "ros"),
-      where("dealerId", "==", currentDealerId),
-      where("washStatus", "==", "queued")
-    );
-
-    onSnapshot(q, (snap) => {
-      const rows = snap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
-
-      rows.sort((a, b) => {
-        const aMs = Number(a.washQueuedAtMs || 0);
-        const bMs = Number(b.washQueuedAtMs || 0);
-        return aMs - bMs;
-      });
-
-      rowsEl.innerHTML = rows.map((r) => `
-        <tr>
-          <td><b>${escapeHtml(tagValue(r))}</b></td>
-          <td>${escapeHtml(roValue(r))}</td>
-          <td>${r.customerWaiting ? "Yes" : "No"}</td>
-          <td>${escapeHtml(r.location || "")}</td>
-          <td>${escapeHtml(r.washStatus || "")}</td>
-          <td>${escapeHtml(fmtTime(r.washQueuedAtMs))}</td>
-          <td>${escapeHtml(r.washNotes || r.notes || "")}</td>
-        </tr>
-      `).join("") || `
-        <tr>
-          <td colspan="7">No queued tickets.</td>
-        </tr>
-      `;
-    });
-  }
-
   resetPreview();
-  listenQueuedTickets();
 });
