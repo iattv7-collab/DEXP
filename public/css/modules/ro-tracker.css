@@ -54,7 +54,8 @@
   width: 100%;
   min-width: 1550px;
   table-layout: fixed;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: "Times New Roman", Times, serif;
   background: #fff;
 }
@@ -201,6 +202,13 @@
 .ro-tracker-table tr.row-today .cell-edit,
 .ro-tracker-table tr.row-past .cell-edit {
   background: inherit;
+}
+
+/* ROW HOVER GUIDE */
+
+.ro-tracker-table tbody tr:hover td {
+  border-top: 3px solid #0b3d91;
+  border-bottom: 3px solid #0b3d91;
 }
 
 /* HOVER EXPANSION */

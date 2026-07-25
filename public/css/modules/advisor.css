@@ -1,0 +1,51 @@
+/* public/css/modules/advisor.css */
+/* Advisor module layout and table presentation */
+
+.advisor-shell {
+  width: 100%;
+  max-width: none;
+  padding: 18px 24px 28px;
+  margin: 0;
+}
+
+.advisor-shell .page-section {
+  width: 100%;
+}
+
+.advisor-shell .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.advisor-shell .data-table {
+  width: 100%;
+  min-width: 1450px;
+}
+
+.advisor-shell .form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.advisor-shell #searchInput {
+  flex: 1;
+  min-width: 280px;
+}
+
+#myRosBtn,
+#allRosBtn {
+  background: #ffffff;
+  color: #0b3d91;
+  border: 1px solid #0b3d91;
+  font-weight: 700;
+}
+
+#myRosBtn.active-view,
+#allRosBtn.active-view {
+  background: #0b3d91;
+  color: #ffffff;
+  border-color: #0b3d91;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
