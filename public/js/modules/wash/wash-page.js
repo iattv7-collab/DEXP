@@ -200,7 +200,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       patch.washedAtMs = nowMs;
       patch.washedBy = user.uid;
       patch.priorityType = "normal";
-      patch.customerWaiting = false;
       patch.washWaiterAtMs = null;
       patch.rewashRequestedAtMs = null;
       patch.rewashRequestedBy = null;
@@ -212,7 +211,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washedAtMs",
         "washedBy",
         "priorityType",
-        "customerWaiting",
         "washWaiterAtMs",
       ];
     }
@@ -241,7 +239,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       washWaiterAtMs: null,
       washNotes: "",
       priorityType: "normal",
-      customerWaiting: false,
       needByAtMs: null,
       needBySetBy: null,
       isRewashCycle: false,
@@ -263,7 +260,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washWaiterAtMs",
         "washNotes",
         "priorityType",
-        "customerWaiting",
         "needByAtMs",
         "needBySetBy",
         "isRewashCycle",

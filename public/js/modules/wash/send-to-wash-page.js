@@ -165,7 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pModel.textContent = modelValue(ticket);
     pWashStatus.textContent = washStatus || "not in wash";
     pLocation.textContent = clean(ticket.location || "");
-    pWaiter.textContent = ticket.customerWaiting ? "Yes" : "No";
+    pWaiter.textContent = ticket.isWaiter === true ? "Yes" : "No";
 
     const alreadyInWash = [
       "queued",
@@ -369,7 +369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const waiter = Boolean(selectedTicket.customerWaiting);
+    const waiter = selectedTicket.isWaiter === true;
     const notes = clean(notesEl.value);
 
     try {

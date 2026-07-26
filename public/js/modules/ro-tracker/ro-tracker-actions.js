@@ -220,20 +220,55 @@ async function handleCheckboxChange(checkbox, getROById) {
   if (action === "waiter") {
     const now = Date.now();
 
+    const washStatus = String(ro.washStatus || "")
+      .trim()
+      .toLowerCase();
+
+    const isActiveWash = ["pending", "rewash_requested", "washing"].includes(
+      washStatus,
+    );
+
+    if (!checked && isActiveWash) {
+      const confirmed = confirm(
+        "This vehicle is already in Wash. Removing Waiter status will also remove its Waiter priority from the Wash queue. Continue?",
+      );
+
+      if (!confirmed) {
+        checkbox.checked = true;
+        return;
+      }
+    }
+
+    const washPriorityAfterUncheck =
+      washStatus === "rewash_requested" || ro.isRewashCycle === true
+        ? "rewash"
+        : "normal";
+
     await updateRO(
       roId,
       {
         customerWaiting: checked,
         isWaiter: checked,
+
         waiterMarkedAtMs: checked ? now : null,
+
         waiterNextReminderAtMs: checked ? now + 60 * 60 * 1000 : null,
+
         waiterReminderCount: 0,
         waiterLastSentAtMs: null,
+
+        ...(isActiveWash
+          ? {
+              priorityType: checked ? "waiter" : washPriorityAfterUncheck,
+
+              washWaiterAtMs: checked ? now : null,
+            }
+          : {}),
       },
       {
         module: "ro-tracker",
         eventType: "waiter_updated",
-        message: "Waiter updated",
+        message: checked ? "Waiter status added" : "Waiter status removed",
       },
     );
   }
