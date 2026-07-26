@@ -274,38 +274,65 @@ document.addEventListener("DOMContentLoaded", async () => {
       const aStatus = clean(a.washStatus).toLowerCase();
       const bStatus = clean(b.washStatus).toLowerCase();
 
+      // Vehicles already washing stay first.
       if (aStatus !== bStatus) {
         if (aStatus === "washing") return -1;
         if (bStatus === "washing") return 1;
       }
 
+      const aNeedBy = typeof a.needByAtMs === "number" && a.needByAtMs > 0;
+
+      const bNeedBy = typeof b.needByAtMs === "number" && b.needByAtMs > 0;
+
+      // Need By always comes before non-Need By.
+      if (aNeedBy !== bNeedBy) {
+        return aNeedBy ? -1 : 1;
+      }
+
+      // Earliest Need By first.
+      if (aNeedBy && bNeedBy) {
+        if (a.needByAtMs !== b.needByAtMs) {
+          return a.needByAtMs - b.needByAtMs;
+        }
+      }
+
       const aWaiter = a.customerWaiting === true;
       const bWaiter = b.customerWaiting === true;
 
+      // Waiters next.
       if (aWaiter !== bWaiter) {
         return aWaiter ? -1 : 1;
       }
+
+      // Waiters keep their own order.
+      if (aWaiter && bWaiter) {
+        return (
+          Number(
+            a.washWaiterAtMs || a.waiterMarkedAtMs || a.washQueuedAtMs || 0,
+          ) -
+          Number(
+            b.washWaiterAtMs || b.waiterMarkedAtMs || b.washQueuedAtMs || 0,
+          )
+        );
+      }
+
       const aRewash = aStatus === "rewash_requested";
       const bRewash = bStatus === "rewash_requested";
 
+      // Rewash before Normal.
       if (aRewash !== bRewash) {
         return aRewash ? -1 : 1;
       }
 
-      const aNeedBy =
-        typeof a.needByAtMs === "number" && a.needByAtMs > 0
-          ? a.needByAtMs
-          : null;
+      // Rewashes keep their own order.
+      if (aRewash && bRewash) {
+        return (
+          Number(a.rewashRequestedAtMs || a.washQueuedAtMs || 0) -
+          Number(b.rewashRequestedAtMs || b.washQueuedAtMs || 0)
+        );
+      }
 
-      const bNeedBy =
-        typeof b.needByAtMs === "number" && b.needByAtMs > 0
-          ? b.needByAtMs
-          : null;
-
-      if (aNeedBy && bNeedBy) return aNeedBy - bNeedBy;
-      if (aNeedBy) return -1;
-      if (bNeedBy) return 1;
-
+      // Everything else by queue time.
       return Number(a.washQueuedAtMs || 0) - Number(b.washQueuedAtMs || 0);
     });
   }

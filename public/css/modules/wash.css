@@ -1,34 +1,52 @@
 /* public/css/modules/wash.css */
-/* Shared Wash module layout and tab navigation */
+/* Shared Wash module layout, tabs, and responsive table presentation. */
+
+:root {
+  --wash-blue: #0b3d91;
+  --wash-teal: #4066e2;
+  --wash-grid: #c9c9c9;
+}
+
+/* PAGE LAYOUT */
 
 .wash-shell {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 18px 24px 28px;
+  padding: 18px 14px 28px;
   box-sizing: border-box;
 }
 
 .wash-shell .page-section {
   width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
 }
+
+/* ACTIVE / HISTORY TABS */
 
 .wash-tabs {
   display: flex;
   gap: 8px;
   margin-top: 14px;
   margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wash-tabs a {
   display: inline-block;
+  flex: 0 0 auto;
   padding: 7px 14px;
-  border: 1px solid #0b3d91;
+  border: 1px solid var(--wash-blue);
   border-radius: 6px;
   background: #ffffff;
-  color: #0b3d91;
+  color: var(--wash-blue);
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .wash-tabs a:hover {
@@ -36,6 +54,197 @@
 }
 
 .wash-tabs a.active {
-  background: #0b3d91;
+  background: var(--wash-blue);
   color: #ffffff;
+}
+
+/* WASH DAY CONTROLS */
+
+.wash-shell .form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* TABLE WRAP */
+
+.wash-table-wrap {
+  width: 100%;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid var(--wash-grid);
+  border-radius: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* TABLE */
+
+.wash-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #ffffff;
+}
+
+.wash-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--wash-teal);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wash-table td {
+  height: 26px;
+  padding: 3px 6px;
+  border-right: 1px solid var(--wash-grid);
+  border-bottom: 1px solid var(--wash-grid);
+  font-size: 16px;
+  line-height: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wash-table th:last-child,
+.wash-table td:last-child {
+  border-right: 0;
+}
+
+.wash-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* COLUMN WIDTHS */
+
+.wash-table th:nth-child(1),
+.wash-table td:nth-child(1) {
+  width: 65px;
+}
+
+.wash-table th:nth-child(2),
+.wash-table td:nth-child(2) {
+  width: 90px;
+}
+
+.wash-table th:nth-child(3),
+.wash-table td:nth-child(3) {
+  width: 145px;
+}
+
+.wash-table th:nth-child(4),
+.wash-table td:nth-child(4) {
+  width: 135px;
+}
+
+.wash-table th:nth-child(5),
+.wash-table td:nth-child(5) {
+  width: 95px;
+}
+
+.wash-table th:nth-child(6),
+.wash-table td:nth-child(6) {
+  width: 165px;
+}
+
+.wash-table th:nth-child(7),
+.wash-table td:nth-child(7) {
+  width: 135px;
+}
+
+.wash-table th:nth-child(8),
+.wash-table td:nth-child(8),
+.wash-table th:nth-child(9),
+.wash-table td:nth-child(9) {
+  width: 175px;
+}
+
+.wash-table th:nth-child(10),
+.wash-table td:nth-child(10) {
+  width: 180px;
+}
+
+.wash-table th:nth-child(11),
+.wash-table td:nth-child(11),
+.wash-table th:nth-child(12),
+.wash-table td:nth-child(12),
+.wash-table th:nth-child(13),
+.wash-table td:nth-child(13) {
+  width: 78px;
+  text-align: center;
+}
+
+/* TABLE BUTTONS */
+
+.wash-table button {
+  min-height: 26px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+  .wash-shell {
+    padding: 10px 8px 20px;
+  }
+
+  .wash-shell .page-section {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .wash-shell h1 {
+    margin-top: 0;
+  }
+
+  .wash-tabs {
+    margin-top: 10px;
+  }
+
+  .wash-shell .form-row {
+    align-items: stretch;
+  }
+
+  .wash-shell .form-row button {
+    flex: 1 1 145px;
+    min-height: 38px;
+  }
+
+  .wash-shell .form-row strong,
+  .wash-shell .form-row #isOpenBadge {
+    align-self: center;
+  }
+
+  .wash-table-wrap {
+    border-radius: 8px;
+  }
+
+  .wash-table th {
+    font-size: 14px;
+    padding: 7px 5px;
+  }
+
+  .wash-table td {
+    font-size: 14px;
+    padding: 3px 5px;
+  }
+
+  .wash-table button {
+    min-height: 32px;
+    font-size: 14px;
+  }
 }
