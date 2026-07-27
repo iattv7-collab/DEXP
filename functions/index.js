@@ -21,6 +21,10 @@ const vision = require("@google-cloud/vision");
 
 const cors = require("cors")({ origin: true });
 
+const {
+  scanVIN,
+} = require("./loaners/scan-vin");
+
 admin.initializeApp();
 
 setGlobalOptions({
@@ -644,59 +648,7 @@ exports.scanRO = onRequest(async (req, res) => {
 // =========================
 // LOANER LIVE VIN SCANNER
 // =========================
-exports.scanVIN = onRequest(async (req, res) => {
-  cors(req, res, async () => {
-    try {
-      if (req.method !== "POST") {
-        return res.status(405).json({
-          error: "Method not allowed",
-        });
-      }
-
-      const imageBuffer = await readUpload(req);
-
-      const request = {
-        image: {
-          content: imageBuffer,
-        },
-      };
-
-      const visionResponse = await visionClient.textDetection(request);
-      const result = visionResponse[0];
-
-      const detections = result.textAnnotations || [];
-
-      const rawText =
-        detections[0] && detections[0].description
-          ? detections[0].description
-          : "";
-
-      const normalizedText = String(rawText)
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "");
-
-      const matches = normalizedText.match(/[A-HJ-NPR-Z0-9]{17}/g) || [];
-
-      const vin =
-        matches.find((candidate) => {
-          return /^[A-HJ-NPR-Z0-9]{17}$/.test(candidate);
-        }) || "";
-
-      return res.json({
-        success: true,
-        vin,
-      });
-    } catch (error) {
-      console.error("scanVIN failed:", error);
-
-      return res.status(500).json({
-        success: false,
-        vin: "",
-        error: "VIN OCR failed",
-      });
-    }
-  });
-});
+exports.scanVIN = scanVIN;
 
 exports.releaseStaleNotifications = onSchedule(
   {

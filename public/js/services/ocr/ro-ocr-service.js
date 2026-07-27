@@ -112,10 +112,142 @@ function extractRONumber(text) {
     return numbers[numbers.length - 1] || "";
 }
 
-function extractVIN(text) {
-    const match = text.match(/\b[A-HJ-NPR-Z0-9]{17}\b/i);
+function extractVIN(text = "") {
+    const lines = String(text)
+        .toUpperCase()
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
 
-    return match ? match[0].toUpperCase() : "";
+    const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/;
+
+    const transliteration = {
+        A: 1,
+        B: 2,
+        C: 3,
+        D: 4,
+        E: 5,
+        F: 6,
+        G: 7,
+        H: 8,
+        J: 1,
+        K: 2,
+        L: 3,
+        M: 4,
+        N: 5,
+        P: 7,
+        R: 9,
+        S: 2,
+        T: 3,
+        U: 4,
+        V: 5,
+        W: 6,
+        X: 7,
+        Y: 8,
+        Z: 9
+    };
+
+    const weights = [
+        8, 7, 6, 5, 4, 3, 2, 10, 0,
+        9, 8, 7, 6, 5, 4, 3, 2
+    ];
+
+    function repairCandidate(value = "") {
+        const candidate = String(value)
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "");
+
+        if (candidate.length !== 17) {
+            return "";
+        }
+
+        const repaired = candidate
+            .replace(/O/g, "0")
+            .replace(/I/g, "1")
+            .replace(/Q/g, "0");
+
+        return VIN_PATTERN.test(repaired)
+            ? repaired
+            : "";
+    }
+
+    function passesChecksum(vin = "") {
+        if (!VIN_PATTERN.test(vin)) {
+            return false;
+        }
+
+        let total = 0;
+
+        for (let index = 0; index < vin.length; index += 1) {
+            const character = vin[index];
+
+            const value = /\d/.test(character)
+                ? Number(character)
+                : transliteration[character];
+
+            if (value === undefined) {
+                return false;
+            }
+
+            total += value * weights[index];
+        }
+
+        const remainder = total % 11;
+        const expectedCheckDigit =
+            remainder === 10 ? "X" : String(remainder);
+
+        return vin[8] === expectedCheckDigit;
+    }
+
+    function getCandidatesFromLine(line = "") {
+        /*
+         * Preserve word boundaries instead of removing every space
+         * from the complete line. This prevents the VIN from being
+         * joined to year, make, model, or other RO information.
+         *
+         * O, I and Q are temporarily allowed because OCR can mistake
+         * 0 and 1 for those letters.
+         */
+        const matches =
+            line.match(/(?:^|[^A-Z0-9])([A-Z0-9]{17})(?=$|[^A-Z0-9])/g) || [];
+
+        return matches
+            .map((match) => repairCandidate(match))
+            .filter(Boolean);
+    }
+
+    const vehicleIdIndex = lines.findIndex((line) =>
+        /VEHICLE\s+(?:I\.?\s*D\.?|L\.?\s*D\.?)\s*NO/i.test(line)
+    );
+
+    const prioritizedLines = [];
+
+    if (vehicleIdIndex >= 0) {
+        for (
+            let index = vehicleIdIndex + 1;
+            index < Math.min(lines.length, vehicleIdIndex + 5);
+            index += 1
+        ) {
+            prioritizedLines.push(lines[index]);
+        }
+    }
+
+    const allCandidates = [];
+
+    for (const line of [...prioritizedLines, ...lines]) {
+        for (const candidate of getCandidatesFromLine(line)) {
+            if (!allCandidates.includes(candidate)) {
+                allCandidates.push(candidate);
+            }
+        }
+    }
+
+    const checksumMatch =
+        allCandidates.find((candidate) =>
+            passesChecksum(candidate)
+        );
+
+    return checksumMatch || allCandidates[0] || "";
 }
 
 function extractYear(text) {
