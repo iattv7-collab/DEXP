@@ -53,9 +53,26 @@ let trackerViewLabel = null;
 let sharingStatusLabel = null;
 let shareButton = null;
 
-window.addEventListener("dexp-session-ready", initializeROTracker);
+let roTrackerInitialized = false;
+
+const existingSession = getSession();
+
+if (existingSession?.dealerId) {
+  initializeROTracker();
+} else {
+  window.addEventListener(
+    "dexp-session-ready",
+    initializeROTracker,
+    { once: true },
+  );
+}
 
 async function initializeROTracker() {
+  if (roTrackerInitialized) {
+    return;
+  }
+
+  roTrackerInitialized = true;
   renderAppHeader({
     title: "RO Tracker",
   });
