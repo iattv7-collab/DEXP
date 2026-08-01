@@ -3,6 +3,7 @@
 
 import {
   doc,
+  getDoc,
   serverTimestamp,
   setDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -11,6 +12,39 @@ import { db } from "../firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 
 const USER_DEVICES_COLLECTION = "devices";
+
+export async function getUserDevice(deviceId = "") {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  const safeDeviceId = String(deviceId || "").trim();
+
+  if (!safeDeviceId) {
+    throw new Error("Missing device ID.");
+  }
+
+  const deviceRef = doc(
+    db,
+    "users",
+    session.uid,
+    USER_DEVICES_COLLECTION,
+    safeDeviceId,
+  );
+
+  const deviceSnapshot = await getDoc(deviceRef);
+
+  if (!deviceSnapshot.exists()) {
+    return null;
+  }
+
+  return {
+    id: deviceSnapshot.id,
+    ...deviceSnapshot.data(),
+  };
+}
 
 export async function saveUserDevice(deviceData = {}) {
   const session = getSession();
@@ -52,10 +86,28 @@ export async function saveUserDevice(deviceData = {}) {
       userAgent: String(deviceData.userAgent || "").trim(),
 
       active: true,
-      notificationsEnabled: Boolean(deviceData.notificationsEnabled),
 
-      lastLoginAt: serverTimestamp(),
-      lastLoginAtMs: Date.now(),
+      notificationsEnabled:
+        typeof deviceData.notificationsEnabled === "boolean"
+          ? deviceData.notificationsEnabled
+          : true,
+
+      soundEnabled:
+        typeof deviceData.soundEnabled === "boolean"
+          ? deviceData.soundEnabled
+          : true,
+
+      vibrationEnabled:
+        typeof deviceData.vibrationEnabled === "boolean"
+          ? deviceData.vibrationEnabled
+          : true,
+
+      ...(deviceData.recordLogin
+        ? {
+            lastLoginAt: serverTimestamp(),
+            lastLoginAtMs: Date.now(),
+          }
+        : {}),
       lastSeenAt: serverTimestamp(),
       lastSeenAtMs: Date.now(),
 

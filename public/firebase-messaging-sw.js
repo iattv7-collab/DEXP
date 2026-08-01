@@ -1,8 +1,12 @@
 // public/firebase-messaging-sw.js
 // Firebase Cloud Messaging service worker for DEXP.
 
-importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js");
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js",
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js",
+);
 
 firebase.initializeApp({
   apiKey: "AIzaSyClcn2PQKYMnKkGwG5xX3WCNYpexPsY-mI",
@@ -15,16 +19,40 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+function parseBoolean(value, defaultValue = true) {
+  if (value === "true" || value === true) {
+    return true;
+  }
+
+  if (value === "false" || value === false) {
+    return false;
+  }
+
+  return defaultValue;
+}
+
 messaging.onBackgroundMessage((payload) => {
   const data = payload?.data || {};
 
   const title = data.title || "DEXP Notification";
 
+  const soundEnabled = parseBoolean(data.soundEnabled, true);
+
+  const vibrationEnabled = parseBoolean(data.vibrationEnabled, true);
+
   const options = {
     body: data.body || "",
     icon: "/assets/logo-v2.png",
     badge: "/assets/logo-v2.png",
+
+    tag: data.notificationId || undefined,
+    renotify: true,
+    silent: !soundEnabled,
+
+    vibrate: vibrationEnabled ? [250, 120, 250] : undefined,
+
     data,
+
     actions: [
       {
         action: "open",
@@ -50,7 +78,9 @@ self.addEventListener("notificationclick", (event) => {
       value !== undefined &&
       value !== null &&
       String(value).trim() !== "" &&
-      !["title", "body", "route"].includes(key)
+      !["title", "body", "route", "soundEnabled", "vibrationEnabled"].includes(
+        key,
+      )
     ) {
       params.set(key, String(value));
     }
@@ -61,10 +91,10 @@ self.addEventListener("notificationclick", (event) => {
   }
 
   const relativeTargetUrl = params.toString()
-  ? `${route}?${params.toString()}`
-  : route;
+    ? `${route}?${params.toString()}`
+    : route;
 
-const targetUrl = new URL(relativeTargetUrl, self.location.origin).href;
+  const targetUrl = new URL(relativeTargetUrl, self.location.origin).href;
 
   event.waitUntil(
     clients

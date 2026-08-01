@@ -12,8 +12,28 @@ import {
 
 import { getNotificationGroups } from "../../services/firestore/notification-groups-service.js";
 
+import { getCurrentDeviceNotificationPreferences } from "../../services/firebase/messaging-service.js";
+
 let unsubscribeNotifications = null;
 let userGroupIds = [];
+let notificationPreferences = {
+  notificationsEnabled: true,
+  soundEnabled: true,
+  vibrationEnabled: true,
+};
+
+let initialNotificationSnapshotLoaded = false;
+
+const alertedNotificationIds = new Set();
+
+let notificationAudioContext = null;
+let notificationAlertTimer = null;
+
+const ringingNotificationIds = new Set();
+
+const silencedNotificationIds = new Set();
+
+const NOTIFICATION_ALERT_REPEAT_MS = 700;
 
 const OPENED_NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -25,6 +45,11 @@ export async function startNotificationEngine() {
   }
 
   stopNotificationEngine();
+
+  initialNotificationSnapshotLoaded = false;
+  alertedNotificationIds.clear();
+
+  notificationPreferences = await getCurrentDeviceNotificationPreferences();
 
   const groups = await getNotificationGroups();
 
@@ -41,7 +66,11 @@ export async function startNotificationEngine() {
 
     const visibleNotifications = getVisibleNotifications(requests, session);
 
-    renderNotificationTray(visibleNotifications);
+    processNewNotificationAlerts(visibleNotifications);
+
+    renderNotificationTray(
+      notificationPreferences.notificationsEnabled ? visibleNotifications : [],
+    );
   });
 }
 
@@ -51,6 +80,183 @@ export function stopNotificationEngine() {
   }
 
   unsubscribeNotifications = null;
+
+  ringingNotificationIds.clear();
+  silencedNotificationIds.clear();
+
+  stopRepeatingNotificationAlert();
+}
+
+window.addEventListener("dexp-notification-preferences-changed", (event) => {
+  notificationPreferences = {
+    ...notificationPreferences,
+    ...(event.detail || {}),
+  };
+
+  if (!notificationPreferences.notificationsEnabled) {
+    ringingNotificationIds.clear();
+
+    stopRepeatingNotificationAlert();
+
+    renderNotificationTray([]);
+  }
+});
+
+function processNewNotificationAlerts(notifications = []) {
+  const visibleIds = new Set(
+    notifications.map((notification) => notification?.id).filter(Boolean),
+  );
+
+  ringingNotificationIds.forEach((notificationId) => {
+    if (!visibleIds.has(notificationId)) {
+      ringingNotificationIds.delete(notificationId);
+    }
+  });
+
+  if (!initialNotificationSnapshotLoaded) {
+    notifications.forEach((notification) => {
+      if (notification?.id) {
+        alertedNotificationIds.add(notification.id);
+      }
+    });
+
+    initialNotificationSnapshotLoaded = true;
+    stopRepeatingNotificationAlert();
+    return;
+  }
+
+  notifications.forEach((notification) => {
+    if (!notification?.id) {
+      return;
+    }
+
+    if (
+      !alertedNotificationIds.has(notification.id) &&
+      !silencedNotificationIds.has(notification.id)
+    ) {
+      ringingNotificationIds.add(notification.id);
+    }
+
+    alertedNotificationIds.add(notification.id);
+  });
+
+  if (ringingNotificationIds.size) {
+    startRepeatingNotificationAlert();
+  } else {
+    stopRepeatingNotificationAlert();
+  }
+}
+
+function triggerNotificationAlert() {
+  if (
+    !notificationPreferences.notificationsEnabled ||
+    !ringingNotificationIds.size
+  ) {
+    stopRepeatingNotificationAlert();
+    return;
+  }
+
+  if (notificationPreferences.soundEnabled) {
+    playNotificationSound();
+  }
+
+  if (
+    notificationPreferences.vibrationEnabled &&
+    typeof navigator.vibrate === "function"
+  ) {
+    navigator.vibrate([250, 120, 250]);
+  }
+}
+
+function startRepeatingNotificationAlert() {
+  if (notificationAlertTimer) {
+    return;
+  }
+
+  triggerNotificationAlert();
+
+  notificationAlertTimer = window.setTimeout(() => {
+    triggerNotificationAlert();
+
+    ringingNotificationIds.clear();
+
+    stopRepeatingNotificationAlert();
+  }, NOTIFICATION_ALERT_REPEAT_MS);
+}
+
+function stopRepeatingNotificationAlert() {
+  if (notificationAlertTimer) {
+    window.clearTimeout(notificationAlertTimer);
+    notificationAlertTimer = null;
+  }
+
+  if (typeof navigator.vibrate === "function") {
+    navigator.vibrate(0);
+  }
+}
+
+function silenceNotificationAlert(notificationId) {
+  const safeNotificationId = String(notificationId || "").trim();
+
+  if (!safeNotificationId) {
+    return;
+  }
+
+  silencedNotificationIds.add(safeNotificationId);
+  ringingNotificationIds.delete(safeNotificationId);
+
+  if (!ringingNotificationIds.size) {
+    stopRepeatingNotificationAlert();
+  }
+}
+
+function playNotificationSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) {
+      return;
+    }
+
+    if (!notificationAudioContext) {
+      notificationAudioContext = new AudioContextClass();
+    }
+
+    if (notificationAudioContext.state === "suspended") {
+      notificationAudioContext.resume().catch(() => {});
+    }
+
+    const now = notificationAudioContext.currentTime;
+
+    playTone(880, now, 0.28);
+    playTone(1175, now + 0.34, 0.32);
+  } catch (error) {
+    console.warn("Could not play notification sound.", error);
+  }
+}
+
+function playTone(frequency, startTime, duration) {
+  const oscillator = notificationAudioContext.createOscillator();
+
+  const gain = notificationAudioContext.createGain();
+
+  oscillator.type = "sine";
+
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+
+  gain.gain.setValueAtTime(0.0001, startTime);
+
+  gain.gain.exponentialRampToValueAtTime(0.55, startTime + 0.025);
+
+  gain.gain.setValueAtTime(0.55, startTime + duration - 0.07);
+
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  oscillator.connect(gain);
+  gain.connect(notificationAudioContext.destination);
+
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
 }
 
 function releaseStaleOpenedNotifications(requests = [], session) {
@@ -157,6 +363,8 @@ function renderNotificationTray(notifications = []) {
         return;
       }
 
+      silenceNotificationAlert(notificationId);
+
       await openNotificationRequest(notificationId);
 
       window.location.href = buildNotificationRoute(notification);
@@ -167,7 +375,20 @@ function renderNotificationTray(notifications = []) {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.dismissNotificationId;
 
+      silenceNotificationAlert(notificationId);
+
       await dismissNotificationRequest(notificationId);
+    });
+  });
+
+  tray.querySelectorAll("[data-silence-notification-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const notificationId = button.dataset.silenceNotificationId;
+
+      silenceNotificationAlert(notificationId);
+
+      button.textContent = "Silenced";
+      button.disabled = true;
     });
   });
 }
@@ -212,6 +433,20 @@ function renderNotificationCard(item) {
       }
 
       <div class="dexp-notification-actions">
+
+      ${
+        ringingNotificationIds.has(item.id)
+          ? `
+      <button
+        type="button"
+        class="dexp-notification-silence"
+        data-silence-notification-id="${item.id}"
+      >
+        Silence
+      </button>
+    `
+          : ""
+      }
 
         ${
           showOpen

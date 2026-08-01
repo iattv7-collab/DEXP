@@ -861,30 +861,45 @@ exports.sendPushForNotificationRequest = onDocumentCreated(
 
     let targetUids = [];
 
-    if (notification.targetType === "user" && notification.targetUserId) {
+    if (
+      notification.targetType === "user" &&
+      notification.targetUserId
+    ) {
       targetUids = [notification.targetUserId];
     }
 
-    if (notification.targetType === "group" && notification.targetGroupId) {
+    if (
+      notification.targetType === "group" &&
+      notification.targetGroupId
+    ) {
       const groupSnap = await admin
         .firestore()
-        .doc(`notificationGroups/${notification.targetGroupId}`)
+        .doc(
+          `notificationGroups/${notification.targetGroupId}`,
+        )
         .get();
 
       if (groupSnap.exists) {
         const group = groupSnap.data();
 
-        if (group.dealerId === dealerId && Array.isArray(group.memberUids)) {
+        if (
+          group.dealerId === dealerId &&
+          Array.isArray(group.memberUids)
+        ) {
           targetUids = group.memberUids;
         }
       }
     }
 
+    targetUids = Array.from(
+      new Set(targetUids.filter(Boolean)),
+    );
+
     if (!targetUids.length) {
       return;
     }
 
-    const tokens = [];
+    const devicesByToken = new Map();
 
     for (const uid of targetUids) {
       const devicesSnap = await admin
@@ -898,56 +913,128 @@ exports.sendPushForNotificationRequest = onDocumentCreated(
       devicesSnap.forEach((deviceDoc) => {
         const device = deviceDoc.data();
 
-        if (device.fcmToken) {
-          tokens.push(device.fcmToken);
+        const token = String(
+          device.fcmToken || "",
+        ).trim();
+
+        if (!token) {
+          return;
         }
+
+        devicesByToken.set(token, {
+          token,
+
+          soundEnabled:
+            typeof device.soundEnabled === "boolean"
+              ? device.soundEnabled
+              : true,
+
+          vibrationEnabled:
+            typeof device.vibrationEnabled === "boolean"
+              ? device.vibrationEnabled
+              : true,
+        });
       });
     }
 
-    const uniqueTokens = Array.from(new Set(tokens));
+    const targetDevices = Array.from(
+      devicesByToken.values(),
+    );
 
-    if (!uniqueTokens.length) {
+    if (!targetDevices.length) {
       return;
     }
 
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens: uniqueTokens,
-      data: {
-        title,
-        body,
-        notificationId: event.params.notificationId,
-        requestId: String(
-          notification.routeParams?.requestId ||
-            notification.data?.requestId ||
-            "",
-        ),
-        tagNumber: String(
-          notification.routeParams?.tagNumber ||
-            notification.relatedTagNumber ||
-            "",
-        ),
-        route: notification.route || "",
-        module: notification.module || "",
-        eventType: notification.eventType || "",
-        relatedRoId: notification.relatedRoId || "",
-        relatedRoNumber: String(notification.relatedRoNumber || ""),
-        relatedTagNumber: String(notification.relatedTagNumber || ""),
-      },
-    });
+    const baseData = {
+      title,
+      body,
+
+      notificationId:
+        event.params.notificationId,
+
+      requestId: String(
+        notification.routeParams?.requestId ||
+          notification.data?.requestId ||
+          "",
+      ),
+
+      tagNumber: String(
+        notification.routeParams?.tagNumber ||
+          notification.relatedTagNumber ||
+          "",
+      ),
+
+      route: notification.route || "",
+      module: notification.module || "",
+      eventType: notification.eventType || "",
+
+      relatedRoId:
+        notification.relatedRoId || "",
+
+      relatedRoNumber: String(
+        notification.relatedRoNumber || "",
+      ),
+
+      relatedTagNumber: String(
+        notification.relatedTagNumber || "",
+      ),
+    };
+
+    const sendResults = await Promise.allSettled(
+      targetDevices.map((device) => {
+        return admin.messaging().send({
+          token: device.token,
+
+          data: {
+            ...baseData,
+
+            soundEnabled: String(
+              device.soundEnabled,
+            ),
+
+            vibrationEnabled: String(
+              device.vibrationEnabled,
+            ),
+          },
+        });
+      }),
+    );
+
+    const successCount = sendResults.filter(
+      (result) =>
+        result.status === "fulfilled",
+    ).length;
+
+    const failureCount =
+      sendResults.length - successCount;
 
     await event.data.ref.set(
       {
-        pushSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        pushSentAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+
         pushSentAtMs: Date.now(),
-        pushTargetDeviceCount: uniqueTokens.length,
-        pushSuccessCount: response.successCount,
-        pushFailureCount: response.failureCount,
+
+        pushTargetDeviceCount:
+          targetDevices.length,
+
+        pushSuccessCount: successCount,
+        pushFailureCount: failureCount,
       },
       { merge: true },
     );
 
+    sendResults.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error(
+          `Push failed for notification ${event.params.notificationId}, device ${index + 1}:`,
+          result.reason,
+        );
+      }
+    });
+
     console.log(
-      `Push sent for notification ${event.params.notificationId}: ${response.successCount}/${uniqueTokens.length}`,
+      `Push sent for notification ${event.params.notificationId}: ${successCount}/${targetDevices.length}`,
     );
   },
 );
