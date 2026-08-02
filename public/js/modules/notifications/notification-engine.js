@@ -14,6 +14,13 @@ import { getNotificationGroups } from "../../services/firestore/notification-gro
 
 import { getCurrentDeviceNotificationPreferences } from "../../services/firebase/messaging-service.js";
 
+import {
+  NOTIFICATION_CONFIG,
+  getNotificationSoundPath,
+  getNotificationVolume,
+  getNotificationVibration,
+} from "../../config/notification-config.js";
+
 let unsubscribeNotifications = null;
 let userGroupIds = [];
 let notificationPreferences = {
@@ -26,14 +33,17 @@ let initialNotificationSnapshotLoaded = false;
 
 const alertedNotificationIds = new Set();
 
-let notificationAudioContext = null;
+const notificationAudioCache = new Map();
+
+let currentVisibleNotifications = [];
+
 let notificationAlertTimer = null;
 
 const ringingNotificationIds = new Set();
 
 const silencedNotificationIds = new Set();
 
-const NOTIFICATION_ALERT_REPEAT_MS = 700;
+const NOTIFICATION_ALERT_REPEAT_MS = NOTIFICATION_CONFIG.repeatDelayMs;
 
 const OPENED_NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -45,13 +55,27 @@ export async function startNotificationEngine() {
   }
 
   stopNotificationEngine();
+  notificationPreferences = {
+  notificationsEnabled: true,
+  soundEnabled: true,
+  vibrationEnabled: true,
+};
 
   initialNotificationSnapshotLoaded = false;
   alertedNotificationIds.clear();
 
-  notificationPreferences = await getCurrentDeviceNotificationPreferences();
+  getCurrentDeviceNotificationPreferences()
+  .then((preferences) => {
+    notificationPreferences = preferences;
+  })
+  .catch((error) => {
+    console.warn(
+      "Could not load device notification preferences.",
+      error,
+    );
+  });
 
-  const groups = await getNotificationGroups();
+const groups = await getNotificationGroups();
 
   userGroupIds = groups
     .filter(
@@ -103,6 +127,7 @@ window.addEventListener("dexp-notification-preferences-changed", (event) => {
 });
 
 function processNewNotificationAlerts(notifications = []) {
+  currentVisibleNotifications = notifications;
   const visibleIds = new Set(
     notifications.map((notification) => notification?.id).filter(Boolean),
   );
@@ -156,15 +181,29 @@ function triggerNotificationAlert() {
     return;
   }
 
+  const notification = [...ringingNotificationIds]
+    .map((id) =>
+      currentVisibleNotifications.find(
+        (item) => item.id === id,
+      ),
+    )
+    .find(Boolean);
+
+  if (!notification) {
+    return;
+  }
+
   if (notificationPreferences.soundEnabled) {
-    playNotificationSound();
+    playNotificationSound(notification);
   }
 
   if (
     notificationPreferences.vibrationEnabled &&
     typeof navigator.vibrate === "function"
   ) {
-    navigator.vibrate([250, 120, 250]);
+    navigator.vibrate(
+      getNotificationVibration(notification),
+    );
   }
 }
 
@@ -210,53 +249,30 @@ function silenceNotificationAlert(notificationId) {
   }
 }
 
-function playNotificationSound() {
+function playNotificationSound(notification = {}) {
   try {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const soundPath = getNotificationSoundPath(notification);
 
-    if (!AudioContextClass) {
-      return;
+    let audio = notificationAudioCache.get(soundPath);
+
+    if (!audio) {
+      audio = new Audio(soundPath);
+      audio.preload = "auto";
+
+      notificationAudioCache.set(soundPath, audio);
     }
 
-    if (!notificationAudioContext) {
-      notificationAudioContext = new AudioContextClass();
-    }
+    audio.pause();
+    audio.currentTime = 0;
 
-    if (notificationAudioContext.state === "suspended") {
-      notificationAudioContext.resume().catch(() => {});
-    }
+    audio.volume = getNotificationVolume(notification);
 
-    const now = notificationAudioContext.currentTime;
-
-    playTone(880, now, 0.28);
-    playTone(1175, now + 0.34, 0.32);
+    audio.play().catch((error) => {
+      console.warn("Browser blocked notification sound.", error);
+    });
   } catch (error) {
     console.warn("Could not play notification sound.", error);
   }
-}
-
-function playTone(frequency, startTime, duration) {
-  const oscillator = notificationAudioContext.createOscillator();
-
-  const gain = notificationAudioContext.createGain();
-
-  oscillator.type = "sine";
-
-  oscillator.frequency.setValueAtTime(frequency, startTime);
-
-  gain.gain.setValueAtTime(0.0001, startTime);
-
-  gain.gain.exponentialRampToValueAtTime(0.55, startTime + 0.025);
-
-  gain.gain.setValueAtTime(0.55, startTime + duration - 0.07);
-
-  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-
-  oscillator.connect(gain);
-  gain.connect(notificationAudioContext.destination);
-
-  oscillator.start(startTime);
-  oscillator.stop(startTime + duration);
 }
 
 function releaseStaleOpenedNotifications(requests = [], session) {

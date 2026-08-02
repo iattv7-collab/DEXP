@@ -2,6 +2,7 @@
 // Firestore service for registering user devices and notification tokens.
 
 import {
+  deleteDoc,
   doc,
   getDoc,
   serverTimestamp,
@@ -44,6 +45,30 @@ export async function getUserDevice(deviceId = "") {
     id: deviceSnapshot.id,
     ...deviceSnapshot.data(),
   };
+}
+
+export async function deleteUserDevice(deviceId = "") {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  const safeDeviceId = String(deviceId || "").trim();
+
+  if (!safeDeviceId) {
+    throw new Error("Missing device ID.");
+  }
+
+  const deviceRef = doc(
+    db,
+    "users",
+    session.uid,
+    USER_DEVICES_COLLECTION,
+    safeDeviceId,
+  );
+
+  await deleteDoc(deviceRef);
 }
 
 export async function saveUserDevice(deviceData = {}) {

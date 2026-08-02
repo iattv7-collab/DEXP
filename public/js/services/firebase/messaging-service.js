@@ -11,6 +11,7 @@ import { app } from "./firebase-app.js";
 import { firebaseVapidKey } from "../../config/firebase-config.js";
 
 import {
+  deleteUserDevice,
   getUserDevice,
   saveUserDevice,
 } from "../firestore/user-devices-service.js";
@@ -100,10 +101,7 @@ export async function getCurrentDeviceNotificationPreferences() {
   const device = await getCurrentDeviceRecord();
   const preferences = normalizePreferences(device);
 
-  if (
-    "Notification" in window &&
-    Notification.permission === "denied"
-  ) {
+  if ("Notification" in window && Notification.permission === "denied") {
     preferences.notificationsEnabled = false;
   }
 
@@ -113,8 +111,7 @@ export async function getCurrentDeviceNotificationPreferences() {
 export async function updateCurrentDeviceNotificationPreferences(
   nextPreferences = {},
 ) {
-  const currentPreferences =
-    await getCurrentDeviceNotificationPreferences();
+  const currentPreferences = await getCurrentDeviceNotificationPreferences();
 
   const preferences = {
     notificationsEnabled:
@@ -172,8 +169,7 @@ export async function getCurrentNotificationStatus() {
     };
   }
 
-  const preferences =
-    await getCurrentDeviceNotificationPreferences();
+  const preferences = await getCurrentDeviceNotificationPreferences();
 
   if (Notification.permission === "granted") {
     if (!preferences.notificationsEnabled) {
@@ -293,4 +289,31 @@ export async function registerCurrentDeviceForNotifications(
   });
 
   return "granted";
+}
+
+export async function unregisterCurrentDeviceForNotifications() {
+  const deviceId = getCurrentDeviceId();
+
+  try {
+    await deleteUserDevice(deviceId);
+  } catch (error) {
+    console.error(
+      "Could not remove current device from the outgoing user.",
+      error,
+    );
+
+    throw error;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("dexp-notification-preferences-changed", {
+      detail: {
+        notificationsEnabled: false,
+        soundEnabled: false,
+        vibrationEnabled: false,
+      },
+    }),
+  );
+
+  return true;
 }

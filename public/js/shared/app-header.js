@@ -6,6 +6,7 @@ import { clearSession, getSession } from "/js/core/session.js";
 import {
   getCurrentDeviceNotificationPreferences,
   getCurrentNotificationStatus,
+  unregisterCurrentDeviceForNotifications,
   updateCurrentDeviceNotificationPreferences,
 } from "/js/services/firebase/messaging-service.js";
 
@@ -46,9 +47,7 @@ export function renderAppHeader(options = {}) {
     : roleMap[session?.role] || session?.role || "";
 
   const showFollowUpCounter =
-    !platformMode &&
-    session?.role === "advisor" &&
-    Boolean(session?.uid);
+    !platformMode && session?.role === "advisor" && Boolean(session?.uid);
 
   const header = document.createElement("header");
   header.id = "appHeader";
@@ -135,67 +134,52 @@ export function renderAppHeader(options = {}) {
 
   ensureNotificationSettingsStyles();
 
-  const existingNotificationPanel =
-    document.getElementById(
-      "dexpNotificationSettingsPanel",
-    );
+  const existingNotificationPanel = document.getElementById(
+    "dexpNotificationSettingsPanel",
+  );
 
   if (existingNotificationPanel) {
     existingNotificationPanel.remove();
   }
 
-  const dexpLogoButton =
-    document.getElementById("dexpLogoButton");
+  const dexpLogoButton = document.getElementById("dexpLogoButton");
 
   if (dexpLogoButton) {
     dexpLogoButton.addEventListener("click", () => {
       if (platformMode) {
-        window.location.href =
-          "/pages/platform-admin/platform-admin.html";
+        window.location.href = "/pages/platform-admin/platform-admin.html";
 
         return;
       }
 
-      window.location.href =
-        "/pages/dashboard/index.html";
+      window.location.href = "/pages/dashboard/index.html";
     });
   }
 
-  const homeButton =
-    document.getElementById("homeButton");
+  const homeButton = document.getElementById("homeButton");
 
   if (homeButton) {
     homeButton.addEventListener("click", () => {
       if (platformMode) {
-        window.location.href =
-          "/pages/platform-admin/platform-admin.html";
+        window.location.href = "/pages/platform-admin/platform-admin.html";
 
         return;
       }
 
-      window.location.href =
-        "/pages/dashboard/index.html";
+      window.location.href = "/pages/dashboard/index.html";
     });
   }
 
-  const roReminderCounterButton =
-    document.getElementById(
-      "roReminderCounterButton",
-    );
+  const roReminderCounterButton = document.getElementById(
+    "roReminderCounterButton",
+  );
 
-  const roReminderCounter =
-    document.getElementById(
-      "roReminderCounter",
-    );
+  const roReminderCounter = document.getElementById("roReminderCounter");
 
   if (roReminderCounterButton) {
-    roReminderCounterButton.addEventListener(
-      "click",
-      () => {
-        window.location.href =
-          "/pages/ro-followup/index.html";
-      },
-    );
+    roReminderCounterButton.addEventListener("click", () => {
+      window.location.href = "/pages/ro-followup/index.html";
+    });
   }
 
   if (unsubscribeHeaderFollowUps) {
@@ -203,153 +187,113 @@ export function renderAppHeader(options = {}) {
     unsubscribeHeaderFollowUps = null;
   }
 
-  if (
-    showFollowUpCounter &&
-    roReminderCounterButton &&
-    roReminderCounter
-  ) {
-    unsubscribeHeaderFollowUps =
-      watchArchivedROs(
-        (archivedROs) => {
-          const now = Date.now();
+  if (showFollowUpCounter && roReminderCounterButton && roReminderCounter) {
+    unsubscribeHeaderFollowUps = watchArchivedROs((archivedROs) => {
+      const now = Date.now();
 
-          const dueFollowUps = (
-            Array.isArray(archivedROs)
-              ? archivedROs
-              : []
-          ).filter((ro) => {
-            const followupStatus = String(
-              ro.followupStatus || "",
-            )
-              .trim()
-              .toLowerCase();
+      const dueFollowUps = (
+        Array.isArray(archivedROs) ? archivedROs : []
+      ).filter((ro) => {
+        const followupStatus = String(ro.followupStatus || "")
+          .trim()
+          .toLowerCase();
 
-            const followupDueAtMs = Number(
-              ro.followupDueAtMs || 0,
-            );
+        const followupDueAtMs = Number(ro.followupDueAtMs || 0);
 
-            return (
-              followupStatus === "pending" &&
-              followupDueAtMs > 0 &&
-              followupDueAtMs <= now
-            );
-          });
+        return (
+          followupStatus === "pending" &&
+          followupDueAtMs > 0 &&
+          followupDueAtMs <= now
+        );
+      });
 
-          const count = dueFollowUps.length;
+      const count = dueFollowUps.length;
 
-          roReminderCounter.textContent =
-            String(count);
+      roReminderCounter.textContent = String(count);
 
-          roReminderCounterButton.title =
-            count === 1
-              ? "1 due RO follow-up"
-              : `${count} due RO follow-ups`;
-        },
-        session.uid,
-      );
+      roReminderCounterButton.title =
+        count === 1 ? "1 due RO follow-up" : `${count} due RO follow-ups`;
+    }, session.uid);
   }
 
-  const notificationStatusButton =
-    document.getElementById(
-      "notificationStatusButton",
-    );
+  const notificationStatusButton = document.getElementById(
+    "notificationStatusButton",
+  );
 
   async function refreshNotificationButton() {
     if (!notificationStatusButton) {
       return;
     }
 
-    const status =
-      await getCurrentNotificationStatus();
+    const status = await getCurrentNotificationStatus();
 
-    notificationStatusButton.textContent =
-      status.label;
+    notificationStatusButton.textContent = status.label;
 
-    notificationStatusButton.title =
-      status.title;
+    notificationStatusButton.title = status.title;
   }
 
   if (notificationStatusButton) {
     refreshNotificationButton();
 
-    notificationStatusButton.addEventListener(
-      "click",
-      async () => {
-        try {
-          await toggleNotificationSettingsPanel(
-            notificationStatusButton,
-            refreshNotificationButton,
-          );
-        } catch (error) {
-          console.error(
-            "Could not open notification settings:",
-            error,
-          );
+    notificationStatusButton.addEventListener("click", async () => {
+      try {
+        await toggleNotificationSettingsPanel(
+          notificationStatusButton,
+          refreshNotificationButton,
+        );
+      } catch (error) {
+        console.error("Could not open notification settings:", error);
 
-          alert(
-            "Could not open notification settings on this device.",
-          );
-        }
-      },
-    );
+        alert("Could not open notification settings on this device.");
+      }
+    });
   }
 
-  const logoutButton =
-    document.getElementById("logoutButton");
+  const logoutButton = document.getElementById("logoutButton");
 
   if (logoutButton) {
-    logoutButton.addEventListener(
-      "click",
-      async () => {
-        const logoutDealerId = platformMode
-          ? ""
-          : session?.dealerId || "";
+    logoutButton.addEventListener("click", async () => {
+      const logoutDealerId = platformMode ? "" : session?.dealerId || "";
 
-        if (logoutDealerId) {
-          sessionStorage.setItem(
-            "dexp_last_dealer_id",
-            logoutDealerId,
-          );
+      if (logoutDealerId) {
+        sessionStorage.setItem("dexp_last_dealer_id", logoutDealerId);
 
-          localStorage.setItem(
-            "dexp_last_dealer_id",
-            logoutDealerId,
-          );
-        }
+        localStorage.setItem("dexp_last_dealer_id", logoutDealerId);
+      }
 
-        if (unsubscribeHeaderFollowUps) {
-          unsubscribeHeaderFollowUps();
-          unsubscribeHeaderFollowUps = null;
-        }
+      if (unsubscribeHeaderFollowUps) {
+        unsubscribeHeaderFollowUps();
+        unsubscribeHeaderFollowUps = null;
+      }
 
-        clearSession();
+      try {
+        await unregisterCurrentDeviceForNotifications();
+      } catch (error) {
+        console.error("Could not unregister this device before logout.", error);
+      }
 
-        sessionStorage.removeItem(
-          "dexp_platform_selected_dealer",
-        );
+      clearSession();
 
-        await logoutUser();
+      sessionStorage.removeItem("dexp_platform_selected_dealer");
 
-        if (platformMode) {
-          window.location.href =
-            "/pages/auth/platform-login.html";
+      await logoutUser();
 
-          return;
-        }
+      if (platformMode) {
+        window.location.href = "/pages/auth/platform-login.html";
 
-        if (logoutDealerId) {
-          window.location.href =
-            `/pages/auth/login.html?dealerId=${encodeURIComponent(
-              logoutDealerId,
-            )}`;
+        return;
+      }
 
-          return;
-        }
+      if (logoutDealerId) {
+        window.location.href = `/pages/auth/login.html?dealerId=${encodeURIComponent(
+          logoutDealerId,
+        )}`;
 
-        window.location.href =
-          "/pages/auth/login.html";
-      },
-    );
+        return;
+      }
+
+      window.location.href = "/pages/auth/login.html";
+    });
   }
 }
 
@@ -357,24 +301,21 @@ async function toggleNotificationSettingsPanel(
   anchorButton,
   refreshNotificationButton,
 ) {
-  const existingPanel =
-    document.getElementById(
-      "dexpNotificationSettingsPanel",
-    );
+  const existingPanel = document.getElementById(
+    "dexpNotificationSettingsPanel",
+  );
 
   if (existingPanel) {
     existingPanel.remove();
     return;
   }
 
-  const preferences =
-    await getCurrentDeviceNotificationPreferences();
+  const preferences = await getCurrentDeviceNotificationPreferences();
 
   const panel = document.createElement("div");
 
   panel.id = "dexpNotificationSettingsPanel";
-  panel.className =
-    "dexp-notification-settings-panel";
+  panel.className = "dexp-notification-settings-panel";
 
   panel.innerHTML = `
     <div class="dexp-notification-settings-title">
@@ -387,11 +328,7 @@ async function toggleNotificationSettingsPanel(
       <input
         id="deviceNotificationsEnabled"
         type="checkbox"
-        ${
-          preferences.notificationsEnabled
-            ? "checked"
-            : ""
-        }
+        ${preferences.notificationsEnabled ? "checked" : ""}
       />
     </label>
 
@@ -401,11 +338,7 @@ async function toggleNotificationSettingsPanel(
       <input
         id="deviceSoundEnabled"
         type="checkbox"
-        ${
-          preferences.soundEnabled
-            ? "checked"
-            : ""
-        }
+        ${preferences.soundEnabled ? "checked" : ""}
       />
     </label>
 
@@ -415,11 +348,7 @@ async function toggleNotificationSettingsPanel(
       <input
         id="deviceVibrationEnabled"
         type="checkbox"
-        ${
-          preferences.vibrationEnabled
-            ? "checked"
-            : ""
-        }
+        ${preferences.vibrationEnabled ? "checked" : ""}
       />
     </label>
 
@@ -431,40 +360,24 @@ async function toggleNotificationSettingsPanel(
 
   document.body.appendChild(panel);
 
-  positionNotificationSettingsPanel(
-    panel,
-    anchorButton,
+  positionNotificationSettingsPanel(panel, anchorButton);
+
+  const notificationsInput = document.getElementById(
+    "deviceNotificationsEnabled",
   );
 
-  const notificationsInput =
-    document.getElementById(
-      "deviceNotificationsEnabled",
-    );
+  const soundInput = document.getElementById("deviceSoundEnabled");
 
-  const soundInput =
-    document.getElementById(
-      "deviceSoundEnabled",
-    );
+  const vibrationInput = document.getElementById("deviceVibrationEnabled");
 
-  const vibrationInput =
-    document.getElementById(
-      "deviceVibrationEnabled",
-    );
-
-  const message =
-    document.getElementById(
-      "deviceNotificationSettingsMessage",
-    );
+  const message = document.getElementById("deviceNotificationSettingsMessage");
 
   function updateDependentControls() {
-    const notificationsEnabled =
-      Boolean(notificationsInput.checked);
+    const notificationsEnabled = Boolean(notificationsInput.checked);
 
-    soundInput.disabled =
-      !notificationsEnabled;
+    soundInput.disabled = !notificationsEnabled;
 
-    vibrationInput.disabled =
-      !notificationsEnabled;
+    vibrationInput.disabled = !notificationsEnabled;
   }
 
   async function saveSettings() {
@@ -475,41 +388,29 @@ async function toggleNotificationSettingsPanel(
     message.textContent = "Saving...";
 
     try {
-      const savedPreferences =
-        await updateCurrentDeviceNotificationPreferences(
-          {
-            notificationsEnabled:
-              notificationsInput.checked,
+      const savedPreferences = await updateCurrentDeviceNotificationPreferences(
+        {
+          notificationsEnabled: notificationsInput.checked,
 
-            soundEnabled:
-              soundInput.checked,
+          soundEnabled: soundInput.checked,
 
-            vibrationEnabled:
-              vibrationInput.checked,
-          },
-        );
+          vibrationEnabled: vibrationInput.checked,
+        },
+      );
 
-      notificationsInput.checked =
-        savedPreferences.notificationsEnabled;
+      notificationsInput.checked = savedPreferences.notificationsEnabled;
 
-      soundInput.checked =
-        savedPreferences.soundEnabled;
+      soundInput.checked = savedPreferences.soundEnabled;
 
-      vibrationInput.checked =
-        savedPreferences.vibrationEnabled;
+      vibrationInput.checked = savedPreferences.vibrationEnabled;
 
-      message.textContent =
-        "Saved for this device.";
+      message.textContent = "Saved for this device.";
 
       await refreshNotificationButton();
     } catch (error) {
-      console.error(
-        "Could not save notification preferences:",
-        error,
-      );
+      console.error("Could not save notification preferences:", error);
 
-      message.textContent =
-        "Could not save settings.";
+      message.textContent = "Could not save settings.";
     } finally {
       notificationsInput.disabled = false;
 
@@ -517,81 +418,49 @@ async function toggleNotificationSettingsPanel(
     }
   }
 
-  notificationsInput.addEventListener(
-    "change",
-    async () => {
-      updateDependentControls();
-      await saveSettings();
-    },
-  );
+  notificationsInput.addEventListener("change", async () => {
+    updateDependentControls();
+    await saveSettings();
+  });
 
-  soundInput.addEventListener(
-    "change",
-    saveSettings,
-  );
+  soundInput.addEventListener("change", saveSettings);
 
-  vibrationInput.addEventListener(
-    "change",
-    saveSettings,
-  );
+  vibrationInput.addEventListener("change", saveSettings);
 
   updateDependentControls();
 
   setTimeout(() => {
-    document.addEventListener(
-      "click",
-      function closeNotificationPanel(event) {
-        if (
-          panel.contains(event.target) ||
-          anchorButton.contains(event.target)
-        ) {
-          return;
-        }
+    document.addEventListener("click", function closeNotificationPanel(event) {
+      if (panel.contains(event.target) || anchorButton.contains(event.target)) {
+        return;
+      }
 
-        panel.remove();
+      panel.remove();
 
-        document.removeEventListener(
-          "click",
-          closeNotificationPanel,
-        );
-      },
-    );
+      document.removeEventListener("click", closeNotificationPanel);
+    });
   }, 0);
 }
 
-function positionNotificationSettingsPanel(
-  panel,
-  anchorButton,
-) {
-  const buttonRect =
-    anchorButton.getBoundingClientRect();
+function positionNotificationSettingsPanel(panel, anchorButton) {
+  const buttonRect = anchorButton.getBoundingClientRect();
 
-  panel.style.top =
-    `${Math.round(buttonRect.bottom + 8)}px`;
+  panel.style.top = `${Math.round(buttonRect.bottom + 8)}px`;
 
-  panel.style.right =
-    `${Math.max(
-      12,
-      Math.round(
-        window.innerWidth - buttonRect.right,
-      ),
-    )}px`;
+  panel.style.right = `${Math.max(
+    12,
+    Math.round(window.innerWidth - buttonRect.right),
+  )}px`;
 }
 
 function ensureNotificationSettingsStyles() {
-  if (
-    document.getElementById(
-      "dexpNotificationSettingsStyles",
-    )
-  ) {
+  if (document.getElementById("dexpNotificationSettingsStyles")) {
     return;
   }
 
-  const style =
-    document.createElement("style");
+  const style = document.createElement("style");
 
-  style.id =
-    "dexpNotificationSettingsStyles";
+  style.id = "dexpNotificationSettingsStyles";
 
   style.textContent = `
     .dexp-notification-settings-panel {
