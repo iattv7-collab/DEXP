@@ -34,6 +34,28 @@ function parseBoolean(value, defaultValue = true) {
 messaging.onBackgroundMessage((payload) => {
   const data = payload?.data || {};
 
+  if (data.command === "close-notification") {
+    const notificationId = String(data.notificationId || "").trim();
+
+    if (!notificationId) {
+      return;
+    }
+
+    self.registration.getNotifications().then((notifications) => {
+      notifications.forEach((notification) => {
+        const openNotificationId = String(
+          notification.data?.notificationId || "",
+        ).trim();
+
+        if (openNotificationId === notificationId) {
+          notification.close();
+        }
+      });
+    });
+
+    return;
+  }
+
   const title = data.title || "DEXP Notification";
 
   const soundEnabled = parseBoolean(data.soundEnabled, true);
@@ -78,9 +100,14 @@ self.addEventListener("notificationclick", (event) => {
       value !== undefined &&
       value !== null &&
       String(value).trim() !== "" &&
-      !["title", "body", "route", "soundEnabled", "vibrationEnabled"].includes(
-        key,
-      )
+      ![
+        "title",
+        "body",
+        "route",
+        "soundEnabled",
+        "vibrationEnabled",
+        "command",
+      ].includes(key)
     ) {
       params.set(key, String(value));
     }

@@ -55,27 +55,31 @@ export async function startNotificationEngine() {
   }
 
   stopNotificationEngine();
+  document.addEventListener("pointerdown", unlockNotificationAlerts, {
+    once: true,
+  });
+
+  document.addEventListener("keydown", unlockNotificationAlerts, {
+    once: true,
+  });
   notificationPreferences = {
-  notificationsEnabled: true,
-  soundEnabled: true,
-  vibrationEnabled: true,
-};
+    notificationsEnabled: true,
+    soundEnabled: true,
+    vibrationEnabled: true,
+  };
 
   initialNotificationSnapshotLoaded = false;
   alertedNotificationIds.clear();
 
   getCurrentDeviceNotificationPreferences()
-  .then((preferences) => {
-    notificationPreferences = preferences;
-  })
-  .catch((error) => {
-    console.warn(
-      "Could not load device notification preferences.",
-      error,
-    );
-  });
+    .then((preferences) => {
+      notificationPreferences = preferences;
+    })
+    .catch((error) => {
+      console.warn("Could not load device notification preferences.", error);
+    });
 
-const groups = await getNotificationGroups();
+  const groups = await getNotificationGroups();
 
   userGroupIds = groups
     .filter(
@@ -182,11 +186,7 @@ function triggerNotificationAlert() {
   }
 
   const notification = [...ringingNotificationIds]
-    .map((id) =>
-      currentVisibleNotifications.find(
-        (item) => item.id === id,
-      ),
-    )
+    .map((id) => currentVisibleNotifications.find((item) => item.id === id))
     .find(Boolean);
 
   if (!notification) {
@@ -201,9 +201,7 @@ function triggerNotificationAlert() {
     notificationPreferences.vibrationEnabled &&
     typeof navigator.vibrate === "function"
   ) {
-    navigator.vibrate(
-      getNotificationVibration(notification),
-    );
+    navigator.vibrate(getNotificationVibration(notification));
   }
 }
 
@@ -246,6 +244,44 @@ function silenceNotificationAlert(notificationId) {
 
   if (!ringingNotificationIds.size) {
     stopRepeatingNotificationAlert();
+  }
+}
+
+function unlockNotificationAlerts() {
+  const soundPaths = Object.values(NOTIFICATION_CONFIG.sounds || {});
+
+  soundPaths.forEach((soundPath) => {
+    let audio = notificationAudioCache.get(soundPath);
+
+    if (!audio) {
+      audio = new Audio(soundPath);
+      audio.preload = "auto";
+
+      notificationAudioCache.set(soundPath, audio);
+    }
+
+    const previousVolume = audio.volume;
+
+    audio.volume = 0;
+    audio.currentTime = 0;
+
+    audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = previousVolume;
+      })
+      .catch((error) => {
+        audio.volume = previousVolume;
+
+        console.warn("Could not unlock notification audio.", error);
+      });
+  });
+
+  if (typeof navigator.vibrate === "function") {
+    navigator.vibrate(1);
+    navigator.vibrate(0);
   }
 }
 
