@@ -37,6 +37,8 @@ const notificationAudioCache = new Map();
 
 let currentVisibleNotifications = [];
 
+let notificationTrayExpanded = false;
+
 let notificationAlertTimer = null;
 
 const ringingNotificationIds = new Set();
@@ -392,57 +394,124 @@ function renderNotificationTray(notifications = []) {
   }
 
   if (!notifications.length) {
+    notificationTrayExpanded = false;
+
     tray.innerHTML = "";
     tray.style.display = "none";
+
     return;
   }
 
   tray.style.display = "block";
 
-  tray.innerHTML = notifications
-    .map((item) => renderNotificationCard(item))
-    .join("");
+  if (
+    notifications.length >= 2 &&
+    !notificationTrayExpanded
+  ) {
+    tray.innerHTML = `
+      <button
+        type="button"
+        class="dexp-notification-count-button"
+        id="dexpNotificationCountButton"
+      >
+        ${notifications.length} Notifications
+      </button>
+    `;
 
-  tray.querySelectorAll("[data-open-notification-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const notificationId = button.dataset.openNotificationId;
+    document
+      .getElementById("dexpNotificationCountButton")
+      ?.addEventListener("click", () => {
+        notificationTrayExpanded = true;
 
-      const notification = notifications.find(
-        (item) => item.id === notificationId,
-      );
+        renderNotificationTray(notifications);
+      });
 
-      if (!notification?.route) {
-        return;
-      }
+    return;
+  }
 
-      silenceNotificationAlert(notificationId);
+  if (notifications.length === 1) {
+    notificationTrayExpanded = false;
+  }
 
-      await openNotificationRequest(notificationId);
+  const collapseButton =
+    notifications.length >= 2
+      ? `
+        <button
+          type="button"
+          class="dexp-notification-collapse-button"
+          id="dexpNotificationCollapseButton"
+        >
+          Hide ${notifications.length} Notifications
+        </button>
+      `
+      : "";
 
-      window.location.href = buildNotificationRoute(notification);
+  tray.innerHTML = `
+    ${collapseButton}
+
+    ${notifications
+      .map((item) => renderNotificationCard(item))
+      .join("")}
+  `;
+
+  document
+    .getElementById("dexpNotificationCollapseButton")
+    ?.addEventListener("click", () => {
+      notificationTrayExpanded = false;
+
+      renderNotificationTray(notifications);
     });
-  });
 
-  tray.querySelectorAll("[data-dismiss-notification-id]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const notificationId = button.dataset.dismissNotificationId;
+  tray
+    .querySelectorAll("[data-open-notification-id]")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const notificationId =
+          button.dataset.openNotificationId;
 
-      silenceNotificationAlert(notificationId);
+        const notification = notifications.find(
+          (item) => item.id === notificationId,
+        );
 
-      await dismissNotificationRequest(notificationId);
+        if (!notification?.route) {
+          return;
+        }
+
+        silenceNotificationAlert(notificationId);
+
+        await openNotificationRequest(notificationId);
+
+        window.location.href =
+          buildNotificationRoute(notification);
+      });
     });
-  });
 
-  tray.querySelectorAll("[data-silence-notification-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const notificationId = button.dataset.silenceNotificationId;
+  tray
+    .querySelectorAll("[data-dismiss-notification-id]")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const notificationId =
+          button.dataset.dismissNotificationId;
 
-      silenceNotificationAlert(notificationId);
+        silenceNotificationAlert(notificationId);
 
-      button.textContent = "Silenced";
-      button.disabled = true;
+        await dismissNotificationRequest(notificationId);
+      });
     });
-  });
+
+  tray
+    .querySelectorAll("[data-silence-notification-id]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const notificationId =
+          button.dataset.silenceNotificationId;
+
+        silenceNotificationAlert(notificationId);
+
+        button.textContent = "Silenced";
+        button.disabled = true;
+      });
+    });
 }
 
 function renderNotificationCard(item) {

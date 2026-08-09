@@ -736,3 +736,29 @@ button:disabled {
   font-size: 13px;
   font-weight: 600;
 }
+
+/* Mobile notification presentation */
+
+.dexp-notification-count-button,
+.dexp-notification-collapse-button {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #d32f2f;
+  color: white;
+  border: 1px solid #b71c1c;
+}
+
+@media (max-width: 600px) {
+  .dexp-notification-tray {
+    top: 150px;
+    right: 16px;
+    left: 16px;
+
+    width: auto;
+    max-width: none;
+  }
+}

@@ -222,9 +222,7 @@ async function handleCreateSelectedRequest() {
 
       message:
         customMessage ||
-        `${selectedRequestType.defaultMessage || selectedRequestType.name} RO ${
-          finalRoNumber || "N/A"
-        } Tag ${finalTagNumber || "N/A"}.`,
+        `RO ${finalRoNumber || "N/A"} • Tag ${finalTagNumber || "N/A"}`,
 
       route: selectedRequestType.route || "/pages/move-locate/move-locate.html",
 

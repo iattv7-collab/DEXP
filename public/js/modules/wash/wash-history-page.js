@@ -3,7 +3,7 @@
 // MODULE: Wash History
 // PURPOSE:
 // Read-only history of completed DEXP wash records.
-// Reads washed vehicles from the Master ROS collection.
+// Combines completed Master RO washes and Courtesy Washes.
 // Supports search and completion-date filtering.
 // ======================================================
 
@@ -11,6 +11,10 @@ import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+
+import {
+  listenToCompletedCourtesyWashes,
+} from "/js/services/firestore/courtesy-wash-service.js";
 
 import {
   collection,
@@ -35,25 +39,52 @@ document.addEventListener("DOMContentLoaded", async () => {
   const searchEl = $("washHistorySearch");
   const fromEl = $("washHistoryFrom");
   const toEl = $("washHistoryTo");
-  const clearFiltersButton = $("clearWashHistoryFiltersBtn");
+  const clearFiltersButton =
+    $("clearWashHistoryFiltersBtn");
 
-  let completedRows = [];
+  let completedRoRows = [];
+  let completedCourtesyRows = [];
 
   function setMessage(message, ok = true) {
+    if (!messageEl) {
+      return;
+    }
+
     messageEl.textContent = message || "";
-    messageEl.style.color = ok ? "green" : "crimson";
+    messageEl.style.color =
+      ok ? "green" : "crimson";
   }
 
   function clean(value) {
     return String(value || "").trim();
   }
 
+  function isCourtesyWash(ticket) {
+    return ticket?.sourceType === "courtesy";
+  }
+
   function roValue(ticket) {
-    return clean(ticket.roNumber || ticket.ro || "");
+    if (isCourtesyWash(ticket)) {
+      return clean(ticket.vinLast8 || "");
+    }
+
+    return clean(
+      ticket.roNumber ||
+      ticket.ro ||
+      "",
+    );
   }
 
   function tagValue(ticket) {
-    return clean(ticket.tagNumber || ticket.tag || "");
+    if (isCourtesyWash(ticket)) {
+      return "COURTESY";
+    }
+
+    return clean(
+      ticket.tagNumber ||
+      ticket.tag ||
+      "",
+    );
   }
 
   function vehicleValue(ticket) {
@@ -67,6 +98,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function advisorValue(ticket) {
+    if (isCourtesyWash(ticket)) {
+      return "";
+    }
+
     return clean(
       ticket.advisorName ||
       ticket.advisorDisplayName ||
@@ -86,6 +121,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  function locationValue(ticket) {
+    if (isCourtesyWash(ticket)) {
+      return "";
+    }
+
+    return clean(
+      ticket.currentLocation ||
+      ticket.location ||
+      "",
+    );
+  }
+
+  function notesValue(ticket) {
+    if (isCourtesyWash(ticket)) {
+      return [
+        ticket.customerName,
+        ticket.customerPhone,
+      ]
+        .filter(Boolean)
+        .join(" • ");
+    }
+
+    return clean(
+      ticket.washNotes ||
+      ticket.notes ||
+      "",
+    );
+  }
+
   function priorityLabel(ticket) {
     if (ticket.customerWaiting === true) {
       return "WAITER";
@@ -99,7 +163,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (
-      clean(ticket.priorityType).toLowerCase() === "rewash" ||
+      clean(ticket.priorityType).toLowerCase() ===
+        "rewash" ||
       ticket.isRewashCycle === true
     ) {
       return "REWASH";
@@ -113,14 +178,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "";
     }
 
-    if (typeof value?.toDate === "function") {
-      return value.toDate().toLocaleString([], {
-        month: "numeric",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
+    if (
+      typeof value?.toDate === "function"
+    ) {
+      return value
+        .toDate()
+        .toLocaleString([], {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        });
     }
 
     if (typeof value === "number") {
@@ -161,9 +230,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       return null;
     }
 
-    const [year, month, day] = dateValue
-      .split("-")
-      .map(Number);
+    const [year, month, day] =
+      dateValue
+        .split("-")
+        .map(Number);
 
     if (!year || !month || !day) {
       return null;
@@ -185,9 +255,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       return null;
     }
 
-    const [year, month, day] = dateValue
-      .split("-")
-      .map(Number);
+    const [year, month, day] =
+      dateValue
+        .split("-")
+        .map(Number);
 
     if (!year || !month || !day) {
       return null;
@@ -204,21 +275,39 @@ document.addEventListener("DOMContentLoaded", async () => {
     ).getTime();
   }
 
+  function getCompletedRows() {
+    return [
+      ...completedRoRows,
+      ...completedCourtesyRows,
+    ];
+  }
+
   function getFilteredRows() {
-    const search = clean(searchEl.value).toLowerCase();
+    const search =
+      clean(searchEl.value).toLowerCase();
 
-    const fromMs = startOfDateMs(fromEl.value);
-    const toMs = endOfDateMs(toEl.value);
+    const fromMs =
+      startOfDateMs(fromEl.value);
 
-    return completedRows
+    const toMs =
+      endOfDateMs(toEl.value);
+
+    return getCompletedRows()
       .filter((ticket) => {
-        const completedAtMs = Number(ticket.washedAtMs || 0);
+        const completedAtMs =
+          Number(ticket.washedAtMs || 0);
 
-        if (fromMs !== null && completedAtMs < fromMs) {
+        if (
+          fromMs !== null &&
+          completedAtMs < fromMs
+        ) {
           return false;
         }
 
-        if (toMs !== null && completedAtMs > toMs) {
+        if (
+          toMs !== null &&
+          completedAtMs > toMs
+        ) {
           return false;
         }
 
@@ -229,26 +318,34 @@ document.addEventListener("DOMContentLoaded", async () => {
         const searchableText = [
           roValue(ticket),
           tagValue(ticket),
+          ticket.vin,
+          ticket.vinLast8,
           vehicleValue(ticket),
           ticket.customerName,
           ticket.customerPhone,
           advisorValue(ticket),
-          ticket.currentLocation,
-          ticket.location,
+          locationValue(ticket),
           ticket.priorityType,
           ticket.washNotes,
           ticket.notes,
           completedByValue(ticket),
+          ticket.sourceType,
         ]
           .join(" ")
           .toLowerCase();
 
-        return searchableText.includes(search);
+        return searchableText.includes(
+          search,
+        );
       })
       .sort((ticketA, ticketB) => {
         return (
-          Number(ticketB.washedAtMs || 0) -
-          Number(ticketA.washedAtMs || 0)
+          Number(
+            ticketB.washedAtMs || 0,
+          ) -
+          Number(
+            ticketA.washedAtMs || 0,
+          )
         );
       });
   }
@@ -259,7 +356,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!rows.length) {
       rowsEl.innerHTML = `
         <tr>
-          <td colspan="13">
+          <td colspan="12">
             No completed wash records found.
           </td>
         </tr>
@@ -274,63 +371,79 @@ document.addEventListener("DOMContentLoaded", async () => {
           <tr>
             <td>
               <b>
-                ${escapeHtml(tagValue(ticket))}
+                ${escapeHtml(
+                  tagValue(ticket),
+                )}
               </b>
             </td>
 
             <td>
-              ${escapeHtml(roValue(ticket))}
-            </td>
-
-            <td>
-              ${escapeHtml(vehicleValue(ticket))}
-            </td>
-
-            <td>
-              ${escapeHtml(ticket.customerName || "")}
-            </td>
-
-            <td>
-              ${escapeHtml(advisorValue(ticket))}
-            </td>
-
-            <td>
               ${escapeHtml(
-                ticket.currentLocation ||
-                ticket.location ||
-                "",
+                roValue(ticket),
               )}
             </td>
 
             <td>
-              ${escapeHtml(priorityLabel(ticket))}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.needByAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.washQueuedAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.washingStartedAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.washedAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(completedByValue(ticket))}
+              ${escapeHtml(
+                vehicleValue(ticket),
+              )}
             </td>
 
             <td>
               ${escapeHtml(
-                ticket.washNotes ||
-                ticket.notes ||
-                "",
+                ticket.customerName || "",
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                advisorValue(ticket),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                locationValue(ticket),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                priorityLabel(ticket),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(ticket.needByAtMs),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(
+                  ticket.washQueuedAtMs,
+                ),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(
+                  ticket.washingStartedAtMs,
+                ),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(ticket.washedAtMs),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                notesValue(ticket),
               )}
             </td>
           </tr>
@@ -339,49 +452,105 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("");
   }
 
-  function listenToWashHistory() {
+  // ====================================================
+  // NORMAL RO HISTORY
+  // ====================================================
+
+  function listenToRoWashHistory() {
     const historyQuery = query(
       collection(db, "ros"),
-      where("dealerId", "==", session.dealerId),
-      where("washStatus", "==", "washed"),
+      where(
+        "dealerId",
+        "==",
+        session.dealerId,
+      ),
+      where(
+        "washStatus",
+        "==",
+        "washed",
+      ),
     );
 
     return onSnapshot(
       historyQuery,
       (snapshot) => {
-        completedRows = snapshot.docs.map((documentSnapshot) => ({
-          id: documentSnapshot.id,
-          ...documentSnapshot.data(),
-        }));
+        completedRoRows =
+          snapshot.docs.map(
+            (documentSnapshot) => ({
+              id: documentSnapshot.id,
+              sourceType: "ro",
+              ...documentSnapshot.data(),
+            }),
+          );
 
         renderRows();
       },
       (error) => {
-        console.error(error);
+        console.error(
+          "RO Wash history failed:",
+          error,
+        );
 
         setMessage(
           error?.message ||
-          "Could not load wash history.",
+            "Could not load RO wash history.",
           false,
         );
       },
     );
   }
 
-  searchEl.addEventListener("input", renderRows);
-  fromEl.addEventListener("change", renderRows);
-  toEl.addEventListener("change", renderRows);
+  // ====================================================
+  // COURTESY WASH HISTORY
+  // ====================================================
 
-  clearFiltersButton.addEventListener("click", () => {
-    searchEl.value = "";
-    fromEl.value = "";
-    toEl.value = "";
+  function listenToCourtesyWashHistory() {
+    return listenToCompletedCourtesyWashes(
+      session.dealerId,
+      (rows) => {
+        completedCourtesyRows = rows;
 
-    renderRows();
-    searchEl.focus();
-  });
+        renderRows();
+      },
+      (error) => {
+        setMessage(
+          error?.message ||
+            "Could not load Courtesy Wash history.",
+          false,
+        );
+      },
+    );
+  }
 
-  listenToWashHistory();
+  searchEl.addEventListener(
+    "input",
+    renderRows,
+  );
+
+  fromEl.addEventListener(
+    "change",
+    renderRows,
+  );
+
+  toEl.addEventListener(
+    "change",
+    renderRows,
+  );
+
+  clearFiltersButton.addEventListener(
+    "click",
+    () => {
+      searchEl.value = "";
+      fromEl.value = "";
+      toEl.value = "";
+
+      renderRows();
+      searchEl.focus();
+    },
+  );
+
+  listenToRoWashHistory();
+  listenToCourtesyWashHistory();
 });
 
 function waitForSession() {

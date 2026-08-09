@@ -20,6 +20,7 @@ export const MODULES = {
   ADMIN: "admin",
   COMPANY_PROFILE: "company-profile",
   SEND_TO_WASH: "send-to-wash",
+  COURTESY_WASH: "courtesy-wash",
   WASH_SETTINGS: "wash-settings",
   LOCATION_SETTINGS: "location-settings",
   BOOKER: "booker",
@@ -129,6 +130,13 @@ export const MODULE_CONFIG = {
     route: "/pages/send-to-wash/send-to-wash.html",
     icon: "send",
     permission: PERMISSIONS.RO_TRACKER_EDIT,
+  },
+
+  [MODULES.COURTESY_WASH]: {
+    label: "Courtesy Wash",
+    route: "/pages/courtesy-wash/courtesy-wash.html",
+    icon: "local_car_wash",
+    permission: PERMISSIONS.WASH_SEND,
   },
 
   [MODULES.WASH_SETTINGS]: {
@@ -263,7 +271,12 @@ export const SELLABLE_MODULE_GROUPS = [
   {
     id: "wash",
     label: "Wash",
-    modules: [MODULES.WASH, MODULES.SEND_TO_WASH, MODULES.WASH_SETTINGS],
+    modules: [
+      MODULES.WASH,
+      MODULES.SEND_TO_WASH,
+      MODULES.COURTESY_WASH,
+      MODULES.WASH_SETTINGS,
+    ],
   },
 
   {

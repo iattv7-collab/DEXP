@@ -3,10 +3,8 @@
 // MODULE: Wash
 // PURPOSE:
 // DEXP Wash Team page.
-// Migrated from ArrowFlow Wash process using the same
-// master ROS wash fields: washStatus, washQueuedAtMs,
-// washingStartedAtMs, washedAtMs, customerWaiting,
-// priorityType, needByAtMs, washNotes, and washEvents.
+// Combines normal RO wash vehicles and Courtesy Wash
+// vehicles into one operational wash queue.
 // ======================================================
 
 import { auth } from "/js/services/firebase/auth-service.js";
@@ -14,10 +12,17 @@ import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+
 import {
   getWashSettings,
   setWashOpen,
 } from "/js/services/firestore/wash-settings-service.js";
+
+import {
+  listenToActiveCourtesyWashes,
+  setCourtesyWashStatus,
+  removeCourtesyWashFromQueue,
+} from "/js/services/firestore/courtesy-wash-service.js";
 
 import {
   arrayUnion,
@@ -49,6 +54,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentDealerId = currentSession?.dealerId || "";
   let washIsOpen = true;
 
+  let roWashRows = [];
+  let courtesyWashRows = [];
+
   function waitForSession() {
     return new Promise((resolve) => {
       const existing = getSession();
@@ -71,16 +79,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     msgEl.style.color = ok ? "green" : "crimson";
   }
 
-  function clean(v) {
-    return String(v || "").trim();
+  function clean(value) {
+    return String(value || "").trim();
   }
 
-  function roValue(t) {
-    return clean(t.roNumber || t.ro || "");
+  function isCourtesyWash(ticket) {
+    return ticket?.sourceType === "courtesy";
   }
 
-  function tagValue(t) {
-    return clean(t.tagNumber || t.tag || "");
+  function roValue(ticket) {
+    return clean(ticket.roNumber || ticket.ro || "");
+  }
+
+  function tagValue(ticket) {
+    return clean(ticket.tagNumber || ticket.tag || "");
+  }
+
+  function vehicleValue(ticket) {
+    return [ticket.year, ticket.make, ticket.model]
+      .filter(Boolean)
+      .join(" ");
   }
 
   function fmtTime(value) {
@@ -109,31 +127,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     return "";
   }
 
-  function priorityLabel(t) {
-    if (t.customerWaiting === true) return "WAITER";
+  function priorityLabel(ticket) {
+    if (ticket.customerWaiting === true) {
+      return "WAITER";
+    }
 
-    if (typeof t.needByAtMs === "number" && t.needByAtMs > 0) {
+    if (
+      typeof ticket.needByAtMs === "number" &&
+      ticket.needByAtMs > 0
+    ) {
       return "NEED BY";
     }
 
-    if (String(t.priorityType || "").toLowerCase() === "rewash") {
+    if (
+      clean(ticket.priorityType).toLowerCase() === "rewash"
+    ) {
       return "REWASH";
     }
 
     return "NORMAL";
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(
+  function escapeHtml(value) {
+    return String(value || "").replace(
       /[&<>"']/g,
-      (c) =>
+      (character) =>
         ({
           "&": "&amp;",
           "<": "&lt;",
           ">": "&gt;",
           '"': "&quot;",
           "'": "&#039;",
-        })[c],
+        })[character],
     );
   }
 
@@ -157,11 +182,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       updatedByEmail: clean(user?.email || ""),
       lastEditedAtMs: Date.now(),
       lastEditedBy: user?.uid || "",
-      lastEditedRole: currentSession?.role || "unknown",
+      lastEditedRole:
+        currentSession?.role || "unknown",
     };
   }
 
-  async function setWashStatus(ticketId, nextStatus) {
+  // ====================================================
+  // NORMAL RO WASH ACTIONS
+  // ====================================================
+
+  async function setRoWashStatus(ticketId, nextStatus) {
     const user = auth.currentUser;
 
     if (!user) {
@@ -186,7 +216,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       patch.washingStartedAt = serverTimestamp();
       patch.washingStartedAtMs = nowMs;
       patch.washingStartedBy = user.uid;
-      patch.washEvents = arrayUnion(washEvent("wash_start"));
+
+      patch.washEvents = arrayUnion(
+        washEvent("wash_start"),
+      );
+
       patch.lastEditedFields = [
         "washStatus",
         "washingStartedAt",
@@ -199,12 +233,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       patch.washedAt = serverTimestamp();
       patch.washedAtMs = nowMs;
       patch.washedBy = user.uid;
+
       patch.priorityType = "normal";
       patch.washWaiterAtMs = null;
       patch.rewashRequestedAtMs = null;
       patch.rewashRequestedBy = null;
       patch.isRewashCycle = false;
-      patch.washEvents = arrayUnion(washEvent("wash_complete"));
+
+      patch.washEvents = arrayUnion(
+        washEvent("wash_complete"),
+      );
+
       patch.lastEditedFields = [
         "washStatus",
         "washedAt",
@@ -218,7 +257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await updateDoc(ref, patch);
   }
 
-  async function removeFromWashQueue(ticketId) {
+  async function removeRoFromWashQueue(ticketId) {
     const user = auth.currentUser;
 
     if (!user) {
@@ -230,22 +269,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       washQueuedAt: null,
       washQueuedAtMs: null,
       washQueuedBy: null,
+
       washingStartedAt: null,
       washingStartedAtMs: null,
       washingStartedBy: null,
+
       washedAt: null,
       washedAtMs: null,
       washedBy: null,
+
       washWaiterAtMs: null,
       washNotes: "",
+
       priorityType: "normal",
+
       needByAtMs: null,
       needBySetBy: null,
+
       isRewashCycle: false,
       rewashRequestedAtMs: null,
       rewashRequestedBy: null,
-      washEvents: arrayUnion(washEvent("wash_removed")),
+
+      washEvents: arrayUnion(
+        washEvent("wash_removed"),
+      ),
+
       ...auditPatch(),
+
       lastEditedFields: [
         "washStatus",
         "washQueuedAt",
@@ -269,10 +319,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // ====================================================
+  // COMBINED QUEUE
+  // ====================================================
+
+  function getCombinedRows() {
+    return [
+      ...roWashRows,
+      ...courtesyWashRows,
+    ];
+  }
+
   function sortWashRows(rows) {
     return [...rows].sort((a, b) => {
-      const aStatus = clean(a.washStatus).toLowerCase();
-      const bStatus = clean(b.washStatus).toLowerCase();
+      const aStatus =
+        clean(a.washStatus).toLowerCase();
+
+      const bStatus =
+        clean(b.washStatus).toLowerCase();
 
       // Vehicles already washing stay first.
       if (aStatus !== bStatus) {
@@ -280,16 +344,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (bStatus === "washing") return 1;
       }
 
-      const aNeedBy = typeof a.needByAtMs === "number" && a.needByAtMs > 0;
+      const aNeedBy =
+        typeof a.needByAtMs === "number" &&
+        a.needByAtMs > 0;
 
-      const bNeedBy = typeof b.needByAtMs === "number" && b.needByAtMs > 0;
+      const bNeedBy =
+        typeof b.needByAtMs === "number" &&
+        b.needByAtMs > 0;
 
-      // Need By always comes before non-Need By.
+      // Need By before normal vehicles.
       if (aNeedBy !== bNeedBy) {
         return aNeedBy ? -1 : 1;
       }
 
-      // Earliest Need By first.
       if (aNeedBy && bNeedBy) {
         if (a.needByAtMs !== b.needByAtMs) {
           return a.needByAtMs - b.needByAtMs;
@@ -304,37 +371,61 @@ document.addEventListener("DOMContentLoaded", async () => {
         return aWaiter ? -1 : 1;
       }
 
-      // Waiters keep their own order.
       if (aWaiter && bWaiter) {
         return (
           Number(
-            a.washWaiterAtMs || a.waiterMarkedAtMs || a.washQueuedAtMs || 0,
+            a.washWaiterAtMs ||
+              a.waiterMarkedAtMs ||
+              a.washQueuedAtMs ||
+              0,
           ) -
           Number(
-            b.washWaiterAtMs || b.waiterMarkedAtMs || b.washQueuedAtMs || 0,
+            b.washWaiterAtMs ||
+              b.waiterMarkedAtMs ||
+              b.washQueuedAtMs ||
+              0,
           )
         );
       }
 
-      const aRewash = aStatus === "rewash_requested";
-      const bRewash = bStatus === "rewash_requested";
+      const aRewash =
+        aStatus === "rewash_requested";
 
-      // Rewash before Normal.
+      const bRewash =
+        bStatus === "rewash_requested";
+
+      // Rewash before normal vehicles.
       if (aRewash !== bRewash) {
         return aRewash ? -1 : 1;
       }
 
-      // Rewashes keep their own order.
       if (aRewash && bRewash) {
         return (
-          Number(a.rewashRequestedAtMs || a.washQueuedAtMs || 0) -
-          Number(b.rewashRequestedAtMs || b.washQueuedAtMs || 0)
+          Number(
+            a.rewashRequestedAtMs ||
+              a.washQueuedAtMs ||
+              0,
+          ) -
+          Number(
+            b.rewashRequestedAtMs ||
+              b.washQueuedAtMs ||
+              0,
+          )
         );
       }
 
-      // Everything else by queue time.
-      return Number(a.washQueuedAtMs || 0) - Number(b.washQueuedAtMs || 0);
+      // Courtesy Wash is NORMAL priority.
+      // All normal vehicles remain first-come,
+      // first-served by queue time.
+      return (
+        Number(a.washQueuedAtMs || 0) -
+        Number(b.washQueuedAtMs || 0)
+      );
     });
+  }
+
+  function renderCombinedQueue() {
+    renderRows(getCombinedRows());
   }
 
   function renderRows(rows) {
@@ -342,82 +433,228 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!sorted.length) {
       rowsEl.innerHTML = `
-      <tr>
-        <td colspan="13">
-          No active wash tickets.
-        </td>
-      </tr>
-    `;
+        <tr>
+          <td colspan="13">
+            No active wash tickets.
+          </td>
+        </tr>
+      `;
 
       return;
     }
 
     rowsEl.innerHTML = sorted
-      .map((t) => {
-        const status = clean(t.washStatus).toLowerCase();
+      .map((ticket) => {
+        const status =
+          clean(ticket.washStatus).toLowerCase();
+
+        const courtesy =
+          isCourtesyWash(ticket);
 
         const statusLabel =
-          status === "rewash_requested" ? "Rewash Requested" : status;
+          status === "rewash_requested"
+            ? "Rewash Requested"
+            : status;
 
         const startDisabled =
-          !washIsOpen || !["pending", "rewash_requested"].includes(status)
+          !washIsOpen ||
+          ![
+            "pending",
+            "rewash_requested",
+          ].includes(status)
             ? "disabled"
             : "";
 
-        const doneDisabled = status !== "washing" ? "disabled" : "";
+        const doneDisabled =
+          status !== "washing"
+            ? "disabled"
+            : "";
+
+        const tagDisplay = courtesy
+          ? "COURTESY"
+          : tagValue(ticket);
+
+        const roDisplay = courtesy
+          ? clean(ticket.vinLast8 || "")
+          : roValue(ticket);
+
+        const modelDisplay = courtesy
+          ? vehicleValue(ticket)
+          : clean(ticket.model || "");
+
+        const locationDisplay = courtesy
+          ? ""
+          : clean(
+              ticket.currentLocation ||
+                ticket.location ||
+                "",
+            );
+
+        const notesDisplay = courtesy
+          ? [
+              ticket.customerName,
+              ticket.customerPhone,
+            ]
+              .filter(Boolean)
+              .join(" • ")
+          : clean(
+              ticket.washNotes ||
+                ticket.notes ||
+                "",
+            );
 
         return `
-        <tr data-id="${escapeHtml(t.id)}">
-          <td><b>${escapeHtml(tagValue(t))}</b></td>
-          <td>${escapeHtml(roValue(t))}</td>
-          <td>${escapeHtml(t.model || "")}</td>
-          <td>${escapeHtml(t.currentLocation || t.location || "")}</td>
-          <td>${escapeHtml(priorityLabel(t))}</td>
-          <td>${escapeHtml(fmtTime(t.needByAtMs))}</td>
-          <td>${escapeHtml(statusLabel)}</td>
-          <td>${escapeHtml(fmtTime(t.washQueuedAtMs))}</td>
-          <td>${escapeHtml(fmtTime(t.washingStartedAtMs))}</td>
-          <td>${escapeHtml(t.washNotes || t.notes || "")}</td>
+          <tr
+            data-id="${escapeHtml(ticket.id)}"
+            data-source="${courtesy ? "courtesy" : "ro"}"
+          >
+            <td>
+              <b>${escapeHtml(tagDisplay)}</b>
+            </td>
 
-          <td>
-            <button class="startWashBtn" ${startDisabled}>
-              Start
-            </button>
-          </td>
+            <td>
+              ${escapeHtml(roDisplay)}
+            </td>
 
-          <td>
-            <button class="markWashedBtn" ${doneDisabled}>
-              Done
-            </button>
-          </td>
+            <td>
+              ${escapeHtml(modelDisplay)}
+            </td>
 
-          <td>
-            <button class="removeWashBtn">
-              Remove
-            </button>
-          </td>
-        </tr>
-      `;
+            <td>
+              ${escapeHtml(locationDisplay)}
+            </td>
+
+            <td>
+              ${escapeHtml(priorityLabel(ticket))}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(ticket.needByAtMs),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(statusLabel)}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(ticket.washQueuedAtMs),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                fmtTime(ticket.washingStartedAtMs),
+              )}
+            </td>
+
+            <td>
+              ${escapeHtml(notesDisplay)}
+            </td>
+
+            <td>
+              <button
+                class="startWashBtn"
+                ${startDisabled}
+              >
+                Start
+              </button>
+            </td>
+
+            <td>
+              <button
+                class="markWashedBtn"
+                ${doneDisabled}
+              >
+                Done
+              </button>
+            </td>
+
+            <td>
+              <button class="removeWashBtn">
+                Remove
+              </button>
+            </td>
+          </tr>
+        `;
       })
       .join("");
   }
 
-  function listenWashRows() {
-    const q = query(
+  // ====================================================
+  // NORMAL RO LISTENER
+  // ====================================================
+
+  function listenRoWashRows() {
+    const activeQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where("washStatus", "in", ["pending", "rewash_requested", "washing"]),
+      where(
+        "washStatus",
+        "in",
+        [
+          "pending",
+          "rewash_requested",
+          "washing",
+        ],
+      ),
     );
 
-    onSnapshot(q, (snap) => {
-      const rows = snap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
+    return onSnapshot(
+      activeQuery,
+      (snapshot) => {
+        roWashRows = snapshot.docs.map(
+          (documentSnapshot) => ({
+            id: documentSnapshot.id,
+            sourceType: "ro",
+            ...documentSnapshot.data(),
+          }),
+        );
 
-      renderRows(rows);
-    });
+        renderCombinedQueue();
+      },
+      (error) => {
+        console.error(
+          "RO Wash listener failed:",
+          error,
+        );
+
+        setMsg(
+          error?.message ||
+            "Could not load RO wash queue.",
+          false,
+        );
+      },
+    );
   }
+
+  // ====================================================
+  // COURTESY WASH LISTENER
+  // ====================================================
+
+  function listenCourtesyWashRows() {
+    return listenToActiveCourtesyWashes(
+      currentDealerId,
+      (rows) => {
+        courtesyWashRows = rows;
+
+        renderCombinedQueue();
+      },
+      (error) => {
+        setMsg(
+          error?.message ||
+            "Could not load Courtesy Wash queue.",
+          false,
+        );
+      },
+    );
+  }
+
+  // ====================================================
+  // WASH DAY SETTINGS
+  // ====================================================
 
   async function loadWashSettings() {
     const settings = await getWashSettings();
@@ -428,10 +665,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateWashDayControls(isOpen) {
     washIsOpen = Boolean(isOpen);
 
-    badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
+    badge.textContent =
+      washIsOpen ? "OPEN" : "CLOSED";
 
     openBtn.disabled = washIsOpen;
     closeBtn.disabled = !washIsOpen;
+
+    renderCombinedQueue();
   }
 
   openBtn.addEventListener("click", async () => {
@@ -439,10 +679,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       const settings = await setWashOpen(true);
 
       updateWashDayControls(settings.isOpen);
+
       setMsg("Wash day opened.");
     } catch (error) {
       console.error(error);
-      setMsg("Could not open the wash day.", false);
+
+      setMsg(
+        "Could not open the wash day.",
+        false,
+      );
     }
   });
 
@@ -451,50 +696,129 @@ document.addEventListener("DOMContentLoaded", async () => {
       const settings = await setWashOpen(false);
 
       updateWashDayControls(settings.isOpen);
+
       setMsg("Wash day closed.");
     } catch (error) {
       console.error(error);
-      setMsg("Could not close the wash day.", false);
+
+      setMsg(
+        "Could not close the wash day.",
+        false,
+      );
     }
   });
 
+  // ====================================================
+  // QUEUE ACTIONS
+  // ====================================================
+
   rowsEl.addEventListener("click", async (event) => {
-    const btn = event.target.closest("button");
-    const tr = event.target.closest("tr[data-id]");
+    const button =
+      event.target.closest("button");
 
-    if (!btn || !tr) return;
+    const row =
+      event.target.closest("tr[data-id]");
 
-    const ticketId = tr.dataset.id;
+    if (!button || !row) {
+      return;
+    }
+
+    const ticketId = row.dataset.id;
+    const sourceType = row.dataset.source;
+
+    const courtesy =
+      sourceType === "courtesy";
 
     try {
-      if (btn.classList.contains("startWashBtn")) {
+      if (
+        button.classList.contains(
+          "startWashBtn",
+        )
+      ) {
         if (!washIsOpen) {
           setMsg("Wash is closed.", false);
           return;
         }
-        await setWashStatus(ticketId, "washing");
+
+        if (courtesy) {
+          await setCourtesyWashStatus(
+            ticketId,
+            "washing",
+          );
+        } else {
+          await setRoWashStatus(
+            ticketId,
+            "washing",
+          );
+        }
+
         setMsg("Marked as washing.");
       }
 
-      if (btn.classList.contains("markWashedBtn")) {
-        await setWashStatus(ticketId, "washed");
+      if (
+        button.classList.contains(
+          "markWashedBtn",
+        )
+      ) {
+        if (courtesy) {
+          await setCourtesyWashStatus(
+            ticketId,
+            "washed",
+          );
+        } else {
+          await setRoWashStatus(
+            ticketId,
+            "washed",
+          );
+        }
+
         setMsg("Marked as washed.");
       }
 
-      if (btn.classList.contains("removeWashBtn")) {
-        const ok = confirm("Remove this vehicle from the wash queue?");
+      if (
+        button.classList.contains(
+          "removeWashBtn",
+        )
+      ) {
+        const confirmed = confirm(
+          "Remove this vehicle from the wash queue?",
+        );
 
-        if (!ok) return;
+        if (!confirmed) {
+          return;
+        }
 
-        await removeFromWashQueue(ticketId);
-        setMsg("Vehicle removed from wash queue.");
+        if (courtesy) {
+          await removeCourtesyWashFromQueue(
+            ticketId,
+          );
+        } else {
+          await removeRoFromWashQueue(
+            ticketId,
+          );
+        }
+
+        setMsg(
+          "Vehicle removed from wash queue.",
+        );
       }
     } catch (error) {
       console.error(error);
-      setMsg(error?.message || "Error updating wash ticket.", false);
+
+      setMsg(
+        error?.message ||
+          "Error updating wash ticket.",
+        false,
+      );
     }
   });
 
+  // ====================================================
+  // INITIALIZE
+  // ====================================================
+
   await loadWashSettings();
-  listenWashRows();
+
+  listenRoWashRows();
+  listenCourtesyWashRows();
 });
