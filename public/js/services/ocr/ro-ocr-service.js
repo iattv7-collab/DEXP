@@ -1,7 +1,7 @@
 // public/js/services/ocr/ro-ocr-service.js
 
 const SCAN_RO_FUNCTION_URL =
-    "https://us-central1-dexp-5056c.cloudfunctions.net/scanRO";
+    "https://scanro-kaxooupkzq-uc.a.run.app";
 
 export async function scanROImage(file) {
     if (!file) {

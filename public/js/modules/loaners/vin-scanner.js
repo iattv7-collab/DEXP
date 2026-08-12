@@ -7,13 +7,12 @@
 // and return vehicle information to Loaners.
 // ======================================================
 
-const SCAN_ENDPOINT =
-  "https://us-central1-dealer-wash-system.cloudfunctions.net/scanVIN";
+const SCAN_ENDPOINT = "https://scanvin-kaxooupkzq-uc.a.run.app";
 
-const SCAN_TIMEOUT_MS = 10000;
-const CAMERA_SETTLE_MS = 900;
-const BETWEEN_ATTEMPTS_MS = 350;
-const REQUEST_TIMEOUT_MS = 3500;
+const SCAN_TIMEOUT_MS = 15000;
+const CAMERA_SETTLE_MS = 600;
+const BETWEEN_ATTEMPTS_MS = 1500; // slower between rounds
+const REQUEST_TIMEOUT_MS = 6000;
 
 // Characters I, O and Q are not permitted in VINs.
 function normalizeVin(text = "") {
@@ -54,13 +53,10 @@ const VIN_TRANSLITERATION = {
   W: 6,
   X: 7,
   Y: 8,
-  Z: 9
+  Z: 9,
 };
 
-const VIN_WEIGHTS = [
-  8, 7, 6, 5, 4, 3, 2, 10, 0,
-  9, 8, 7, 6, 5, 4, 3, 2
-];
+const VIN_WEIGHTS = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
 
 function passesVinChecksum(vin = "") {
   vin = normalizeVin(vin);
@@ -72,9 +68,7 @@ function passesVinChecksum(vin = "") {
   for (let index = 0; index < vin.length; index += 1) {
     const char = vin[index];
 
-    const value = /^\d$/.test(char)
-      ? Number(char)
-      : VIN_TRANSLITERATION[char];
+    const value = /^\d$/.test(char) ? Number(char) : VIN_TRANSLITERATION[char];
 
     if (value === undefined) return false;
 
@@ -82,9 +76,7 @@ function passesVinChecksum(vin = "") {
   }
 
   const remainder = total % 11;
-  const expectedCheckDigit = remainder === 10
-    ? "X"
-    : String(remainder);
+  const expectedCheckDigit = remainder === 10 ? "X" : String(remainder);
 
   return vin[8] === expectedCheckDigit;
 }
@@ -99,7 +91,7 @@ export async function decodeVinLive(vin = "") {
   if (!isValidVin(vin)) return null;
 
   const res = await fetch(
-    `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${vin}?format=json`
+    `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${vin}?format=json`,
   );
 
   if (!res.ok) {
@@ -115,7 +107,7 @@ export async function decodeVinLive(vin = "") {
     vin,
     make: row.Make || "",
     model: row.Model || "",
-    year: row.ModelYear || ""
+    year: row.ModelYear || "",
   };
 }
 
@@ -134,22 +126,16 @@ async function makeCropBlob(videoEl, zone, quality = 0.86) {
    * Sending the camera's full 1920-pixel crop is slower and usually
    * does not provide a meaningful OCR benefit for a VIN.
    */
-  const maximumOutputWidth = 1400;
+  const maximumOutputWidth = 1100;
   const scale = Math.min(1, maximumOutputWidth / sourceWidth);
 
-  const outputWidth = Math.max(
-    1,
-    Math.round(sourceWidth * scale)
-  );
+  const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
 
-  const outputHeight = Math.max(
-    1,
-    Math.round(sourceHeight * scale)
-  );
+  const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", {
-    alpha: false
+    alpha: false,
   });
 
   if (!ctx) {
@@ -168,15 +154,11 @@ async function makeCropBlob(videoEl, zone, quality = 0.86) {
     0,
     0,
     outputWidth,
-    outputHeight
+    outputHeight,
   );
 
   return new Promise((resolve) => {
-    canvas.toBlob(
-      resolve,
-      "image/jpeg",
-      quality
-    );
+    canvas.toBlob(resolve, "image/jpeg", quality);
   });
 }
 
@@ -191,13 +173,11 @@ async function sendBlob(blob, zoneName, signal) {
   const res = await fetch(SCAN_ENDPOINT, {
     method: "POST",
     body: fd,
-    signal
+    signal,
   });
 
   if (!res.ok) {
-    throw new Error(
-      `VIN scanner returned status ${res.status}`
-    );
+    throw new Error(`VIN scanner returned status ${res.status}`);
   }
 
   const json = await res.json().catch(() => null);
@@ -206,11 +186,7 @@ async function sendBlob(blob, zoneName, signal) {
 }
 
 async function scanZone(videoEl, zone, parentSignal) {
-  const blob = await makeCropBlob(
-    videoEl,
-    zone,
-    zone.quality ?? 0.86
-  );
+  const blob = await makeCropBlob(videoEl, zone, zone.quality ?? 0.86);
 
   if (!blob) return "";
 
@@ -220,29 +196,18 @@ async function scanZone(videoEl, zone, parentSignal) {
     requestController.abort();
   };
 
-  parentSignal?.addEventListener(
-    "abort",
-    abortFromParent,
-    { once: true }
-  );
+  parentSignal?.addEventListener("abort", abortFromParent, { once: true });
 
   const requestTimer = setTimeout(() => {
     requestController.abort();
   }, REQUEST_TIMEOUT_MS);
 
   try {
-    return await sendBlob(
-      blob,
-      zone.name,
-      requestController.signal
-    );
+    return await sendBlob(blob, zone.name, requestController.signal);
   } finally {
     clearTimeout(requestTimer);
 
-    parentSignal?.removeEventListener(
-      "abort",
-      abortFromParent
-    );
+    parentSignal?.removeEventListener("abort", abortFromParent);
   }
 }
 
@@ -256,9 +221,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
   }
 
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error(
-      "Camera access is not supported on this device"
-    );
+    throw new Error("Camera access is not supported on this device");
   }
 
   if (statusEl) {
@@ -268,16 +231,16 @@ export async function scanVinWithCamera(videoEl, statusEl) {
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: {
-        ideal: "environment"
+        ideal: "environment",
       },
       width: {
-        ideal: 1920
+        ideal: 1920,
       },
       height: {
-        ideal: 1080
-      }
+        ideal: 1080,
+      },
     },
-    audio: false
+    audio: false,
   });
 
   const scanController = new AbortController();
@@ -296,10 +259,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
         track.stop();
       });
     } catch (error) {
-      console.warn(
-        "Unable to stop VIN scanner camera",
-        error
-      );
+      console.warn("Unable to stop VIN scanner camera", error);
     }
 
     videoEl.srcObject = null;
@@ -358,7 +318,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
       if (Object.keys(advanced).length > 0) {
         await videoTrack
           .applyConstraints({
-            advanced: [advanced]
+            advanced: [advanced],
           })
           .catch(() => {});
       }
@@ -399,28 +359,20 @@ export async function scanVinWithCamera(videoEl, statusEl) {
       const zones = [
         {
           name: "vin-strip",
-          x: videoWidth * 0.04,
-          y: videoHeight * 0.34,
-          w: videoWidth * 0.92,
-          h: videoHeight * 0.32,
-          quality: 0.9
+          x: videoWidth * 0.05,
+          y: videoHeight * 0.36,
+          w: videoWidth * 0.9,
+          h: videoHeight * 0.28,
+          quality: 0.92,
         },
         {
           name: "center",
-          x: videoWidth * 0.08,
-          y: videoHeight * 0.14,
-          w: videoWidth * 0.84,
-          h: videoHeight * 0.72,
-          quality: 0.87
+          x: videoWidth * 0.1,
+          y: videoHeight * 0.2,
+          w: videoWidth * 0.8,
+          h: videoHeight * 0.6,
+          quality: 0.85,
         },
-        {
-          name: "full",
-          x: 0,
-          y: 0,
-          w: videoWidth,
-          h: videoHeight,
-          quality: 0.82
-        }
       ];
 
       for (const zone of zones) {
@@ -429,32 +381,22 @@ export async function scanVinWithCamera(videoEl, statusEl) {
         const elapsed = Date.now() - startedAt;
         const remainingSeconds = Math.max(
           1,
-          Math.ceil(
-            (SCAN_TIMEOUT_MS - elapsed) / 1000
-          )
+          Math.ceil((SCAN_TIMEOUT_MS - elapsed) / 1000),
         );
 
         if (statusEl) {
-          statusEl.textContent =
-            `Reading VIN... ${remainingSeconds}s`;
+          statusEl.textContent = `Reading VIN... ${remainingSeconds}s`;
         }
 
         let vin = "";
 
         try {
-          vin = await scanZone(
-            videoEl,
-            zone,
-            scanController.signal
-          );
+          vin = await scanZone(videoEl, zone, scanController.signal);
         } catch (error) {
           if (error?.name === "AbortError") {
             if (cameraStopped) break;
           } else {
-            console.warn(
-              `VIN scan failed for ${zone.name}`,
-              error
-            );
+            console.warn(`VIN scan failed for ${zone.name}`, error);
           }
 
           continue;
@@ -476,9 +418,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
         return {
           vin,
-          reason: checksumValid
-            ? "VIN detected and validated"
-            : "VIN detected"
+          reason: checksumValid ? "VIN detected and validated" : "VIN detected",
         };
       }
 
@@ -489,17 +429,13 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
     return {
       vin: "",
-      reason: `No VIN found after ${
-        SCAN_TIMEOUT_MS / 1000
-      } seconds`
+      reason: `No VIN found after ${SCAN_TIMEOUT_MS / 1000} seconds`,
     };
   } catch (error) {
     if (error?.name === "AbortError" && cameraStopped) {
       return {
         vin: "",
-        reason: `No VIN found after ${
-          SCAN_TIMEOUT_MS / 1000
-        } seconds`
+        reason: `No VIN found after ${SCAN_TIMEOUT_MS / 1000} seconds`,
       };
     }
 
@@ -513,8 +449,4 @@ export async function scanVinWithCamera(videoEl, statusEl) {
   }
 }
 
-export {
-  normalizeVin,
-  isValidVin,
-  passesVinChecksum
-};
+export { normalizeVin, isValidVin, passesVinChecksum };

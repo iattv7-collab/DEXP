@@ -532,8 +532,11 @@ exports.acceptDealerAdminInvite = onCall(async (request) => {
   };
 });
 
-exports.scanRO = onRequest(async (req, res) => {
-  cors(req, res, async () => {
+exports.scanRO = onRequest(
+  {
+    cors: true,
+  },
+  async (req, res) => {
     try {
       if (req.method !== "POST") {
         return res.status(405).json({
@@ -556,9 +559,7 @@ exports.scanRO = onRequest(async (req, res) => {
       };
 
       const visionResponse = await visionClient.textDetection(request);
-
       const result = visionResponse[0];
-
       const detections = result.textAnnotations || [];
 
       const rawText =
@@ -577,8 +578,8 @@ exports.scanRO = onRequest(async (req, res) => {
         error: "OCR failed",
       });
     }
-  });
-});
+  },
+);
 
 // =========================
 // LOANER LIVE VIN SCANNER
