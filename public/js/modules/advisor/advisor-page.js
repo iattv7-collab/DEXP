@@ -294,6 +294,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
+    // Reject past Need By times
+    if (selectedMs <= Date.now()) {
+      setMsg("Need By must be in the future.", false);
+      return;
+    }
+
     await updateDoc(doc(db, "ros", id), {
       needByAtMs: selectedMs,
       needBySetBy: auth.currentUser?.uid || "",
@@ -336,7 +342,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (status === "rewash_requested") {
-     return "Rewash Requested";
+      return "Rewash Requested";
     }
 
     if (status === "washing") {
@@ -638,7 +644,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                              !canSetNeedBy ||
                              ticket.customerWaiting === true ||
                              ticket.isWaiter === true ||
-                             !["pending", "rewash_requested"].includes(washStatus)
+                             !["pending", "rewash_requested"].includes(
+                               washStatus,
+                             )
                                ? "disabled"
                                : ""
                            }

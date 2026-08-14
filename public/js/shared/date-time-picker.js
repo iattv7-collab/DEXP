@@ -292,7 +292,7 @@ export function pickDateTimeMs(titleText = "Select date/time", initialMs = null,
         }
       }
 
-      if (closed) {
+            if (closed) {
         const option = document.createElement("option");
         option.value = "";
         option.textContent = "Closed";
@@ -302,6 +302,19 @@ export function pickDateTimeMs(titleText = "Select date/time", initialMs = null,
         buttonOk.disabled = true;
         note.textContent = "Closed on this day.";
         return;
+      }
+
+      // If selected day is today, only allow times after now
+      const now = new Date();
+      const isToday =
+        parts.yyyy === now.getFullYear() &&
+        parts.mm === now.getMonth() + 1 &&
+        parts.dd === now.getDate();
+
+      if (isToday) {
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const nextStep = Math.ceil((nowMin + 1) / stepMin) * stepMin;
+        startMin = Math.max(startMin, nextStep);
       }
 
       const options = buildTimeOptionsForHours(stepMin, startMin, endMin);

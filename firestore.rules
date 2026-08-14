@@ -3,15 +3,174 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Must be public so the login page can load the dealership
-    match /dealers/{dealerId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    // =========================
+    // HELPERS
+    // =========================
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Everything else requires login
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function isPlatformAdmin() {
+      return isSignedIn()
+        && request.auth.token.role == 'platform-admin';
+    }
+
+    function isActive() {
+      return isSignedIn()
+        && request.auth.token.active == true;
+    }
+
+    // dealerId lives on the user document (not always on the auth token)
+    function callerDealerId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid))
+        .data
+        .dealerId;
+    }
+
+    function isCallerDealer(dealerId) {
+      return isActive()
+        && dealerId != null
+        && dealerId != ''
+        && dealerId == callerDealerId();
+    }
+
+    function docBelongsToCaller() {
+      return isActive()
+        && resource.data.dealerId == callerDealerId();
+    }
+
+    function newDocBelongsToCaller() {
+      return isActive()
+        && request.resource.data.dealerId == callerDealerId();
+    }
+
+    function dealerIdUnchanged() {
+      return request.resource.data.dealerId == resource.data.dealerId;
+    }
+
+    // =========================
+    // DEALERS
+    // Public read is required for the login page
+    // =========================
+
+    match /dealers/{dealerId} {
+      allow read: if true;
+
+      allow create, update, delete: if isPlatformAdmin()
+        || isCallerDealer(dealerId);
+    }
+
+    // =========================
+    // USERS
+    // =========================
+
+    match /users/{userId} {
+
+      // Own profile, same-dealer users, or platform admin
+      allow read: if isPlatformAdmin()
+        || (isSignedIn() && request.auth.uid == userId)
+        || docBelongsToCaller();
+
+      // New user creates their own profile at registration
+      allow create: if isSignedIn()
+        && request.auth.uid == userId;
+
+      // Own profile, dealer admin/manager on same dealer, or platform admin
+      allow update: if isPlatformAdmin()
+        || (isSignedIn() && request.auth.uid == userId)
+        || (
+          docBelongsToCaller()
+          && request.auth.token.role in ['admin', 'manager']
+        );
+
+      allow delete: if isPlatformAdmin();
+    }
+
+    // =========================
+    // DEALER-SCOPED DATA
+    // Matches how services already query/write with dealerId
+    // =========================
+
+    match /ros/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+
+      // Activity logs / subcollections under an RO
+      match /{subpath=**} {
+        allow read: if isPlatformAdmin()
+          || (
+            isActive()
+            && get(/databases/$(database)/documents/ros/$(docId)).data.dealerId
+               == callerDealerId()
+          );
+
+        allow write: if isPlatformAdmin()
+          || (
+            isActive()
+            && get(/databases/$(database)/documents/ros/$(docId)).data.dealerId
+               == callerDealerId()
+          );
+      }
+    }
+
+    match /notificationRequests/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /locations/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /valetRequests/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /washTickets/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /loaners/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /loanerReturns/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+    }
+
+    match /auditLogs/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin();
+    }
+
+    // Catch-all for other dealer-scoped collections
+    // (request types, notification groups, wash settings, etc.)
+    match /{collection}/{docId} {
+      allow read: if isPlatformAdmin() || docBelongsToCaller();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update, delete: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
     }
   }
 }

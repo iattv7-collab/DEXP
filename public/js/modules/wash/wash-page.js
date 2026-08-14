@@ -96,9 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function vehicleValue(ticket) {
-    return [ticket.year, ticket.make, ticket.model]
-      .filter(Boolean)
-      .join(" ");
+    return [ticket.year, ticket.make, ticket.model].filter(Boolean).join(" ");
   }
 
   function fmtTime(value) {
@@ -132,16 +130,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "WAITER";
     }
 
-    if (
-      typeof ticket.needByAtMs === "number" &&
-      ticket.needByAtMs > 0
-    ) {
+    if (typeof ticket.needByAtMs === "number" && ticket.needByAtMs > 0) {
       return "NEED BY";
     }
 
-    if (
-      clean(ticket.priorityType).toLowerCase() === "rewash"
-    ) {
+    if (clean(ticket.priorityType).toLowerCase() === "rewash") {
       return "REWASH";
     }
 
@@ -182,8 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       updatedByEmail: clean(user?.email || ""),
       lastEditedAtMs: Date.now(),
       lastEditedBy: user?.uid || "",
-      lastEditedRole:
-        currentSession?.role || "unknown",
+      lastEditedRole: currentSession?.role || "unknown",
     };
   }
 
@@ -217,9 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       patch.washingStartedAtMs = nowMs;
       patch.washingStartedBy = user.uid;
 
-      patch.washEvents = arrayUnion(
-        washEvent("wash_start"),
-      );
+      patch.washEvents = arrayUnion(washEvent("wash_start"));
 
       patch.lastEditedFields = [
         "washStatus",
@@ -240,9 +230,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       patch.rewashRequestedBy = null;
       patch.isRewashCycle = false;
 
-      patch.washEvents = arrayUnion(
-        washEvent("wash_complete"),
-      );
+      patch.washEvents = arrayUnion(washEvent("wash_complete"));
 
       patch.lastEditedFields = [
         "washStatus",
@@ -290,9 +278,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       rewashRequestedAtMs: null,
       rewashRequestedBy: null,
 
-      washEvents: arrayUnion(
-        washEvent("wash_removed"),
-      ),
+      washEvents: arrayUnion(washEvent("wash_removed")),
 
       ...auditPatch(),
 
@@ -324,103 +310,94 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ====================================================
 
   function getCombinedRows() {
-    return [
-      ...roWashRows,
-      ...courtesyWashRows,
-    ];
+    return [...roWashRows, ...courtesyWashRows];
   }
 
   function sortWashRows(rows) {
+    // Only a FUTURE Need By inside this window can jump the line.
+    // Past Need By does not beat waiters (commitment already missed).
+    const NEED_BY_RISK_WINDOW_MS = 45 * 60 * 1000; // 45 minutes
+    const nowMs = Date.now();
+
+    function isFutureAtRiskNeedBy(ticket) {
+      const needBy =
+        typeof ticket.needByAtMs === "number" && ticket.needByAtMs > 0
+          ? ticket.needByAtMs
+          : 0;
+
+      if (!needBy) return false;
+
+      // Must still be in the future, and within the risk window
+      return needBy > nowMs && needBy <= nowMs + NEED_BY_RISK_WINDOW_MS;
+    }
+
+    function waiterTime(ticket) {
+      return Number(
+        ticket.washWaiterAtMs ||
+          ticket.waiterMarkedAtMs ||
+          ticket.washQueuedAtMs ||
+          0,
+      );
+    }
+
+    function queueTime(ticket) {
+      return Number(ticket.washQueuedAtMs || 0);
+    }
+
     return [...rows].sort((a, b) => {
-      const aStatus =
-        clean(a.washStatus).toLowerCase();
+      const aStatus = clean(a.washStatus).toLowerCase();
+      const bStatus = clean(b.washStatus).toLowerCase();
 
-      const bStatus =
-        clean(b.washStatus).toLowerCase();
-
-      // Vehicles already washing stay first.
+      // 1) Already washing stays first
       if (aStatus !== bStatus) {
         if (aStatus === "washing") return -1;
         if (bStatus === "washing") return 1;
       }
 
-      const aNeedBy =
-        typeof a.needByAtMs === "number" &&
-        a.needByAtMs > 0;
+      // 2) Future at-risk Need By only (not past Need By)
+      const aRisk = isFutureAtRiskNeedBy(a);
+      const bRisk = isFutureAtRiskNeedBy(b);
 
-      const bNeedBy =
-        typeof b.needByAtMs === "number" &&
-        b.needByAtMs > 0;
-
-      // Need By before normal vehicles.
-      if (aNeedBy !== bNeedBy) {
-        return aNeedBy ? -1 : 1;
+      if (aRisk !== bRisk) {
+        return aRisk ? -1 : 1;
       }
 
-      if (aNeedBy && bNeedBy) {
+      if (aRisk && bRisk) {
         if (a.needByAtMs !== b.needByAtMs) {
-          return a.needByAtMs - b.needByAtMs;
+          return a.needByAtMs - b.needByAtMs; // sooner deadline first
         }
       }
 
+      // 3) Waiters next (including over past Need By)
       const aWaiter = a.customerWaiting === true;
       const bWaiter = b.customerWaiting === true;
 
-      // Waiters next.
       if (aWaiter !== bWaiter) {
         return aWaiter ? -1 : 1;
       }
 
       if (aWaiter && bWaiter) {
-        return (
-          Number(
-            a.washWaiterAtMs ||
-              a.waiterMarkedAtMs ||
-              a.washQueuedAtMs ||
-              0,
-          ) -
-          Number(
-            b.washWaiterAtMs ||
-              b.waiterMarkedAtMs ||
-              b.washQueuedAtMs ||
-              0,
-          )
-        );
+        // Who was marked / added to wash first
+        return waiterTime(a) - waiterTime(b);
       }
 
-      const aRewash =
-        aStatus === "rewash_requested";
+      // 4) Rewash requested before plain normal
+      const aRewash = aStatus === "rewash_requested";
+      const bRewash = bStatus === "rewash_requested";
 
-      const bRewash =
-        bStatus === "rewash_requested";
-
-      // Rewash before normal vehicles.
       if (aRewash !== bRewash) {
         return aRewash ? -1 : 1;
       }
 
       if (aRewash && bRewash) {
         return (
-          Number(
-            a.rewashRequestedAtMs ||
-              a.washQueuedAtMs ||
-              0,
-          ) -
-          Number(
-            b.rewashRequestedAtMs ||
-              b.washQueuedAtMs ||
-              0,
-          )
+          Number(a.rewashRequestedAtMs || a.washQueuedAtMs || 0) -
+          Number(b.rewashRequestedAtMs || b.washQueuedAtMs || 0)
         );
       }
 
-      // Courtesy Wash is NORMAL priority.
-      // All normal vehicles remain first-come,
-      // first-served by queue time.
-      return (
-        Number(a.washQueuedAtMs || 0) -
-        Number(b.washQueuedAtMs || 0)
-      );
+      // 5) Everyone else by arrival (RO + courtesy + past/far Need By)
+      return queueTime(a) - queueTime(b);
     });
   }
 
@@ -445,34 +422,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     rowsEl.innerHTML = sorted
       .map((ticket) => {
-        const status =
-          clean(ticket.washStatus).toLowerCase();
+        const status = clean(ticket.washStatus).toLowerCase();
 
-        const courtesy =
-          isCourtesyWash(ticket);
+        const courtesy = isCourtesyWash(ticket);
 
         const statusLabel =
-          status === "rewash_requested"
-            ? "Rewash Requested"
-            : status;
+          status === "rewash_requested" ? "Rewash Requested" : status;
 
         const startDisabled =
-          !washIsOpen ||
-          ![
-            "pending",
-            "rewash_requested",
-          ].includes(status)
+          !washIsOpen || !["pending", "rewash_requested"].includes(status)
             ? "disabled"
             : "";
 
-        const doneDisabled =
-          status !== "washing"
-            ? "disabled"
-            : "";
+        const doneDisabled = status !== "washing" ? "disabled" : "";
 
-        const tagDisplay = courtesy
-          ? "COURTESY"
-          : tagValue(ticket);
+        const tagDisplay = courtesy ? "COURTESY" : tagValue(ticket);
 
         const roDisplay = courtesy
           ? clean(ticket.vinLast8 || "")
@@ -484,24 +448,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const locationDisplay = courtesy
           ? ""
-          : clean(
-              ticket.currentLocation ||
-                ticket.location ||
-                "",
-            );
+          : clean(ticket.currentLocation || ticket.location || "");
 
         const notesDisplay = courtesy
-          ? [
-              ticket.customerName,
-              ticket.customerPhone,
-            ]
+          ? [ticket.customerName, ticket.customerPhone]
               .filter(Boolean)
               .join(" • ")
-          : clean(
-              ticket.washNotes ||
-                ticket.notes ||
-                "",
-            );
+          : clean(ticket.washNotes || ticket.notes || "");
 
         return `
           <tr
@@ -529,9 +482,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </td>
 
             <td>
-              ${escapeHtml(
-                fmtTime(ticket.needByAtMs),
-              )}
+              ${escapeHtml(fmtTime(ticket.needByAtMs))}
             </td>
 
             <td>
@@ -539,15 +490,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             </td>
 
             <td>
-              ${escapeHtml(
-                fmtTime(ticket.washQueuedAtMs),
-              )}
+              ${escapeHtml(fmtTime(ticket.washQueuedAtMs))}
             </td>
 
             <td>
-              ${escapeHtml(
-                fmtTime(ticket.washingStartedAtMs),
-              )}
+              ${escapeHtml(fmtTime(ticket.washingStartedAtMs))}
             </td>
 
             <td>
@@ -591,41 +538,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     const activeQuery = query(
       collection(db, "ros"),
       where("dealerId", "==", currentDealerId),
-      where(
-        "washStatus",
-        "in",
-        [
-          "pending",
-          "rewash_requested",
-          "washing",
-        ],
-      ),
+      where("washStatus", "in", ["pending", "rewash_requested", "washing"]),
     );
 
     return onSnapshot(
       activeQuery,
       (snapshot) => {
-        roWashRows = snapshot.docs.map(
-          (documentSnapshot) => ({
-            id: documentSnapshot.id,
-            sourceType: "ro",
-            ...documentSnapshot.data(),
-          }),
-        );
+        roWashRows = snapshot.docs.map((documentSnapshot) => ({
+          id: documentSnapshot.id,
+          sourceType: "ro",
+          ...documentSnapshot.data(),
+        }));
 
         renderCombinedQueue();
       },
       (error) => {
-        console.error(
-          "RO Wash listener failed:",
-          error,
-        );
+        console.error("RO Wash listener failed:", error);
 
-        setMsg(
-          error?.message ||
-            "Could not load RO wash queue.",
-          false,
-        );
+        setMsg(error?.message || "Could not load RO wash queue.", false);
       },
     );
   }
@@ -643,11 +573,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         renderCombinedQueue();
       },
       (error) => {
-        setMsg(
-          error?.message ||
-            "Could not load Courtesy Wash queue.",
-          false,
-        );
+        setMsg(error?.message || "Could not load Courtesy Wash queue.", false);
       },
     );
   }
@@ -665,8 +591,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateWashDayControls(isOpen) {
     washIsOpen = Boolean(isOpen);
 
-    badge.textContent =
-      washIsOpen ? "OPEN" : "CLOSED";
+    badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
 
     openBtn.disabled = washIsOpen;
     closeBtn.disabled = !washIsOpen;
@@ -684,10 +609,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (error) {
       console.error(error);
 
-      setMsg(
-        "Could not open the wash day.",
-        false,
-      );
+      setMsg("Could not open the wash day.", false);
     }
   });
 
@@ -701,10 +623,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (error) {
       console.error(error);
 
-      setMsg(
-        "Could not close the wash day.",
-        false,
-      );
+      setMsg("Could not close the wash day.", false);
     }
   });
 
@@ -713,11 +632,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ====================================================
 
   rowsEl.addEventListener("click", async (event) => {
-    const button =
-      event.target.closest("button");
+    const button = event.target.closest("button");
 
-    const row =
-      event.target.closest("tr[data-id]");
+    const row = event.target.closest("tr[data-id]");
 
     if (!button || !row) {
       return;
@@ -726,90 +643,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     const ticketId = row.dataset.id;
     const sourceType = row.dataset.source;
 
-    const courtesy =
-      sourceType === "courtesy";
+    const courtesy = sourceType === "courtesy";
 
     try {
-      if (
-        button.classList.contains(
-          "startWashBtn",
-        )
-      ) {
+      if (button.classList.contains("startWashBtn")) {
         if (!washIsOpen) {
           setMsg("Wash is closed.", false);
           return;
         }
 
         if (courtesy) {
-          await setCourtesyWashStatus(
-            ticketId,
-            "washing",
-          );
+          await setCourtesyWashStatus(ticketId, "washing");
         } else {
-          await setRoWashStatus(
-            ticketId,
-            "washing",
-          );
+          await setRoWashStatus(ticketId, "washing");
         }
 
         setMsg("Marked as washing.");
       }
 
-      if (
-        button.classList.contains(
-          "markWashedBtn",
-        )
-      ) {
+      if (button.classList.contains("markWashedBtn")) {
         if (courtesy) {
-          await setCourtesyWashStatus(
-            ticketId,
-            "washed",
-          );
+          await setCourtesyWashStatus(ticketId, "washed");
         } else {
-          await setRoWashStatus(
-            ticketId,
-            "washed",
-          );
+          await setRoWashStatus(ticketId, "washed");
         }
 
         setMsg("Marked as washed.");
       }
 
-      if (
-        button.classList.contains(
-          "removeWashBtn",
-        )
-      ) {
-        const confirmed = confirm(
-          "Remove this vehicle from the wash queue?",
-        );
+      if (button.classList.contains("removeWashBtn")) {
+        const confirmed = confirm("Remove this vehicle from the wash queue?");
 
         if (!confirmed) {
           return;
         }
 
         if (courtesy) {
-          await removeCourtesyWashFromQueue(
-            ticketId,
-          );
+          await removeCourtesyWashFromQueue(ticketId);
         } else {
-          await removeRoFromWashQueue(
-            ticketId,
-          );
+          await removeRoFromWashQueue(ticketId);
         }
 
-        setMsg(
-          "Vehicle removed from wash queue.",
-        );
+        setMsg("Vehicle removed from wash queue.");
       }
     } catch (error) {
       console.error(error);
 
-      setMsg(
-        error?.message ||
-          "Error updating wash ticket.",
-        false,
-      );
+      setMsg(error?.message || "Error updating wash ticket.", false);
     }
   });
 
