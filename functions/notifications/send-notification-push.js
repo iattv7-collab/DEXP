@@ -100,6 +100,11 @@ const sendPushForNotificationRequest =
             return admin.messaging().send({
               token: device.token,
 
+              notification: {
+                title,
+                body,
+              },
+
               data: {
                 ...baseData,
 
@@ -110,6 +115,22 @@ const sendPushForNotificationRequest =
                 vibrationEnabled: String(
                   device.vibrationEnabled,
                 ),
+              },
+
+              android: {
+                priority: "high",
+              },
+
+              webpush: {
+                headers: {
+                  Urgency: "high",
+                },
+                notification: {
+                  title,
+                  body,
+                  icon: "/assets/logo-v2.png",
+                  badge: "/assets/logo-v2.png",
+                },
               },
             });
           }),

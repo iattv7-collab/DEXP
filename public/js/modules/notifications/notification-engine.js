@@ -49,6 +49,13 @@ const NOTIFICATION_ALERT_REPEAT_MS = NOTIFICATION_CONFIG.repeatDelayMs;
 
 const OPENED_NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000;
 
+function canVibrate() {
+  return (
+    typeof navigator.vibrate === "function" &&
+    navigator.userActivation?.hasBeenActive === true
+  );
+}
+
 export async function startNotificationEngine() {
   const session = getSession();
 
@@ -199,10 +206,7 @@ function triggerNotificationAlert() {
     playNotificationSound(notification);
   }
 
-  if (
-    notificationPreferences.vibrationEnabled &&
-    typeof navigator.vibrate === "function"
-  ) {
+  if (notificationPreferences.vibrationEnabled && canVibrate()) {
     navigator.vibrate(getNotificationVibration(notification));
   }
 }
@@ -229,7 +233,7 @@ function stopRepeatingNotificationAlert() {
     notificationAlertTimer = null;
   }
 
-  if (typeof navigator.vibrate === "function") {
+  if (canVibrate()) {
     navigator.vibrate(0);
   }
 }
@@ -281,7 +285,7 @@ function unlockNotificationAlerts() {
       });
   });
 
-  if (typeof navigator.vibrate === "function") {
+  if (canVibrate()) {
     navigator.vibrate(1);
     navigator.vibrate(0);
   }
@@ -404,10 +408,7 @@ function renderNotificationTray(notifications = []) {
 
   tray.style.display = "block";
 
-  if (
-    notifications.length >= 2 &&
-    !notificationTrayExpanded
-  ) {
+  if (notifications.length >= 2 && !notificationTrayExpanded) {
     tray.innerHTML = `
       <button
         type="button"
@@ -449,9 +450,7 @@ function renderNotificationTray(notifications = []) {
   tray.innerHTML = `
     ${collapseButton}
 
-    ${notifications
-      .map((item) => renderNotificationCard(item))
-      .join("")}
+    ${notifications.map((item) => renderNotificationCard(item)).join("")}
   `;
 
   document
@@ -462,56 +461,46 @@ function renderNotificationTray(notifications = []) {
       renderNotificationTray(notifications);
     });
 
-  tray
-    .querySelectorAll("[data-open-notification-id]")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const notificationId =
-          button.dataset.openNotificationId;
+  tray.querySelectorAll("[data-open-notification-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const notificationId = button.dataset.openNotificationId;
 
-        const notification = notifications.find(
-          (item) => item.id === notificationId,
-        );
+      const notification = notifications.find(
+        (item) => item.id === notificationId,
+      );
 
-        if (!notification?.route) {
-          return;
-        }
+      if (!notification?.route) {
+        return;
+      }
 
-        silenceNotificationAlert(notificationId);
+      silenceNotificationAlert(notificationId);
 
-        await openNotificationRequest(notificationId);
+      await openNotificationRequest(notificationId);
 
-        window.location.href =
-          buildNotificationRoute(notification);
-      });
+      window.location.href = buildNotificationRoute(notification);
     });
+  });
 
-  tray
-    .querySelectorAll("[data-dismiss-notification-id]")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const notificationId =
-          button.dataset.dismissNotificationId;
+  tray.querySelectorAll("[data-dismiss-notification-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const notificationId = button.dataset.dismissNotificationId;
 
-        silenceNotificationAlert(notificationId);
+      silenceNotificationAlert(notificationId);
 
-        await dismissNotificationRequest(notificationId);
-      });
+      await dismissNotificationRequest(notificationId);
     });
+  });
 
-  tray
-    .querySelectorAll("[data-silence-notification-id]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const notificationId =
-          button.dataset.silenceNotificationId;
+  tray.querySelectorAll("[data-silence-notification-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const notificationId = button.dataset.silenceNotificationId;
 
-        silenceNotificationAlert(notificationId);
+      silenceNotificationAlert(notificationId);
 
-        button.textContent = "Silenced";
-        button.disabled = true;
-      });
+      button.textContent = "Silenced";
+      button.disabled = true;
     });
+  });
 }
 
 function renderNotificationCard(item) {

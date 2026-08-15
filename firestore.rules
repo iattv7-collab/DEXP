@@ -66,6 +66,17 @@ service cloud.firestore {
 
       allow create, update, delete: if isPlatformAdmin()
         || isCallerDealer(dealerId);
+
+      // requestTypes and other settings under the dealer
+      match /settings/{document=**} {
+        allow read: if isPlatformAdmin() || isCallerDealer(dealerId);
+
+        allow write: if isPlatformAdmin()
+          || (
+            isCallerDealer(dealerId)
+            && request.auth.token.role in ['admin', 'manager']
+          );
+      }
     }
 
     // =========================
@@ -73,17 +84,13 @@ service cloud.firestore {
     // =========================
 
     match /users/{userId} {
-
-      // Own profile, same-dealer users, or platform admin
       allow read: if isPlatformAdmin()
         || (isSignedIn() && request.auth.uid == userId)
         || docBelongsToCaller();
 
-      // New user creates their own profile at registration
       allow create: if isSignedIn()
         && request.auth.uid == userId;
 
-      // Own profile, dealer admin/manager on same dealer, or platform admin
       allow update: if isPlatformAdmin()
         || (isSignedIn() && request.auth.uid == userId)
         || (
@@ -92,33 +99,46 @@ service cloud.firestore {
         );
 
       allow delete: if isPlatformAdmin();
+
+      // FCM / device settings under this user
+      match /devices/{deviceId} {
+        allow read, write: if isSignedIn()
+          && request.auth.uid == userId;
+      }
+       
+             // RO Tracker column settings (and other per-user module settings)
+      match /moduleSettings/{settingsId} {
+        allow read, write: if isSignedIn()
+          && request.auth.uid == userId;
+      }
+
     }
 
     // =========================
     // DEALER-SCOPED DATA
-    // Matches how services already query/write with dealerId
     // =========================
 
     match /ros/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
 
-      // Activity logs / subcollections under an RO
       match /{subpath=**} {
         allow read: if isPlatformAdmin()
           || (
             isActive()
             && get(/databases/$(database)/documents/ros/$(docId)).data.dealerId
-               == callerDealerId()
+              == callerDealerId()
           );
 
         allow write: if isPlatformAdmin()
           || (
             isActive()
             && get(/databases/$(database)/documents/ros/$(docId)).data.dealerId
-               == callerDealerId()
+              == callerDealerId()
           );
       }
     }
@@ -126,58 +146,73 @@ service cloud.firestore {
     match /notificationRequests/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /locations/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /valetRequests/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /washTickets/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /loaners/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /loanerReturns/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
 
     match /auditLogs/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin();
+      allow update: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin();
     }
 
-    // Catch-all for other dealer-scoped collections
-    // (loanerFleet, request types, notification groups, wash settings, etc.)
+    // Catch-all: loanerFleet, requests, notificationGroups, etc.
     match /{collection}/{docId} {
       allow read: if canReadDoc();
       allow create: if isPlatformAdmin() || newDocBelongsToCaller();
-      allow update, delete: if isPlatformAdmin()
+      allow update: if isPlatformAdmin()
         || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
     }
   }
 }
