@@ -69,16 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function clearAddLoanerForm() {
-    [
-      "manualVin",
-      "vin",
-      "last8",
-      "year",
-      "make",
-      "model",
-      "unitNumber",
-      "plate",
-    ].forEach((id) => {
+    ["vin", "year", "make", "model", "unitNumber", "plate"].forEach((id) => {
       if ($(id)) {
         $(id).value = "";
       }
@@ -161,7 +152,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     section.style.display = "block";
     toggleButton.style.display = "none";
 
-    $("manualVin")?.focus();
+    $("vin")?.focus();
   });
 
   $("scanFleetBtn").onclick = async () => {
@@ -186,11 +177,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
-  $("manualVin")?.addEventListener("keydown", async (e) => {
+  $("vin")?.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      await fill($("manualVin").value);
+      await fill($("vin").value);
     }
+  });
+
+  $("lookupVinBtn")?.addEventListener("click", async () => {
+    await fill($("vin").value);
   });
 
   $("fleetSearch")?.addEventListener("input", renderFleetTable);
@@ -202,7 +197,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateSaveFleetButton();
 
     $("vin").value = vin;
-    $("last8").value = vin ? vin.slice(-8) : "";
 
     $("year").value = "";
     $("make").value = "";
@@ -404,24 +398,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           .toUpperCase()
           .includes(q) ||
         String(x.unitNumber || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.plate || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.year || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.make || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.model || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.status || "")
-          .toUpperCase()
-          .includes(q) ||
-        String(x.location || "")
           .toUpperCase()
           .includes(q) ||
         String(x.assignedRo || "")
@@ -744,7 +720,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return escapeHtml(s);
   }
 
-    function updateCounts() {
+  function updateCounts() {
     let total = 0;
     let out = 0;
     let available = 0;
@@ -768,10 +744,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         available++;
       } else if (status === "AT WASH") {
         atWash++;
-      } else if (
-        status === "DISABLED" ||
-        status === "HOLD"
-      ) {
+      } else if (status === "DISABLED" || status === "HOLD") {
         inShop++;
       }
     });

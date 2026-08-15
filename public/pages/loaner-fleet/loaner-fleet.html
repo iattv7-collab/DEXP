@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
     <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
-    <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=4" />
+    <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=7" />
   </head>
 
   <body>
@@ -61,32 +61,35 @@
       </section>
 
       <section class="page-section">
-        <h2>Find Loaner</h2>
+        <div class="fleet-toolbar">
+          <div class="fleet-toolbar-search">
+            <h2>Search fleet</h2>
 
-        <div class="form-row">
-          <input
-            id="fleetSearch"
-            placeholder="Search by VIN, last 8, unit #, plate, model, status, location or RO"
-          />
+            <div class="form-row">
+              <input
+                id="fleetSearch"
+                placeholder="Filter by VIN, last 8, unit # or RO"
+              />
+            </div>
+          </div>
 
-          <label style="display: flex; gap: 6px; align-items: center">
-            <input type="checkbox" id="skipRemoveConfirm" />
-
-            Skip remove confirmation
-          </label>
+          <div class="fleet-toolbar-add">
+            <button id="toggleAddLoanerBtn" type="button">+ Add Loaner</button>
+          </div>
         </div>
-      </section>
 
-      <section class="page-section">
-        <button id="toggleAddLoanerBtn" type="button">+ Add Loaner</button>
-
-        <div id="addLoanerSection" style="display: none; margin-top: 12px">
+               <div id="addLoanerSection" style="display: none; margin-top: 12px">
           <h2>Add Loaner</h2>
 
           <div class="form-row">
             <button id="scanFleetBtn" type="button">Scan VIN</button>
 
-            <input id="manualVin" placeholder="Enter VIN" />
+            <input
+              id="vin"
+              placeholder="VIN — scan or type, then press Enter"
+            />
+
+            <button id="lookupVinBtn" type="button">Lookup</button>
           </div>
 
           <video
@@ -100,8 +103,6 @@
           <div id="scannerStatus" class="small-muted"></div>
 
           <div class="form-row" style="margin-top: 10px">
-            <input id="vin" placeholder="VIN" />
-            <input id="last8" placeholder="Last 8" readonly />
             <input id="year" placeholder="Year" />
             <input id="make" placeholder="Make" />
             <input id="model" placeholder="Model" />
@@ -114,7 +115,7 @@
 
             <div id="fleetMsg" class="small-muted"></div>
           </div>
-        </div>
+        </div> 
       </section>
 
       <section class="page-section">
@@ -151,7 +152,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaners-page.js?v=9"
+      src="/js/modules/loaners/loaners-page.js?v=12"
     ></script>
   </body>
 </html>
