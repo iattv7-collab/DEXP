@@ -34,6 +34,7 @@ function parseBoolean(value, defaultValue = true) {
 messaging.onBackgroundMessage((payload) => {
   const data = payload?.data || {};
 
+  // Close an existing notification by id
   if (data.command === "close-notification") {
     const notificationId = String(data.notificationId || "").trim();
 
@@ -41,7 +42,7 @@ messaging.onBackgroundMessage((payload) => {
       return;
     }
 
-    self.registration.getNotifications().then((notifications) => {
+    return self.registration.getNotifications().then((notifications) => {
       notifications.forEach((notification) => {
         const openNotificationId = String(
           notification.data?.notificationId || "",
@@ -52,26 +53,35 @@ messaging.onBackgroundMessage((payload) => {
         }
       });
     });
-
-    return;
   }
 
-  const title = data.title || "DEXP Notification";
+  const title =
+    data.title ||
+    payload?.notification?.title ||
+    "DEXP Notification";
+
+  const body =
+    data.body ||
+    payload?.notification?.body ||
+    "";
 
   const soundEnabled = parseBoolean(data.soundEnabled, true);
-
   const vibrationEnabled = parseBoolean(data.vibrationEnabled, true);
 
   const options = {
-    body: data.body || "",
+    body,
     icon: "/assets/logo-v2.png",
     badge: "/assets/logo-v2.png",
 
-    tag: data.notificationId || undefined,
+    // Same tag replaces older DEXP notification and can renotify
+    tag: data.notificationId || "dexp-notification",
     renotify: true,
-    silent: !soundEnabled,
 
-    vibrate: vibrationEnabled ? [250, 120, 250] : undefined,
+    // Keep it visible until the user interacts
+    requireInteraction: true,
+
+    silent: !soundEnabled,
+    vibrate: vibrationEnabled ? [250, 120, 250, 120, 250] : undefined,
 
     data,
 
@@ -83,7 +93,8 @@ messaging.onBackgroundMessage((payload) => {
     ],
   };
 
-  self.registration.showNotification(title, options);
+  // Return the promise so the service worker stays alive until shown
+  return self.registration.showNotification(title, options);
 });
 
 self.addEventListener("notificationclick", (event) => {

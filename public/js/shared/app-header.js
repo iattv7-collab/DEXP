@@ -270,6 +270,11 @@ export function renderAppHeader(options = {}) {
         await unregisterCurrentDeviceForNotifications();
       } catch (error) {
         console.error("Could not unregister this device before logout.", error);
+
+        // Non-blocking, but visible so device cleanup issues are noticed
+        alert(
+          "Signed out, but this device could not be fully removed from notification list.\n\nIt may still receive alerts until cleaned up.",
+        );
       }
 
       clearSession();

@@ -2,11 +2,14 @@
 // Firestore service for registering user devices and notification tokens.
 
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
@@ -45,6 +48,70 @@ export async function getUserDevice(deviceId = "") {
     id: deviceSnapshot.id,
     ...deviceSnapshot.data(),
   };
+}
+
+export async function listUserDevices() {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  const devicesRef = collection(
+    db,
+    "users",
+    session.uid,
+    USER_DEVICES_COLLECTION,
+  );
+
+  const snapshot = await getDocs(devicesRef);
+
+  return snapshot.docs.map((deviceDocument) => ({
+    id: deviceDocument.id,
+    ...deviceDocument.data(),
+  }));
+}
+
+export async function deactivateOtherUserDevices(currentDeviceId = "") {
+  const session = getSession();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  const safeCurrentDeviceId = String(currentDeviceId || "").trim();
+  const devices = await listUserDevices();
+
+  const updates = devices
+    .filter((device) => {
+      const id = String(device.id || device.deviceId || "").trim();
+      return id && id !== safeCurrentDeviceId && device.active !== false;
+    })
+    .map((device) => {
+      const id = String(device.id || device.deviceId || "").trim();
+
+      const deviceRef = doc(
+        db,
+        "users",
+        session.uid,
+        USER_DEVICES_COLLECTION,
+        id,
+      );
+
+      return updateDoc(deviceRef, {
+        active: false,
+        notificationsEnabled: false,
+        updatedAt: serverTimestamp(),
+        updatedAtMs: Date.now(),
+        deactivatedAt: serverTimestamp(),
+        deactivatedAtMs: Date.now(),
+        deactivatedReason: "replaced-by-newer-device",
+      });
+    });
+
+  await Promise.allSettled(updates);
+
+  return updates.length;
 }
 
 export async function deleteUserDevice(deviceId = "") {
@@ -133,6 +200,7 @@ export async function saveUserDevice(deviceData = {}) {
             lastLoginAtMs: Date.now(),
           }
         : {}),
+
       lastSeenAt: serverTimestamp(),
       lastSeenAtMs: Date.now(),
 

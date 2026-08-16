@@ -14,6 +14,7 @@ import {
   deleteUserDevice,
   getUserDevice,
   saveUserDevice,
+  deactivateOtherUserDevices,
 } from "../firestore/user-devices-service.js";
 
 const DEVICE_ID_KEY = "dexp_device_id";
@@ -44,6 +45,132 @@ function getBrowserName() {
   if (agent.includes("Firefox/")) return "Firefox";
 
   return "Browser";
+}
+
+function isCapacitorNative() {
+  try {
+    const cap = window.Capacitor;
+
+    if (!cap) {
+      return false;
+    }
+
+    if (typeof cap.isNativePlatform === "function") {
+      return cap.isNativePlatform() === true;
+    }
+
+    if (typeof cap.getPlatform === "function") {
+      const platform = String(cap.getPlatform() || "").toLowerCase();
+      return platform === "android" || platform === "ios";
+    }
+
+    return false;
+  } catch (error) {
+    return false;
+  }
+}
+
+function getCapacitorPushPlugin() {
+  try {
+    return window.Capacitor?.Plugins?.PushNotifications || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function registerNativePushToken(preferenceOverrides = {}) {
+  const PushNotifications = getCapacitorPushPlugin();
+
+  if (!PushNotifications) {
+    console.warn("Capacitor PushNotifications plugin not available.");
+    return "unsupported";
+  }
+
+  const permission = await PushNotifications.requestPermissions();
+
+  if (permission?.receive !== "granted") {
+    await saveNotificationsDisabledDevice();
+    return "denied";
+  }
+
+  const token = await new Promise(async (resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("Native push registration timed out."));
+    }, 15000);
+
+    const registrationListener = await PushNotifications.addListener(
+      "registration",
+      (tokenResult) => {
+        clearTimeout(timeoutId);
+        registrationListener.remove();
+        resolve(String(tokenResult?.value || "").trim());
+      },
+    );
+
+    const errorListener = await PushNotifications.addListener(
+      "registrationError",
+      (error) => {
+        clearTimeout(timeoutId);
+        errorListener.remove();
+        reject(error);
+      },
+    );
+
+    try {
+      await PushNotifications.createChannel({
+        id: "dexp_alerts",
+        name: "DEXP Alerts",
+        description: "Shop floor request alerts",
+        importance: 5,
+        visibility: 1,
+        sound: "default",
+        vibration: true,
+      });
+    } catch (channelError) {
+      console.warn("Could not create DEXP alert channel.", channelError);
+    }
+
+    try {
+      await PushNotifications.register();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(error);
+    }
+  });
+
+  if (!token) {
+    console.warn("Native push did not return an FCM token.");
+    await saveNotificationsDisabledDevice();
+    return "no-token";
+  }
+
+  const existingDevice = await getCurrentDeviceRecord();
+  const currentPreferences = normalizePreferences(existingDevice);
+
+  const soundEnabled =
+    typeof preferenceOverrides.soundEnabled === "boolean"
+      ? preferenceOverrides.soundEnabled
+      : currentPreferences.soundEnabled;
+
+  const vibrationEnabled =
+    typeof preferenceOverrides.vibrationEnabled === "boolean"
+      ? preferenceOverrides.vibrationEnabled
+      : currentPreferences.vibrationEnabled;
+
+  await saveUserDevice({
+    deviceId: getCurrentDeviceId(),
+    fcmToken: token,
+    browser: "DEXP Android",
+    platform: "android-native",
+    userAgent: navigator.userAgent || "",
+    notificationsEnabled: true,
+    soundEnabled,
+    vibrationEnabled,
+    recordLogin: true,
+  });
+
+  console.log("Native FCM token saved for this device.");
+  return "granted";
 }
 
 function normalizePreferences(device = null) {
@@ -101,7 +228,11 @@ export async function getCurrentDeviceNotificationPreferences() {
   const device = await getCurrentDeviceRecord();
   const preferences = normalizePreferences(device);
 
-  if ("Notification" in window && Notification.permission === "denied") {
+  if (
+    !isCapacitorNative() &&
+    "Notification" in window &&
+    Notification.permission === "denied"
+  ) {
     preferences.notificationsEnabled = false;
   }
 
@@ -159,6 +290,34 @@ export async function updateCurrentDeviceNotificationPreferences(
 }
 
 export async function getCurrentNotificationStatus() {
+  if (isCapacitorNative()) {
+    const preferences = await getCurrentDeviceNotificationPreferences();
+    const device = await getCurrentDeviceRecord();
+    const hasToken = !!(device && String(device.fcmToken || "").trim());
+
+    if (!preferences.notificationsEnabled) {
+      return {
+        status: "disabled",
+        label: "🔕 Notifications",
+        title: "DEXP notifications are disabled on this device.",
+      };
+    }
+
+    if (hasToken) {
+      return {
+        status: "granted",
+        label: "✅ Notifications",
+        title: "Native notifications are enabled on this device.",
+      };
+    }
+
+    return {
+      status: "default",
+      label: "🔔 Enable",
+      title: "Enable native notifications on this device.",
+    };
+  }
+
   const supported = await isSupported();
 
   if (!supported || !("Notification" in window)) {
@@ -205,6 +364,16 @@ export async function getCurrentNotificationStatus() {
 export async function registerCurrentDeviceForNotifications(
   preferenceOverrides = {},
 ) {
+
+  if (isCapacitorNative()) {
+    try {
+      return await registerNativePushToken(preferenceOverrides);
+    } catch (error) {
+      console.error("Native push registration failed.", error);
+      return "error";
+    }
+  }
+
   const supported = await isSupported();
 
   if (!supported) {
@@ -274,8 +443,10 @@ export async function registerCurrentDeviceForNotifications(
       ? preferenceOverrides.vibrationEnabled
       : currentPreferences.vibrationEnabled;
 
+  const currentDeviceId = getCurrentDeviceId();
+
   await saveUserDevice({
-    deviceId: getCurrentDeviceId(),
+    deviceId: currentDeviceId,
     fcmToken: token,
     browser: getBrowserName(),
     platform: navigator.platform || "",
@@ -287,6 +458,18 @@ export async function registerCurrentDeviceForNotifications(
 
     recordLogin: true,
   });
+
+  try {
+    const deactivatedCount = await deactivateOtherUserDevices(currentDeviceId);
+
+    if (deactivatedCount > 0) {
+      console.log(
+        `Deactivated ${deactivatedCount} older device(s) for this user.`,
+      );
+    }
+  } catch (error) {
+    console.warn("Could not deactivate older devices.", error);
+  }
 
   return "granted";
 }
