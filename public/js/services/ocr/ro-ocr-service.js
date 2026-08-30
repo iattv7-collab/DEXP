@@ -33,10 +33,10 @@ export async function scanROImage(file) {
         roNumber: extractRONumber(rawText),
         tagNumber: extractTagNumber(rawText),
         vin: extractVIN(rawText),
-        year: "",
-        make: "",
-        model: "",
-        color: "",
+        year: extractYear(rawText),
+        make: extractMake(rawText),
+        model: extractModel(rawText),
+        color: extractColor(rawText),
         customerName: extractCustomerName(rawText),
         customerPhone: extractPhone(rawText),
         advisorName: extractAdvisorName(rawText),
@@ -51,13 +51,12 @@ async function cropImageToIntakeBlock(file) {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
-    // Porsche Reynolds center intake block.
-    // These are percentage-based so it works with different image sizes.
+    // Reynolds intake block on a full-page phone photo.
     const crop = {
-        x: 0.03,
-        y: 0.31,
-        width: 0.94,
-        height: 0.28
+        x: 0.02,
+        y: 0.28,
+        width: 0.96,
+        height: 0.36
     };
 
     const sourceX = image.width * crop.x;
@@ -100,16 +99,34 @@ function loadImage(file) {
 }
 
 function extractRONumber(text) {
-    const roLabelMatch =
-        text.match(/R\.?\s*O\.?\s*(?:NO\.?|#)?\s*[:\-]?\s*(\d{5,9})/i);
+    const labeledMatch = String(text).match(
+        /R\.?\s*O\.?\s*NO\.?\s*[:\-]?\s*(\d{5,7})/i
+    );
 
-    if (roLabelMatch) {
-        return roLabelMatch[1];
+    if (labeledMatch) {
+        return labeledMatch[1];
     }
 
-    const numbers = text.match(/\b\d{5,9}\b/g) || [];
+    const lines = getCleanLines(text);
+    const labelIndex = lines.findIndex((line) =>
+        /R\.?\s*O\.?\s*NO/i.test(line)
+    );
 
-    return numbers[numbers.length - 1] || "";
+    if (labelIndex >= 0) {
+        for (
+            let i = labelIndex;
+            i < Math.min(lines.length, labelIndex + 4);
+            i += 1
+        ) {
+            const lineMatch = lines[i].match(/\b(\d{5,7})\b/);
+
+            if (lineMatch) {
+                return lineMatch[1];
+            }
+        }
+    }
+
+    return "";
 }
 
 function extractVIN(text = "") {
@@ -200,14 +217,6 @@ function extractVIN(text = "") {
     }
 
     function getCandidatesFromLine(line = "") {
-        /*
-         * Preserve word boundaries instead of removing every space
-         * from the complete line. This prevents the VIN from being
-         * joined to year, make, model, or other RO information.
-         *
-         * O, I and Q are temporarily allowed because OCR can mistake
-         * 0 and 1 for those letters.
-         */
         const matches =
             line.match(/(?:^|[^A-Z0-9])([A-Z0-9]{17})(?=$|[^A-Z0-9])/g) || [];
 
@@ -251,16 +260,26 @@ function extractVIN(text = "") {
 }
 
 function extractYear(text) {
-    const yearMakeModelMatch =
-        text.match(/\b(19|20)\d{2}\s*\/\s*[A-Z]+/i);
+    const twoDigitMatch =
+        String(text).match(/\b(\d{2})\s*\/\s*PORSCHE/i);
 
-    if (yearMakeModelMatch) {
-        return yearMakeModelMatch[0].match(/\b(19|20)\d{2}\b/)[0];
+    if (twoDigitMatch) {
+        const twoDigit = Number(twoDigitMatch[1]);
+        return twoDigit >= 80
+            ? `19${twoDigitMatch[1]}`
+            : `20${twoDigitMatch[1]}`;
     }
 
-    const match = text.match(/\b(19|20)\d{2}\b/);
+    const yearMakeModelMatch =
+        String(text).match(/\b((?:19|20)\d{2})\s*\/\s*[A-Z]+/i);
 
-    return match ? match[0] : "";
+    if (yearMakeModelMatch) {
+        return yearMakeModelMatch[1];
+    }
+
+    const match = String(text).match(/\b((?:19|20)\d{2})\b/);
+
+    return match ? match[1] : "";
 }
 
 function extractMake(text) {
@@ -317,30 +336,84 @@ function extractColor(text) {
 }
 
 function extractCustomerName(text) {
-    const lines = text
-        .split(/\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
+    const lines = getCleanLines(text);
 
     const vinIndex = lines.findIndex((line) =>
-        /\b[A-HJ-NPR-Z0-9]{17}\b/i.test(line)
+        /\b[A-Z0-9]{17}\b/i.test(line)
     );
 
-    if (vinIndex >= 0 && lines[vinIndex + 1]) {
-        return lines[vinIndex + 1]
-            .replace(/[^A-Z\s]/gi, "")
+    if (vinIndex < 0) {
+        return "";
+    }
+
+    const skipLine =
+        /^(CUSTOMER\s*NO|YEAR\s*\/\s*MAKE|SERVICE\s*CONTRACT|SAVE\s*PARTS|PRODUCTION\s*DATE|DELIVERY\s*DATE|DELIVERY\s*MILES|STOCK\s*NO|LICENSE\s*NO|SELLING\s*DEALER|CONTRACT\s*NO|COLOR|TERMS|CASH|CREDIT\s*CD|CHECK|STATE\s*REG|VEHICLE|SALESPERSON|SERVICE|HOUSE\s*DEAL|OPERATION|DRIVEABILITY|SHUTTLE|MULTIPOINT|QUALITY\s*CONTROL|CAMPAIGN|WASHCAR|PRE\s*PAID)$/i;
+
+    for (
+        let i = vinIndex + 1;
+        i < Math.min(lines.length, vinIndex + 12);
+        i += 1
+    ) {
+        let line = lines[i]
+            .replace(/CUSTOMER\s*NO\.?/gi, "")
+            .replace(/\bYES\b/gi, "")
+            .replace(/\bNO\b/gi, "")
+            .replace(/[^A-Z0-9\s\-\&]/gi, "")
+            .replace(/\s+/g, " ")
             .trim();
+
+        if (!line) {
+            continue;
+        }
+
+        if (skipLine.test(line)) {
+            continue;
+        }
+
+        if (/CONCERN|TRANSPORT|INSPECT|DESCRIPTION/i.test(line)) {
+            continue;
+        }
+
+        if (/^\d+$/.test(line)) {
+            continue;
+        }
+
+        if (/^(SUITE|STE)\b/i.test(line)) {
+            continue;
+        }
+
+        if (/^\d+\s/.test(line)) {
+            continue;
+        }
+
+        if (/@/.test(lines[i])) {
+            continue;
+        }
+
+        const words = line.split(" ").filter(Boolean);
+
+        if (words.length >= 2) {
+            return line;
+        }
     }
 
     return "";
 }
 
 function extractPhone(text) {
-    const phones =
-        text.match(/\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g) || [];
+    const source = String(text || "");
 
-    // Customer phone is usually in the middle intake block.
-    // Use the first phone found in the cropped area.
+    const residenceMatch = source.match(
+        /RESIDENCE\s*PHONE([\s\S]{0,120}?)(\d{3}[-.\s]\d{3}[-.\s]\d{4})/i
+    );
+
+    if (residenceMatch) {
+        return residenceMatch[2];
+    }
+
+    const phones =
+        source.match(/\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g) || [];
+
     return phones[0] || "";
 }
 
@@ -358,59 +431,93 @@ function normalizeColor(color = "") {
 }
 
 function extractTagNumber(text) {
-    const lines = getCleanLines(text);
+    const source = String(text || "");
+    const cutoff = source.search(/I hereby authorize/i);
+    const region =
+        cutoff >= 0 ? source.slice(0, cutoff) : source;
 
-    const tagIndex = lines.findIndex((line) =>
-        /TAG\s*NO/i.test(line)
-    );
+    const tagIndex = region.search(/TAG\s*\.?\s*NO/i);
 
-    if (tagIndex >= 0) {
-        for (let i = tagIndex + 1; i < Math.min(lines.length, tagIndex + 4); i++) {
-            if (/^\d{3,6}$/.test(lines[i])) {
-                return lines[i];
-            }
-        }
+    if (tagIndex < 0) {
+        return "";
+    }
+
+    const afterTag = region
+        .slice(tagIndex)
+        .replace(/\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/g, " ");
+
+    const fourDigit = afterTag.match(/\b\d{4}\b/g) || [];
+
+    if (fourDigit.length) {
+        return fourDigit[fourDigit.length - 1];
+    }
+
+    const other = afterTag.match(/\b\d{3,5}\b/g) || [];
+
+    if (other.length) {
+        return other[other.length - 1];
     }
 
     return "";
 }
 
 function extractAdvisorName(text) {
-    const lines = getCleanLines(text);
+    const source = String(text || "");
+    const cutoff = source.search(/I hereby authorize/i);
+    const region =
+        cutoff >= 0 ? source.slice(0, cutoff) : source;
 
-    const legalTextIndex = lines.findIndex((line) =>
-        /I hereby authorize/i.test(line)
+    const advisorBlocks = [
+        ...region.matchAll(
+            /ADVISOR(?!\s*NO)([\s\S]{0,120})/gi
+        ),
+    ];
+
+    if (!advisorBlocks.length) {
+        return "";
+    }
+
+    const lastBlock =
+        advisorBlocks[advisorBlocks.length - 1][1];
+
+    const nameMatch = lastBlock.match(
+        /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/
     );
 
-    const searchEnd = legalTextIndex >= 0 ? legalTextIndex : lines.length;
-
-    for (let i = 0; i < searchEnd; i++) {
-        const line = lines[i];
-
-        if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(line)) {
-            return line;
-        }
+    if (nameMatch) {
+        return nameMatch[0].trim();
     }
 
     return "";
 }
 
 function extractAdvisorNumber(text) {
-    const lines = getCleanLines(text);
+    const source = String(text || "");
+    const cutoff = source.search(/I hereby authorize/i);
+    const region =
+        cutoff >= 0 ? source.slice(0, cutoff) : source;
 
-    const advisorNoIndex = lines.findIndex((line) =>
-        /ADVISOR\s*NO/i.test(line)
-    );
+    const blocks = [
+        ...region.matchAll(/ADVISOR\s*NO\.?([\s\S]{0,100})/gi),
+    ];
 
-    if (advisorNoIndex >= 0) {
-        for (let i = advisorNoIndex + 1; i < Math.min(lines.length, advisorNoIndex + 10); i++) {
-            if (/^\d{2,5}$/.test(lines[i])) {
-                return lines[i];
-            }
-        }
+    if (!blocks.length) {
+        return "";
     }
 
-    return "";
+    const lastBlock = blocks[blocks.length - 1][1].replace(
+        /\b\d{1,3},\d{3}\b/g,
+        " ",
+    );
+
+    const numbers = lastBlock.match(/\b\d{2,4}\b/g) || [];
+    const threeDigit = numbers.filter((value) => value.length === 3);
+
+    if (threeDigit.length) {
+        return threeDigit[0];
+    }
+
+    return numbers[0] || "";
 }
 
 function getCleanLines(text) {

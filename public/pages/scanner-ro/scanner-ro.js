@@ -2,11 +2,12 @@
 
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { protectRoute } from "/js/core/router.js";
-import { scanROImage } from "/js/services/ocr/ro-ocr-service.js";
+import { scanROImage } from "/js/services/ocr/ro-ocr-service.js?v=tag13";
 import {
   createRO,
   findActiveROByNumber,
   findActiveROByTag,
+  findActiveAdvisorByCompanyId,
 } from "/js/services/firestore/ros-service.js";
 
 import { decodeVIN } from "/js/services/vin/vin-decoder-service.js";
@@ -36,6 +37,137 @@ const fillTestDataButton = document.getElementById("fillTestDataButton");
 const saveRoButton = document.getElementById("saveRoButton");
 const scannerMessage = document.getElementById("scannerMessage");
 
+function isCapacitorNative() {
+  try {
+    return !!(
+      window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === "function" &&
+      window.Capacitor.isNativePlatform()
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function dataUrlToFile(dataUrl, fileName) {
+  const parts = String(dataUrl || "").split(",");
+  const header = parts[0] || "";
+  const data = parts[1] || "";
+  const mimeMatch = header.match(/data:(.*?);/);
+  const mime = mimeMatch?.[1] || "image/jpeg";
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new File([bytes], fileName, { type: mime });
+}
+
+async function resolveScannedAdvisor({ advisorNumber = "" }) {
+  const number = String(advisorNumber || "").trim();
+
+  if (!number) {
+    return {
+      name: "",
+      number: "",
+    };
+  }
+
+  try {
+    const advisor = await findActiveAdvisorByCompanyId(number);
+
+    if (!advisor) {
+      return {
+        name: "",
+        number: "",
+      };
+    }
+
+    return {
+      name: advisor.displayName || "",
+      number: advisor.companyId || number,
+    };
+  } catch (error) {
+    console.error("Advisor lookup failed:", error);
+
+    return {
+      name: "",
+      number: "",
+    };
+  }
+}
+
+async function processRoImageFile(file) {
+  if (!file) {
+    return;
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+  imagePreview.src = imageUrl;
+  imagePreviewWrap.classList.remove("hidden");
+
+  clearMessage();
+  showMessage("Scanning RO image...");
+
+  try {
+    const result = await scanROImage(file);
+
+    const resolvedAdvisor = await resolveScannedAdvisor({
+      advisorNumber: result.advisorNumber || "",
+    });
+
+    roNumberInput.value = result.roNumber || "";
+    tagNumberInput.value = result.tagNumber || "";
+    vinInput.value = result.vin || "";
+    customerNameInput.value = result.customerName || "";
+    customerPhoneInput.value = result.customerPhone || "";
+    advisorNameInput.value = resolvedAdvisor.name;
+    advisorNumberInput.value = resolvedAdvisor.number;
+    ocrDebugText.value = result.rawOcrText || "";
+
+    await checkScannerDuplicates();
+
+    if (
+      !roNumberInput.classList.contains("field-error") &&
+      !tagNumberInput.classList.contains("field-error")
+    ) {
+      showMessage(
+        result.tagNumber
+          ? `RO scan complete. Tag ${result.tagNumber}`
+          : "RO scan complete. Tag not found",
+      );
+    }
+  } catch (error) {
+    console.error("RO scan failed:", error);
+    showMessage(
+      error?.message
+        ? `Could not scan RO image. ${error.message}`
+        : "Could not scan RO image.",
+    );
+  }
+}
+
+async function takeRoPhotoWithNativeCamera() {
+  const Camera = window.Capacitor?.Plugins?.Camera;
+
+  if (!Camera) {
+    throw new Error("Native camera plugin is not available.");
+  }
+
+  const photo = await Camera.getPhoto({
+    quality: 80,
+    resultType: "dataUrl",
+    source: "CAMERA",
+    direction: "REAR",
+    saveToGallery: false,
+  });
+
+  const file = dataUrlToFile(photo.dataUrl, "ro-scan.jpg");
+  await processRoImageFile(file);
+}
+
 window.addEventListener("dexp-session-ready", () => {
   initializeScannerRO();
 });
@@ -45,13 +177,34 @@ function initializeScannerRO() {
     title: "Scan Repair Order",
   });
 
-  roImageInput.addEventListener("change", async (event) => {
-    handleImagePreview(event);
+  roImageInput.addEventListener("click", async (event) => {
+    if (!isCapacitorNative()) {
+      return;
+    }
 
-    await handleROScan(event);
+    event.preventDefault();
+
+    try {
+      showMessage("Opening camera...");
+      await takeRoPhotoWithNativeCamera();
+    } catch (error) {
+      console.error("Native RO camera failed:", error);
+      showMessage(
+        error?.message
+          ? `Camera error. ${error.message}`
+          : "Camera error.",
+      );
+    }
   });
 
-  fillTestDataButton.addEventListener("click", fillTestData);
+  roImageInput.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    await processRoImageFile(file);
+  });
+
+    if (fillTestDataButton) {
+    fillTestDataButton.addEventListener("click", fillTestData);
+  }
 
   roNumberInput.addEventListener("input", checkScannerDuplicates);
   tagNumberInput.addEventListener("input", checkScannerDuplicates);
@@ -59,59 +212,6 @@ function initializeScannerRO() {
   saveRoButton.addEventListener("click", async () => {
     await saveRO();
   });
-}
-
-function handleImagePreview(event) {
-  const file = event.target.files?.[0];
-
-  if (!file) {
-    imagePreviewWrap.classList.add("hidden");
-    imagePreview.removeAttribute("src");
-    return;
-  }
-
-  const imageUrl = URL.createObjectURL(file);
-
-  imagePreview.src = imageUrl;
-  imagePreviewWrap.classList.remove("hidden");
-}
-
-async function handleROScan(event) {
-  const file = event.target.files?.[0];
-
-  if (!file) {
-    return;
-  }
-
-  clearMessage();
-
-  showMessage("Scanning RO image...");
-
-  try {
-    const result = await scanROImage(file);
-
-    roNumberInput.value = result.roNumber || "";
-    tagNumberInput.value = result.tagNumber || "";
-    vinInput.value = result.vin || "";
-    customerNameInput.value = result.customerName || "";
-    customerPhoneInput.value = result.customerPhone || "";
-    advisorNameInput.value = result.advisorName || "";
-    advisorNumberInput.value = result.advisorNumber || "";
-    ocrDebugText.value = result.rawOcrText || "";
-
-    await checkScannerDuplicates();
-
-    if (
-      !roNumberInput.classList.contains("field-error") &&
-      !tagNumberInput.classList.contains("field-error")
-    ) {
-      showMessage("RO scan complete.");
-    }
-  } catch (error) {
-    console.error("RO scan failed:", error);
-
-    showMessage("Could not scan RO image.");
-  }
 }
 
 function fillTestData() {

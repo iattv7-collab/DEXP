@@ -15,11 +15,6 @@
   <body>
     <main id="scannerRoPage" class="page-shell">
       <section class="page-card">
-        <div class="page-title-row">
-          <div>
-            <h2>Scan Repair Order</h2>
-          </div>
-        </div>
 
         <div class="toolbar-row">
           <label class="file-upload-field">
@@ -33,10 +28,6 @@
             />
           </label>
         </div>
-
-        <section id="imagePreviewWrap" class="scanner-preview hidden">
-          <img id="imagePreview" alt="RO preview" />
-        </section>
 
         <section class="form-grid">
           <div class="form-pair">
@@ -90,12 +81,14 @@
         </section>
 
         <div class="action-row">
-          <button id="fillTestDataButton" type="button">Fill Test Data</button>
-
           <button id="saveRoButton" type="button">Save RO</button>
         </div>
 
         <p id="scannerMessage" class="page-message"></p>
+
+        <section id="imagePreviewWrap" class="scanner-preview hidden">
+          <img id="imagePreview" alt="RO preview" />
+        </section>
 
         <section class="ocr-debug-section">
           <h3>OCR Debug Text</h3>
@@ -110,6 +103,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/scanner-ro/scanner-ro.js?v=4"></script>
+    <script type="module" src="/pages/scanner-ro/scanner-ro.js?v=6"></script>
   </body>
 </html>

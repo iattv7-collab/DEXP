@@ -431,7 +431,7 @@ export async function addROActivity(roId, activity = {}) {
   return activityData;
 }
 
-async function findActiveAdvisorByCompanyId(companyId = "") {
+export async function findActiveAdvisorByCompanyId(companyId = "") {
   const session = requireDealerSession();
 
   const cleanCompanyId = String(companyId || "").trim();
