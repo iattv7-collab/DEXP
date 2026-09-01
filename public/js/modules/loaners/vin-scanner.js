@@ -11,10 +11,31 @@ const SCAN_ENDPOINT = "https://scanvin-kaxooupkzq-uc.a.run.app";
 
 const SCAN_TIMEOUT_MS = 15000;
 const CAMERA_SETTLE_MS = 600;
-const BETWEEN_ATTEMPTS_MS = 1500; // slower between rounds
+const BETWEEN_ATTEMPTS_MS = 1500;
 const REQUEST_TIMEOUT_MS = 6000;
 
-// Characters I, O and Q are not permitted in VINs.
+function isCapacitorNative() {
+  try {
+    return !!(
+      window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === "function" &&
+      window.Capacitor.isNativePlatform()
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+}
+
 function normalizeVin(text = "") {
   return String(text)
     .toUpperCase()
@@ -25,10 +46,6 @@ function normalizeVin(text = "") {
 function isValidVin(vin = "") {
   return /^[A-HJ-NPR-Z0-9]{17}$/.test(normalizeVin(vin));
 }
-
-// =========================
-// VIN CHECK DIGIT
-// =========================
 
 const VIN_TRANSLITERATION = {
   A: 1,
@@ -81,10 +98,6 @@ function passesVinChecksum(vin = "") {
   return vin[8] === expectedCheckDigit;
 }
 
-// =========================
-// VIN DECODER (NHTSA)
-// =========================
-
 export async function decodeVinLive(vin = "") {
   vin = normalizeVin(vin);
 
@@ -111,26 +124,16 @@ export async function decodeVinLive(vin = "") {
   };
 }
 
-// =========================
-// CAMERA IMAGE CREATION
-// =========================
-
-async function makeCropBlob(videoEl, zone, quality = 0.86) {
+async function makeCropBlob(mediaEl, zone, quality = 0.86) {
   const sourceX = Math.max(0, Math.floor(zone.x));
   const sourceY = Math.max(0, Math.floor(zone.y));
   const sourceWidth = Math.max(1, Math.floor(zone.w));
   const sourceHeight = Math.max(1, Math.floor(zone.h));
 
-  /*
-   * Limit the uploaded image width.
-   * Sending the camera's full 1920-pixel crop is slower and usually
-   * does not provide a meaningful OCR benefit for a VIN.
-   */
   const maximumOutputWidth = 1100;
   const scale = Math.min(1, maximumOutputWidth / sourceWidth);
 
   const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
-
   const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
 
   const canvas = document.createElement("canvas");
@@ -146,7 +149,7 @@ async function makeCropBlob(videoEl, zone, quality = 0.86) {
   canvas.height = outputHeight;
 
   ctx.drawImage(
-    videoEl,
+    mediaEl,
     sourceX,
     sourceY,
     sourceWidth,
@@ -161,10 +164,6 @@ async function makeCropBlob(videoEl, zone, quality = 0.86) {
     canvas.toBlob(resolve, "image/jpeg", quality);
   });
 }
-
-// =========================
-// BACKEND OCR REQUEST
-// =========================
 
 async function sendBlob(blob, zoneName, signal) {
   const fd = new FormData();
@@ -185,8 +184,8 @@ async function sendBlob(blob, zoneName, signal) {
   return normalizeVin(json?.vin || "");
 }
 
-async function scanZone(videoEl, zone, parentSignal) {
-  const blob = await makeCropBlob(videoEl, zone, zone.quality ?? 0.86);
+async function scanZone(mediaEl, zone, parentSignal) {
+  const blob = await makeCropBlob(mediaEl, zone, zone.quality ?? 0.86);
 
   if (!blob) return "";
 
@@ -211,9 +210,82 @@ async function scanZone(videoEl, zone, parentSignal) {
   }
 }
 
-// =========================
-// CAMERA → BACKEND OCR SCAN
-// =========================
+async function scanVinFromImage(imageEl, statusEl) {
+  const videoWidth = imageEl.naturalWidth || imageEl.width;
+  const videoHeight = imageEl.naturalHeight || imageEl.height;
+
+  if (!videoWidth || !videoHeight) {
+    throw new Error("Could not read VIN photo");
+  }
+
+  const zones = [
+    {
+      name: "vin-strip",
+      x: videoWidth * 0.05,
+      y: videoHeight * 0.36,
+      w: videoWidth * 0.9,
+      h: videoHeight * 0.28,
+      quality: 0.92,
+    },
+    {
+      name: "center",
+      x: videoWidth * 0.1,
+      y: videoHeight * 0.2,
+      w: videoWidth * 0.8,
+      h: videoHeight * 0.6,
+      quality: 0.85,
+    },
+  ];
+
+  for (const zone of zones) {
+    if (statusEl) {
+      statusEl.textContent = `Reading VIN... ${zone.name}`;
+    }
+
+    try {
+      const vin = await scanZone(imageEl, zone);
+
+      if (isValidVin(vin)) {
+        const checksumValid = passesVinChecksum(vin);
+
+        return {
+          vin,
+          reason: checksumValid ? "VIN detected and validated" : "VIN detected",
+        };
+      }
+    } catch (error) {
+      console.warn(`VIN scan failed for ${zone.name}`, error);
+    }
+  }
+
+  return {
+    vin: "",
+    reason: "No VIN found in photo",
+  };
+}
+
+async function scanVinWithNativeCamera(statusEl) {
+  const Camera = window.Capacitor?.Plugins?.Camera;
+
+  if (!Camera) {
+    throw new Error("Native camera plugin is not available.");
+  }
+
+  if (statusEl) {
+    statusEl.textContent = "Opening camera...";
+  }
+
+  const photo = await Camera.getPhoto({
+    quality: 80,
+    resultType: "dataUrl",
+    source: "CAMERA",
+    direction: "REAR",
+    saveToGallery: false,
+  });
+
+  const image = await loadImageFromDataUrl(photo.dataUrl);
+  return scanVinFromImage(image, statusEl);
+}
 
 export async function scanVinWithCamera(videoEl, statusEl) {
   if (!videoEl) {
@@ -284,10 +356,6 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
     await videoEl.play();
 
-    /*
-     * Apply continuous focus when the browser and camera support it.
-     * Unsupported constraints are safely ignored.
-     */
     const videoTrack = stream.getVideoTracks()[0];
 
     if (videoTrack?.getCapabilities) {
@@ -334,16 +402,6 @@ export async function scanVinWithCamera(videoEl, statusEl) {
       setTimeout(resolve, CAMERA_SETTLE_MS);
     });
 
-    /*
-     * Only three useful crops are sent.
-     *
-     * The narrow middle crop is first because a VIN is normally
-     * presented horizontally near the center of the camera.
-     *
-     * The larger center crop handles paper and off-center scans.
-     *
-     * The full image is the final fallback rather than the first request.
-     */
     while (!cameraStopped) {
       const videoWidth = videoEl.videoWidth;
       const videoHeight = videoEl.videoHeight;
@@ -404,11 +462,6 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
         if (!isValidVin(vin)) continue;
 
-        /*
-         * A checksum match is preferred, but a correctly formatted VIN
-         * is still returned because some non-North-American or unusual
-         * VIN records may not follow the expected check-digit behavior.
-         */
         const checksumValid = passesVinChecksum(vin);
 
         clearTimeout(timeoutId);
