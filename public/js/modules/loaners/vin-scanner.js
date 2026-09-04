@@ -58,7 +58,7 @@ async function applyLowLightConstraints(videoTrack) {
     .applyConstraints({
       advanced: [advanced],
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 function isCapacitorNative() {
@@ -228,8 +228,8 @@ async function sendBlob(blob, zoneName, signal) {
 
   const json = await res.json().catch(() => null);
 
-    const vin = normalizeVin(json?.vin || "");
-  return isValidVin(vin) ? vin : "";
+  const vin = normalizeVin(json?.vin || "");
+  return isValidVin(vin) && passesVinChecksum(vin) ? vin : "";
 }
 
 async function scanZone(mediaEl, zone, parentSignal) {
@@ -293,12 +293,10 @@ async function scanVinFromImage(imageEl, statusEl) {
     try {
       const vin = await scanZone(imageEl, zone);
 
-      if (isValidVin(vin)) {
-        const checksumValid = passesVinChecksum(vin);
-
+      if (isValidVin(vin) && passesVinChecksum(vin)) {
         return {
           vin,
-          reason: checksumValid ? "VIN detected and validated" : "VIN detected",
+          reason: "VIN detected and validated",
         };
       }
     } catch (error) {
@@ -476,9 +474,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
           continue;
         }
 
-        if (!isValidVin(vin)) continue;
-
-        const checksumValid = passesVinChecksum(vin);
+        if (!isValidVin(vin) || !passesVinChecksum(vin)) continue;
 
         clearTimeout(timeoutId);
         timeoutId = null;
@@ -487,7 +483,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
         return {
           vin,
-          reason: checksumValid ? "VIN detected and validated" : "VIN detected",
+          reason: "VIN detected and validated",
         };
       }
 

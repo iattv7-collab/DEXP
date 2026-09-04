@@ -31,6 +31,8 @@ import {
 import {
   scanVinWithCamera,
   normalizeVin,
+  isValidVin,
+  passesVinChecksum,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
 
@@ -128,13 +130,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     video.style.background = "#000";
 
     if (video.requestFullscreen) {
-      video.requestFullscreen().catch(() => {});
+      video.requestFullscreen().catch(() => { });
     }
   }
 
   function closeScannerFullscreen() {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
 
     video.removeAttribute("style");
@@ -164,11 +166,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       closeScannerFullscreen();
 
-      if (res?.vin) {
+      if (res?.vin && isValidVin(res.vin) && passesVinChecksum(res.vin)) {
         await fill(res.vin);
         status.textContent = "VIN scanned. Please verify before saving.";
       } else {
-        status.textContent = res?.reason || "No VIN found";
+        validatedFleetVin = "";
+        updateSaveFleetButton();
+        status.textContent = res?.reason || "No valid VIN captured. Try again.";
       }
     } catch (err) {
       closeScannerFullscreen();
@@ -196,16 +200,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     validatedFleetVin = "";
     updateSaveFleetButton();
 
-    $("vin").value = vin;
-
     $("year").value = "";
     $("make").value = "";
     $("model").value = "";
 
-    if (!vin) {
-      $("fleetMsg").textContent = "Enter or scan a valid VIN.";
+    if (!isValidVin(vin) || !passesVinChecksum(vin)) {
+      $("vin").value = "";
+      $("fleetMsg").textContent =
+        "VIN rejected — not a valid VIN. Try again.";
       return;
     }
+
+    $("vin").value = vin;
 
     if (!currentDealerId) {
       $("fleetMsg").textContent = "Dealer session not ready.";
@@ -220,41 +226,47 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (fleetSnapshot.exists()) {
         $("fleetMsg").textContent = "This VIN is already in the loaner fleet.";
-
         updateSaveFleetButton();
         return;
       }
 
       $("fleetMsg").textContent = "Decoding VIN...";
 
+      let decoded = null;
+
       try {
-        const decoded = await decodeVinLive(vin);
-
-        $("year").value = decoded?.year || "";
-        $("make").value = decoded?.make || "";
-        $("model").value = decoded?.model || "";
-
-        $("fleetMsg").textContent = "";
+        decoded = await decodeVinLive(vin);
       } catch (error) {
         console.error("VIN decode failed:", error);
-
-        $("year").value = "";
-        $("make").value = "";
-        $("model").value = "";
-
-        $("fleetMsg").textContent =
-          "VIN is valid, but vehicle details could not be decoded.";
+        decoded = null;
       }
+
+      const year = String(decoded?.year || "").trim();
+      const make = String(decoded?.make || "").trim();
+      const model = String(decoded?.model || "").trim();
+
+      if (!year && !make) {
+        $("vin").value = "";
+        $("fleetMsg").textContent =
+          "VIN rejected — not a valid VIN. Try again.";
+        validatedFleetVin = "";
+        updateSaveFleetButton();
+        return;
+      }
+
+      $("year").value = year;
+      $("make").value = make;
+      $("model").value = model;
+      $("fleetMsg").textContent = "";
 
       validatedFleetVin = vin;
       updateSaveFleetButton();
-
       $("unitNumber")?.focus();
     } catch (error) {
       console.error("VIN validation failed:", error);
 
+      $("vin").value = "";
       $("fleetMsg").textContent = "The VIN could not be validated.";
-
       validatedFleetVin = "";
       updateSaveFleetButton();
     }
@@ -466,10 +478,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         <td class="col-returned">
           ${escapeHtml(
-            String(x.status || "").toLowerCase() === "out"
-              ? x.outAt || ""
-              : x.lastReturnedAt || "",
-          )}
+        String(x.status || "").toLowerCase() === "out"
+          ? x.outAt || ""
+          : x.lastReturnedAt || "",
+      )}
         </td>
         <td class="col-received">
           ${showReturnDetails ? escapeHtml(x.lastReceivedByName || "") : ""}
