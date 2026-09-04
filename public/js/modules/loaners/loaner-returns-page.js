@@ -30,8 +30,14 @@ import {
 import {
   scanVinWithCamera,
   normalizeVin,
+  isValidVin,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
+
+const VIN_REJECT_NOT_IN_FLEET =
+  "VIN rejected — not in loaner fleet. Try again.";
+const VIN_REJECT_NOT_CHECKED_OUT =
+  "VIN rejected — loaner is not checked out.";
 
 const $ = (id) => document.getElementById(id);
 
@@ -96,6 +102,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     button.textContent = returnSaveInProgress ? "Saving..." : "Save Return";
   }
 
+  function setVinRejectMessage(message) {
+    const rejectEl = $("vinRejectMsg");
+
+    if (rejectEl) {
+      rejectEl.textContent = message || "";
+    }
+  }
+
+  function setVinRejectMessage(message) {
+    const rejectEl = $("vinRejectMsg");
+
+    if (rejectEl) {
+      rejectEl.textContent = message || "";
+    }
+  }
+
   function clearReturnForm() {
     ["manualVin", ...RETURN_FORM_FIELD_IDS].forEach((id) => {
       if ($(id)) {
@@ -104,6 +126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     validatedReturnVin = "";
+    setVinRejectMessage("");
     savedReturnSnapshot = getReturnFormSnapshot();
     updateSaveReturnButton();
   }
@@ -141,13 +164,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     video.style.background = "#000";
 
     if (video.requestFullscreen) {
-      video.requestFullscreen().catch(() => {});
+      video.requestFullscreen().catch(() => { });
     }
   }
 
   function closeScannerFullscreen() {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
 
     video.removeAttribute("style");
@@ -184,10 +207,20 @@ document.addEventListener("DOMContentLoaded", async () => {
      * A full 17-character VIN can be validated directly.
      */
     if (searchValue.length === 17) {
+      const fullVin = normalizeVin(searchValue);
+
+      if (!isValidVin(fullVin)) {
+        return {
+          valid: false,
+          message: "VIN rejected — not a valid VIN. Try again.",
+          vin: "",
+        };
+      }
+
       return {
         valid: true,
         message: "",
-        vin: normalizeVin(searchValue),
+        vin: fullVin,
       };
     }
 
@@ -262,7 +295,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!fleetSnap.exists()) {
       return {
         valid: false,
-        message: "This vehicle was not found in the loaner fleet.",
+        message: VIN_REJECT_NOT_IN_FLEET,
         fleetRef,
         fleetData: null,
       };
@@ -286,7 +319,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (fleetStatus !== "OUT") {
       return {
         valid: false,
-        message: "Return rejected. This vehicle is not currently out on loan.",
+        message: VIN_REJECT_NOT_CHECKED_OUT,
         fleetRef,
         fleetData,
       };
@@ -303,31 +336,33 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function fillReturnFromVin(rawVin) {
     validatedReturnVin = "";
     $("vin").value = "";
+    setVinRejectMessage("");
+    $("returnMsg").textContent = "";
     updateSaveReturnButton();
 
-    $("returnMsg").textContent = "Searching loaner fleet...";
+    $("scannerStatus").textContent = "Searching loaner fleet...";
 
     const resolvedVin = await resolveReturnVin(rawVin);
 
     if (!resolvedVin.valid) {
       clearReturnForm();
-      $("returnMsg").textContent = resolvedVin.message;
+      setVinRejectMessage(resolvedVin.message);
       return;
     }
 
     const vin = resolvedVin.vin;
 
-    $("returnMsg").textContent = "Checking fleet status...";
+    $("scannerStatus").textContent = "Checking fleet status...";
 
     const validation = await validateLoanerForReturn(vin);
 
     if (!validation.valid) {
       clearReturnForm();
-      $("returnMsg").textContent = validation.message;
+      setVinRejectMessage(validation.message);
       return;
     }
 
-    $("returnMsg").textContent = "Decoding VIN...";
+    $("scannerStatus").textContent = "Decoding VIN...";
 
     try {
       const decoded = await decodeVinLive(vin);
@@ -340,7 +375,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentSession?.displayName || auth.currentUser?.displayName || "";
 
       validatedReturnVin = vin;
+      setVinRejectMessage("");
       $("returnMsg").textContent = "";
+      $("scannerStatus").textContent = "VIN captured. Verify before saving.";
       updateSaveReturnButton();
       $("mileage")?.focus();
     } catch (err) {
@@ -387,17 +424,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       closeScannerFullscreen();
 
-      if (res?.vin) {
+      if (res?.vin && isValidVin(res.vin)) {
         await fillReturnFromVin(res.vin);
-        status.textContent = "VIN captured. Verify before saving.";
       } else {
+        validatedReturnVin = "";
+        updateSaveReturnButton();
         status.textContent = res?.reason || "No VIN found";
+        setVinRejectMessage(
+          res?.reason || "No valid VIN captured. Press Scan VIN to retry.",
+        );
       }
     } catch (err) {
       closeScannerFullscreen();
       console.error("Scan failed:", err);
       status.textContent = err.message || "Camera error";
-      $("returnMsg").textContent = err.message || "Camera error";
+      setVinRejectMessage(err.message || "Camera error");
     }
   });
 
@@ -410,7 +451,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const searchValue = manualVinInput.value.trim();
 
     if (!searchValue) {
-      $("returnMsg").textContent = "Enter a full VIN, last 8, or last 6.";
+      setVinRejectMessage("Enter a full VIN, last 8, or last 6.");
 
       manualVinInput.focus();
       return;
@@ -463,13 +504,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const vin = normalizeVin($("vin").value);
 
     if (!vin || vin !== validatedReturnVin) {
-      $("returnMsg").textContent =
-        "Scan or validate the loaner VIN before saving.";
+      setVinRejectMessage(
+        "Scan or validate the loaner VIN before saving.",
+      );
+      $("returnMsg").textContent = "";
       updateSaveReturnButton();
       return;
     }
 
-    if (!vin) {
+        if (!vin) {
       $("returnMsg").textContent = "VIN is required";
       return;
     }
@@ -484,7 +527,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const validation = await validateLoanerForReturn(vin);
 
     if (!validation.valid) {
-      $("returnMsg").textContent = validation.message;
+      setVinRejectMessage(validation.message);
+      $("returnMsg").textContent = "";
+      validatedReturnVin = "";
+      updateSaveReturnButton();
       return;
     }
 
@@ -544,7 +590,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await clearLoanerFromRo(assignedRo, vin);
       }
 
-      $("returnMsg").textContent = "Saved and moved to At Wash";
+            $("returnMsg").textContent = "Saved and moved to At Wash";
 
       clearReturnForm();
     } catch (err) {

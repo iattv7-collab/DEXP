@@ -39,3 +39,11 @@
 #loanerReturnsPage textarea {
   background: #ffffff;
 }
+
+#loanerReturnsPage .vin-reject-msg {
+  min-height: 1.2em;
+  margin: 6px 0 4px;
+  color: #c62828;
+  font-weight: 700;
+  font-size: 14px;
+}

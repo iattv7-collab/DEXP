@@ -9,10 +9,57 @@
 
 const SCAN_ENDPOINT = "https://scanvin-kaxooupkzq-uc.a.run.app";
 
-const SCAN_TIMEOUT_MS = 15000;
-const CAMERA_SETTLE_MS = 600;
-const BETWEEN_ATTEMPTS_MS = 1500;
-const REQUEST_TIMEOUT_MS = 6000;
+const SCAN_TIMEOUT_MS = 10000;
+const CAMERA_SETTLE_MS = 400;
+const BETWEEN_ATTEMPTS_MS = 400;
+const REQUEST_TIMEOUT_MS = 4000;
+
+async function applyLowLightConstraints(videoTrack) {
+  if (!videoTrack?.getCapabilities) return;
+
+  const capabilities = videoTrack.getCapabilities();
+  const advanced = {};
+
+  if (
+    Array.isArray(capabilities.focusMode) &&
+    capabilities.focusMode.includes("continuous")
+  ) {
+    advanced.focusMode = "continuous";
+  }
+
+  if (
+    Array.isArray(capabilities.exposureMode) &&
+    capabilities.exposureMode.includes("continuous")
+  ) {
+    advanced.exposureMode = "continuous";
+  }
+
+  if (
+    Array.isArray(capabilities.whiteBalanceMode) &&
+    capabilities.whiteBalanceMode.includes("continuous")
+  ) {
+    advanced.whiteBalanceMode = "continuous";
+  }
+
+  if (typeof capabilities.exposureCompensation === "object") {
+    const maxExposure = capabilities.exposureCompensation.max;
+    if (typeof maxExposure === "number") {
+      advanced.exposureCompensation = maxExposure;
+    }
+  }
+
+  if (capabilities.torch) {
+    advanced.torch = true;
+  }
+
+  if (Object.keys(advanced).length === 0) return;
+
+  await videoTrack
+    .applyConstraints({
+      advanced: [advanced],
+    })
+    .catch(() => {});
+}
 
 function isCapacitorNative() {
   try {
@@ -181,7 +228,8 @@ async function sendBlob(blob, zoneName, signal) {
 
   const json = await res.json().catch(() => null);
 
-  return normalizeVin(json?.vin || "");
+    const vin = normalizeVin(json?.vin || "");
+  return isValidVin(vin) ? vin : "";
 }
 
 async function scanZone(mediaEl, zone, parentSignal) {
@@ -358,39 +406,7 @@ export async function scanVinWithCamera(videoEl, statusEl) {
 
     const videoTrack = stream.getVideoTracks()[0];
 
-    if (videoTrack?.getCapabilities) {
-      const capabilities = videoTrack.getCapabilities();
-      const advanced = {};
-
-      if (
-        Array.isArray(capabilities.focusMode) &&
-        capabilities.focusMode.includes("continuous")
-      ) {
-        advanced.focusMode = "continuous";
-      }
-
-      if (
-        Array.isArray(capabilities.exposureMode) &&
-        capabilities.exposureMode.includes("continuous")
-      ) {
-        advanced.exposureMode = "continuous";
-      }
-
-      if (
-        Array.isArray(capabilities.whiteBalanceMode) &&
-        capabilities.whiteBalanceMode.includes("continuous")
-      ) {
-        advanced.whiteBalanceMode = "continuous";
-      }
-
-      if (Object.keys(advanced).length > 0) {
-        await videoTrack
-          .applyConstraints({
-            advanced: [advanced],
-          })
-          .catch(() => {});
-      }
-    }
+    await applyLowLightConstraints(videoTrack);
 
     const startedAt = Date.now();
 
