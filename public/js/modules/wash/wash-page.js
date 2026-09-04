@@ -95,6 +95,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     return clean(ticket.tagNumber || ticket.tag || "");
   }
 
+  function isWaiterTicket(ticket) {
+    return ticket?.customerWaiting === true || ticket?.isWaiter === true;
+  }
+
+  function isFutureAtRiskNeedBy(ticket, nowMs = Date.now()) {
+    const needBy =
+      typeof ticket.needByAtMs === "number" && ticket.needByAtMs > 0
+        ? ticket.needByAtMs
+        : 0;
+
+    if (!needBy) return false;
+
+    return needBy > nowMs && needBy <= nowMs + 45 * 60 * 1000;
+  }
+
   function vehicleValue(ticket) {
     return [ticket.year, ticket.make, ticket.model].filter(Boolean).join(" ");
   }
@@ -126,7 +141,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function priorityLabel(ticket) {
-    if (ticket.customerWaiting === true) {
+    if (isFutureAtRiskNeedBy(ticket)) {
+      return "NEED BY";
+    }
+
+    if (isWaiterTicket(ticket)) {
       return "WAITER";
     }
 
@@ -134,7 +153,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "NEED BY";
     }
 
-    if (clean(ticket.priorityType).toLowerCase() === "rewash") {
+    if (
+      clean(ticket.priorityType).toLowerCase() === "rewash" ||
+      clean(ticket.washStatus).toLowerCase() === "rewash_requested"
+    ) {
       return "REWASH";
     }
 
@@ -334,9 +356,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     function waiterTime(ticket) {
       return Number(
         ticket.washWaiterAtMs ||
-          ticket.waiterMarkedAtMs ||
-          ticket.washQueuedAtMs ||
-          0,
+        ticket.waiterMarkedAtMs ||
+        ticket.washQueuedAtMs ||
+        0,
       );
     }
 
@@ -369,8 +391,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // 3) Waiters next (including over past Need By)
-      const aWaiter = a.customerWaiting === true;
-      const bWaiter = b.customerWaiting === true;
+      const aWaiter = isWaiterTicket(a);
+      const bWaiter = isWaiterTicket(b);
 
       if (aWaiter !== bWaiter) {
         return aWaiter ? -1 : 1;
@@ -452,8 +474,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const notesDisplay = courtesy
           ? [ticket.customerName, ticket.customerPhone]
-              .filter(Boolean)
-              .join(" • ")
+            .filter(Boolean)
+            .join(" • ")
           : clean(ticket.washNotes || ticket.notes || "");
 
         return `
@@ -647,6 +669,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
       if (button.classList.contains("startWashBtn")) {
+        const settings = await getWashSettings();
+        updateWashDayControls(settings.isOpen);
+
         if (!washIsOpen) {
           setMsg("Wash is closed.", false);
           return;

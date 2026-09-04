@@ -114,10 +114,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function advisorNameValue(ticket) {
     return clean(
       ticket.advisorName ||
-        ticket.advisorDisplayName ||
-        ticket.advisorEmail ||
-        ticket.advisorCompanyId ||
-        "",
+      ticket.advisorDisplayName ||
+      ticket.advisorEmail ||
+      ticket.advisorCompanyId ||
+      "",
     );
   }
 
@@ -248,7 +248,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const washStatus = clean(ticket.washStatus).toLowerCase();
 
-    if (!["pending", "washing"].includes(washStatus)) {
+    if (!["pending", "washing", "rewash_requested"].includes(washStatus)) {
       throw new Error("The vehicle must be in Wash before setting Need By.");
     }
 
@@ -258,25 +258,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       monFri:
         Number(settings.mfBays || 0) > 0
           ? {
-              start: settings.mfOpen || "07:30",
-              end: settings.mfClose || "19:00",
-            }
+            start: settings.mfOpen || "07:30",
+            end: settings.mfClose || "19:00",
+          }
           : null,
 
       sat:
         Number(settings.satBays || 0) > 0
           ? {
-              start: settings.satOpen || "08:00",
-              end: settings.satClose || "15:00",
-            }
+            start: settings.satOpen || "08:00",
+            end: settings.satClose || "15:00",
+          }
           : null,
 
       sun:
         Number(settings.sunBays || 0) > 0
           ? {
-              start: settings.sunOpen || "00:00",
-              end: settings.sunClose || "00:00",
-            }
+            start: settings.sunOpen || "00:00",
+            end: settings.sunClose || "00:00",
+          }
           : null,
     };
 
@@ -447,9 +447,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     allRosButton.classList.toggle("active-view", currentView === "all");
 
     if (currentView === "mine") {
-      advisorViewLabel.textContent = `Viewing: ${
-        session?.displayName || session?.email || "My"
-      } ROs`;
+      advisorViewLabel.textContent = `Viewing: ${session?.displayName || session?.email || "My"
+        } ROs`;
 
       return;
     }
@@ -557,36 +556,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       </thead>
 
       <tbody>
-        ${
-          filtered.length
-            ? filtered
-                .map((ticket) => {
-                  const cpDone =
-                    Boolean(ticket.cpBookedAtMs) || Boolean(ticket.cpBookedAt);
+        ${filtered.length
+        ? filtered
+          .map((ticket) => {
+            const cpDone =
+              Boolean(ticket.cpBookedAtMs) || Boolean(ticket.cpBookedAt);
 
-                  const wtyDone =
-                    Boolean(ticket.wtyBookedAtMs) ||
-                    Boolean(ticket.wtyBookedAt);
+            const wtyDone =
+              Boolean(ticket.wtyBookedAtMs) ||
+              Boolean(ticket.wtyBookedAt);
 
-                  const pickupStatus = clean(ticket.pickupStatus).toLowerCase();
+            const pickupStatus = clean(ticket.pickupStatus).toLowerCase();
 
-                  const pickupRequested =
-                    pickupStatus === "requested" ||
-                    pickupStatus === "on_the_way";
+            const pickupRequested =
+              pickupStatus === "requested" ||
+              pickupStatus === "on_the_way";
 
-                  const washStatus = clean(ticket.washStatus).toLowerCase();
+            const washStatus = clean(ticket.washStatus).toLowerCase();
 
-                  const canRewashTicket = washStatus === "washed";
+            const canRewashTicket = washStatus === "washed";
 
-                  const qcStatus = clean(ticket.qcStatus).toLowerCase();
+            const qcStatus = clean(ticket.qcStatus).toLowerCase();
 
-                  const qcLocked =
-                    qcStatus === "requested" ||
-                    qcStatus === "working" ||
-                    qcStatus === "complete" ||
-                    qcStatus === "not_required";
+            const qcLocked =
+              qcStatus === "requested" ||
+              qcStatus === "working" ||
+              qcStatus === "complete" ||
+              qcStatus === "not_required";
 
-                  return `
+            return `
                     <tr data-id="${escapeHtml(ticket.id)}">
                       <td>
                         <b>
@@ -612,8 +610,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                       <td>
                         ${escapeHtml(
-                          ticket.currentLocation || ticket.location || "",
-                        )}
+              ticket.currentLocation || ticket.location || "",
+            )}
                       </td>
 
                       <td>
@@ -640,16 +638,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                          <button
                            class="needByBtn"
                            type="button"
-                           ${
-                             !canSetNeedBy ||
-                             ticket.customerWaiting === true ||
-                             ticket.isWaiter === true ||
-                             !["pending", "rewash_requested"].includes(
-                               washStatus,
-                             )
-                               ? "disabled"
-                               : ""
-                           }
+                           ${!canSetNeedBy ||
+                ticket.customerWaiting === true ||
+                ticket.isWaiter === true ||
+                !["pending", "washing", "rewash_requested"].includes(
+                  washStatus,
+                )
+                ? "disabled"
+                : ""
+              }
                          >
                            ${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}
                          </button>
@@ -658,11 +655,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                       <td>
                         <button
                           class="rewashBtn"
-                          ${
-                            !canRequestRewash || !canRewashTicket
-                              ? "disabled"
-                              : ""
-                          }
+                          ${!canRequestRewash || !canRewashTicket
+                ? "disabled"
+                : ""
+              }
                         >
                           Request Rewash
                         </button>
@@ -707,32 +703,30 @@ document.addEventListener("DOMContentLoaded", async () => {
                       <td>
                         <button
                           class="pickupBtn"
-                          ${
-                            !canRequestPickup || pickupRequested
-                              ? "disabled"
-                              : ""
-                          }
+                          ${!canRequestPickup || pickupRequested
+                ? "disabled"
+                : ""
+              }
                        >
-                          ${
-                            pickupRequested
-                              ? "Pickup Requested"
-                              : "Request Pickup"
-                          }
+                          ${pickupRequested
+                ? "Pickup Requested"
+                : "Request Pickup"
+              }
                         </button>
                       </td>
 
                     </tr>
                   `;
-                })
-                .join("")
-            : `
+          })
+          .join("")
+        : `
               <tr>
                 <td colspan="18">
                   No repair orders found.
                 </td>
               </tr>
             `
-        }
+      }
       </tbody>
     `;
   }

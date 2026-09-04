@@ -2,10 +2,9 @@
 // FILE: /public/js/modules/wash/send-to-wash-page.js
 // MODULE: Wash
 // PURPOSE:
-// DEXP Send to Wash page.
-// Migrated from ArrowFlow Send to Wash while preserving
-// the same search, preview, waiter, notes, duplicate
-// wash prevention, queue display, and send-to-wash flow.
+// Send an existing RO to the Wash Team queue.
+// Same RO and Tag lookup as before, with one lock rule:
+// already in wash cannot be sent again from either search.
 // ======================================================
 
 import { auth } from "/js/services/firebase/auth-service.js";
@@ -18,14 +17,21 @@ import { getWashSettings } from "/js/services/firestore/wash-settings-service.js
 import {
   collection,
   getDocs,
+  getDoc,
   query,
   where,
-  onSnapshot,
   doc,
   updateDoc,
   serverTimestamp,
   arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const ACTIVE_WASH_STATUSES = [
+  "queued",
+  "pending",
+  "rewash_requested",
+  "washing",
+];
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({
@@ -57,8 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentDealerId = currentSession?.dealerId || "";
   let washIsOpen = true;
 
-  const washSettings = await getWashSettings();
-  washIsOpen = Boolean(washSettings.isOpen);
+  await refreshWashOpen();
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -93,44 +98,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     return clean(ticket.model || ticket.yearModel || "");
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#039;",
-        })[c],
-    );
+  function locationValue(ticket) {
+    return clean(ticket.currentLocation || ticket.location || "");
   }
 
-  function fmtTime(value) {
-    if (!value) return "";
+  function washStatusOf(ticket) {
+    return clean(ticket?.washStatus).toLowerCase();
+  }
 
-    if (typeof value?.toDate === "function") {
-      return value.toDate().toLocaleString([], {
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
-    }
+  function isActiveWash(ticket) {
+    return ACTIVE_WASH_STATUSES.includes(washStatusOf(ticket));
+  }
 
-    if (typeof value === "number") {
-      return new Date(value).toLocaleString([], {
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
-    }
-
-    return "";
+  function isWaiterTicket(ticket) {
+    return ticket?.isWaiter === true || ticket?.customerWaiting === true;
   }
 
   function setMsg(text, ok = true) {
@@ -138,11 +119,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     msgEl.style.color = ok ? "green" : "crimson";
   }
 
+  async function refreshWashOpen() {
+    const settings = await getWashSettings();
+    washIsOpen = Boolean(settings.isOpen);
+    return washIsOpen;
+  }
+
   function resetPreview() {
     selectedTicket = null;
     previewCard.style.display = "none";
     alreadyInWashMsg.style.display = "none";
-    sendBtn.disabled = false;
+    sendBtn.disabled = true;
 
     pRo.textContent = "";
     pTag.textContent = "";
@@ -154,30 +141,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     notesEl.value = "";
   }
 
-  function fillPreview(ticket) {
-    const washStatus = clean(ticket.washStatus).toLowerCase();
+  function applyPreviewLocks(ticket) {
+    const alreadyInWash = isActiveWash(ticket);
 
+    alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
+
+    if (!washIsOpen) {
+      sendBtn.disabled = true;
+      setMsg("Wash is currently closed.", false);
+      return { alreadyInWash, canSend: false };
+    }
+
+    if (alreadyInWash) {
+      sendBtn.disabled = true;
+      setMsg("This ticket is already in the Wash queue.", false);
+      return { alreadyInWash, canSend: false };
+    }
+
+    sendBtn.disabled = false;
+    setMsg("Ticket found.");
+    return { alreadyInWash, canSend: true };
+  }
+
+  function fillPreview(ticket) {
     selectedTicket = ticket;
     previewCard.style.display = "block";
 
     pRo.textContent = roValue(ticket);
     pTag.textContent = tagValue(ticket);
     pModel.textContent = modelValue(ticket);
-    pWashStatus.textContent = washStatus || "not in wash";
-    pLocation.textContent = clean(ticket.location || "");
-    pWaiter.textContent = ticket.isWaiter === true ? "Yes" : "No";
+    pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
+    pLocation.textContent = locationValue(ticket);
+    pWaiter.textContent = isWaiterTicket(ticket) ? "Yes" : "No";
 
-    const alreadyInWash = [
-      "queued",
-      "pending",
-      "rewash_requested",
-      "washing",
-    ].includes(washStatus);
-
-    alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
-    sendBtn.disabled = alreadyInWash;
-
-    return alreadyInWash;
+    return applyPreviewLocks(ticket);
   }
 
   async function findByField(fieldName, value) {
@@ -190,6 +187,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
 
     return snap;
+  }
+
+  async function showFoundTicket(docSnap) {
+    fillPreview({
+      id: docSnap.id,
+      ...docSnap.data(),
+    });
   }
 
   async function findTicket() {
@@ -210,6 +214,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
+      await refreshWashOpen();
+
       let snap = await findByField("roNumber", search);
 
       if (snap.empty) {
@@ -222,24 +228,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           return;
         }
 
-        const docSnap = snap.docs[0];
-
-        const alreadyInWash = fillPreview({
-          id: docSnap.id,
-          ...docSnap.data(),
-        });
-
-        if (!washIsOpen) {
-          sendBtn.disabled = true;
-          setMsg("Wash is currently closed.", false);
-        } else if (alreadyInWash) {
-          sendBtn.disabled = true;
-          setMsg("This ticket is already in the Wash queue.", false);
-        } else {
-          sendBtn.disabled = false;
-          setMsg("Ticket found.");
-        }
-
+        await showFoundTicket(snap.docs[0]);
         return;
       }
 
@@ -259,16 +248,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      const docSnap = snap.docs[0];
-      fillPreview({ id: docSnap.id, ...docSnap.data() });
-
-      if (!washIsOpen) {
-        sendBtn.disabled = true;
-        setMsg("Wash is currently closed.", false);
-      } else {
-        sendBtn.disabled = false;
-        setMsg("Ticket found.");
-      }
+      await showFoundTicket(snap.docs[0]);
     } catch (error) {
       console.error(error);
       setMsg(error?.message || "Error searching ticket.", false);
@@ -302,6 +282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await updateDoc(doc(db, "ros", ticket.id), {
       customerWaiting: waiter,
+      isWaiter: waiter,
       washNotes: notes,
       washStatus: "pending",
       washQueuedAt: serverTimestamp(),
@@ -327,6 +308,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastEditedRole: currentSession?.role || "unknown",
       lastEditedFields: [
         "customerWaiting",
+        "isWaiter",
         "washNotes",
         "washStatus",
         "washQueuedAt",
@@ -357,25 +339,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const selectedWashStatus = clean(selectedTicket.washStatus).toLowerCase();
-
-    if (
-      ["queued", "pending", "rewash_requested", "washing"].includes(
-        selectedWashStatus,
-      )
-    ) {
-      sendBtn.disabled = true;
-      setMsg("This ticket is already in the Wash queue.", false);
-      return;
-    }
-
-    const waiter = selectedTicket.isWaiter === true;
-    const notes = clean(notesEl.value);
-
     try {
       sendBtn.disabled = true;
 
-      const id = await createWashTicket(selectedTicket, {
+      const open = await refreshWashOpen();
+
+      if (!open) {
+        setMsg("Wash is currently closed.", false);
+        return;
+      }
+
+      const freshSnap = await getDoc(doc(db, "ros", selectedTicket.id));
+
+      if (!freshSnap.exists()) {
+        setMsg("This ticket no longer exists.", false);
+        resetPreview();
+        return;
+      }
+
+      const freshTicket = {
+        id: freshSnap.id,
+        ...freshSnap.data(),
+      };
+
+      selectedTicket = freshTicket;
+      fillPreview(freshTicket);
+
+      if (isActiveWash(freshTicket)) {
+        return;
+      }
+
+      const waiter = isWaiterTicket(freshTicket);
+      const notes = clean(notesEl.value);
+
+      const id = await createWashTicket(freshTicket, {
         waiter,
         notes,
       });
@@ -387,9 +384,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       searchInputEl.focus();
     } catch (error) {
       console.error(error);
-      setMsg(error?.message || "Error sending ticket to wash.", false);
-    } finally {
       sendBtn.disabled = false;
+      setMsg(error?.message || "Error sending ticket to wash.", false);
     }
   });
 

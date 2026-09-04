@@ -59,10 +59,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let validatedVin = "";
   let washIsOpen = true;
 
-  // ====================================================
-  // HELPERS
-  // ====================================================
-
   function clean(value) {
     return String(value || "").trim();
   }
@@ -87,6 +83,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       hour: "numeric",
       minute: "2-digit",
     });
+  }
+
+  function minutesFromSettings(washSettings) {
+    const duration = Number(washSettings?.washDurationMin);
+    const legacy = Number(washSettings?.estimatedMinutesPerVehicle);
+
+    if (Number.isFinite(duration) && duration > 0) {
+      return duration;
+    }
+
+    if (Number.isFinite(legacy) && legacy > 0) {
+      return legacy;
+    }
+
+    return 0;
+  }
+
+  function bufferFromSettings(washSettings) {
+    const buffer = Number(washSettings?.bufferMin);
+
+    return Number.isFinite(buffer) && buffer > 0 ? buffer : 0;
   }
 
   function openScannerView() {
@@ -143,10 +160,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     sendBtn.disabled = !ready;
   }
 
-  // ====================================================
-  // ESTIMATE
-  // ====================================================
-
   async function loadEstimate() {
     const washSettings = await getWashSettings();
 
@@ -164,20 +177,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    /*
-     * If Wash Settings later includes an estimated
-     * minutes-per-vehicle value, use it automatically.
-     */
-    const configuredMinutes = Number(washSettings?.estimatedMinutesPerVehicle);
+    const configuredMinutes = minutesFromSettings(washSettings);
+    const bufferMin = bufferFromSettings(washSettings);
 
     const estimateOptions =
-      Number.isFinite(configuredMinutes) && configuredMinutes > 0
+      configuredMinutes > 0
         ? {
             minutesPerVehicle: configuredMinutes,
           }
         : {};
 
     currentEstimate = await getCourtesyWashEstimate(estimateOptions);
+
+    if (bufferMin > 0 && currentEstimate?.estimatedCompletionAtMs) {
+      currentEstimate.estimatedCompletionAtMs += bufferMin * 60 * 1000;
+      currentEstimate.estimatedMinutes =
+        Number(currentEstimate.estimatedMinutes || 0) + bufferMin;
+    }
 
     vehiclesAheadEl.textContent = String(currentEstimate.vehiclesAhead);
 
@@ -189,10 +205,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updateSendButton();
   }
-
-  // ====================================================
-  // VIN
-  // ====================================================
 
   async function processVin(rawVin) {
     const vin = normalizeVin(rawVin);
@@ -235,10 +247,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateSendButton();
   }
 
-  // ====================================================
-  // SCAN VIN
-  // ====================================================
-
   scanVinBtn.addEventListener("click", async () => {
     setMsg("");
     scannerStatus.textContent = "";
@@ -272,10 +280,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // ====================================================
-  // MANUAL VIN
-  // ====================================================
-
   vinEl.addEventListener("change", async () => {
     const vin = normalizeVin(vinEl.value);
 
@@ -293,25 +297,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // ====================================================
-  // FORM STATE
-  // ====================================================
-
   customerNameEl.addEventListener("input", updateSendButton);
 
   customerPhoneEl.addEventListener("input", updateSendButton);
 
-  // ====================================================
-  // SEND TO WASH
-  // ====================================================
-
   sendBtn.addEventListener("click", async () => {
     setMsg("");
-
-    if (!washIsOpen) {
-      setMsg("Wash is currently closed.", false);
-      return;
-    }
 
     if (!validatedVin) {
       setMsg("Scan the VIN first.", false);
@@ -336,10 +327,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       sendBtn.disabled = true;
 
-      /*
-       * Refresh the estimate immediately before sending
-       * because another vehicle may have entered the queue.
-       */
       await loadEstimate();
 
       if (!washIsOpen || !currentEstimate) {
@@ -380,10 +367,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // ====================================================
-  // INITIAL STATE
-  // ====================================================
-
   if (!currentSession?.dealerId) {
     setMsg("Dealer session not ready.", false);
     return;
@@ -405,10 +388,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg("Could not load Wash status.", false);
   }
 });
-
-// ======================================================
-// SESSION
-// ======================================================
 
 function waitForSession() {
   return new Promise((resolve) => {
