@@ -151,6 +151,10 @@ function buildDatePickerCell(ro, field, value) {
 function buildDateTimeCell(ro, field, ms, opts = {}) {
   const td = document.createElement("td");
 
+  if (field === "nextUpdateAtMs" && ro.calledAtMs && !ms) {
+    td.classList.add("cell-needs-next-update");
+  }
+
   const wrap = document.createElement("div");
   wrap.className = "ro-datetime-cell";
 
@@ -190,11 +194,19 @@ function buildReadyCalledCell(ro) {
   checkbox.dataset.roId = getROId(ro);
   checkbox.dataset.roAction = "readyCalled";
 
-  const label = document.createElement("span");
-  label.textContent = "Ready called";
-
   wrap.appendChild(checkbox);
+
+  const label = document.createElement("span");
+  label.textContent = ro.readyCalledAtMs
+    ? formatNoYearDateTime(ro.readyCalledAtMs)
+    : "Ready called";
   wrap.appendChild(label);
+
+  if (ro.readyCalledAtMs) {
+    const stamp = document.createElement("span");
+    stamp.textContent = formatNoYearDateTime(ro.readyCalledAtMs);
+    wrap.appendChild(stamp);
+  }
   td.appendChild(wrap);
 
   return td;

@@ -271,7 +271,7 @@
 }
 
 .col-ready {
-  width: 105px;
+  width: 210px;
 }
 
 .col-notes {
@@ -376,14 +376,18 @@
 .ro-datetime-cell,
 .ro-ready-cell {
   display: flex;
+  flex-direction: row;
   gap: 6px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   white-space: nowrap;
 }
 
 .ro-ready-cell span {
-  font-size: 12px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 /* COLUMN SETTINGS MODAL */
@@ -477,4 +481,13 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+
+.cell-needs-next-update {
+  background: #ffe08a;
+}
+
+.cell-needs-next-update .cell-edit {
+  background: #ffe08a;
 }

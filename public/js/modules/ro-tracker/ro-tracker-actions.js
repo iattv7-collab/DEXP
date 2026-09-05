@@ -151,11 +151,17 @@ async function handleDateTimeClick(input) {
   input.value = formatNoYearDateTime(pickedMs);
   input.dataset.currentMs = String(pickedMs);
 
+  const updates = {
+    [field]: pickedMs,
+  };
+
+  if (field === "calledAtMs") {
+    updates.nextUpdateAtMs = null;
+  }
+
   await updateRO(
     roId,
-    {
-      [field]: pickedMs,
-    },
+    updates,
     {
       module: "ro-tracker",
       eventType: `${field}_updated`,
@@ -184,6 +190,7 @@ async function handleCheckboxChange(checkbox, getROById) {
       {
         readyCalled: checked,
         status: checked ? "Ready called" : "",
+        readyCalledAtMs: checked ? Date.now() : null,
         customerWaiting: checked ? false : Boolean(ro.customerWaiting),
         isWaiter: checked ? false : Boolean(ro.isWaiter),
         waiterMarkedAtMs: checked ? null : ro.waiterMarkedAtMs || null,
@@ -208,6 +215,7 @@ async function handleCheckboxChange(checkbox, getROById) {
         techVideo: checked,
         readyCalled: checked ? Boolean(ro.readyCalled) : false,
         status: checked ? ro.status || "" : "",
+        readyCalledAtMs: checked ? ro.readyCalledAtMs || null : null,
       },
       {
         module: "ro-tracker",
@@ -259,10 +267,10 @@ async function handleCheckboxChange(checkbox, getROById) {
 
         ...(isActiveWash
           ? {
-              priorityType: checked ? "waiter" : washPriorityAfterUncheck,
+            priorityType: checked ? "waiter" : washPriorityAfterUncheck,
 
-              washWaiterAtMs: checked ? now : null,
-            }
+            washWaiterAtMs: checked ? now : null,
+          }
           : {}),
       },
       {
@@ -288,6 +296,7 @@ async function handleButtonClick(button, getROById) {
       roId,
       {
         calledAtMs: now,
+        nextUpdateAtMs: null,
       },
       {
         module: "ro-tracker",
