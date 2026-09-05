@@ -1,6 +1,7 @@
 // public/js/modules/ro-tracker/ro-tracker-actions.js
 
 import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js";
+import { getSession } from "/js/core/session.js";
 
 import {
   dateInputToMMDDYYYY,
@@ -277,6 +278,25 @@ async function handleCheckboxChange(checkbox, getROById) {
         module: "ro-tracker",
         eventType: "waiter_updated",
         message: checked ? "Waiter status added" : "Waiter status removed",
+      },
+    );
+  }
+
+  if (action === "pickedUp") {
+    const session = getSession();
+
+    await updateRO(
+      roId,
+      {
+        pickedUpAtMs: checked ? Date.now() : null,
+        pickedUpBy: checked ? session?.uid || "" : null,
+        pickedUpByName: checked ? session?.displayName || "" : null,
+        pickedUpByRole: checked ? session?.role || "" : null,
+      },
+      {
+        module: "ro-tracker",
+        eventType: "picked_up_updated",
+        message: checked ? "Customer picked up" : "Picked up cleared",
       },
     );
   }

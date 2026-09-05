@@ -65,6 +65,7 @@ function buildCell(ro, key) {
     return buildTextInputCell(ro, "notes", ro.notes || "", { longText: true });
 
   if (key === "readyCalled") return buildReadyCalledCell(ro);
+  if (key === "pickedUp") return buildPickedUpCell(ro);
   if (key === "techVideo")
     return buildCheckboxCell(ro, "techVideo", Boolean(ro.techVideo), {
       videoCell: true,
@@ -197,9 +198,7 @@ function buildReadyCalledCell(ro) {
   wrap.appendChild(checkbox);
 
   const label = document.createElement("span");
-  label.textContent = ro.readyCalledAtMs
-    ? formatNoYearDateTime(ro.readyCalledAtMs)
-    : "Ready called";
+  label.textContent = "Ready called";
   wrap.appendChild(label);
 
   if (ro.readyCalledAtMs) {
@@ -207,8 +206,37 @@ function buildReadyCalledCell(ro) {
     stamp.textContent = formatNoYearDateTime(ro.readyCalledAtMs);
     wrap.appendChild(stamp);
   }
-  td.appendChild(wrap);
 
+  td.appendChild(wrap);
+  return td;
+}
+
+function buildPickedUpCell(ro) {
+  const td = document.createElement("td");
+  td.className = "center";
+
+  const wrap = document.createElement("div");
+  wrap.className = "ro-ready-cell";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = Boolean(ro.pickedUpAtMs);
+  checkbox.dataset.roId = getROId(ro);
+  checkbox.dataset.roAction = "pickedUp";
+
+  wrap.appendChild(checkbox);
+
+  const label = document.createElement("span");
+  label.textContent = "Picked up";
+  wrap.appendChild(label);
+
+  if (ro.pickedUpAtMs) {
+    const stamp = document.createElement("span");
+    stamp.textContent = formatNoYearDateTime(ro.pickedUpAtMs);
+    wrap.appendChild(stamp);
+  }
+
+  td.appendChild(wrap);
   return td;
 }
 
@@ -262,6 +290,7 @@ function getRowClass(ro = {}) {
   const waiter = Boolean(ro.customerWaiting || ro.isWaiter);
   const nextUpdateAtMs = Number(ro.nextUpdateAtMs || 0);
 
+    if (ro.pickedUpAtMs) return "row-picked";
   if (videoSent && readyCalled) return "row-ready";
   if (waiter) return "row-waiter";
 
@@ -310,6 +339,7 @@ function getROTrackerColumnClass(key) {
     concern: "col-concern",
     currentLocation: "col-location",
     readyCalled: "col-ready",
+    pickedUp: "col-ready",
     notes: "col-notes",
     techVideo: "col-video",
     calledTime: "col-called",

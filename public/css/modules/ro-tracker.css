@@ -332,6 +332,18 @@
   background: #4ff64f;
 }
 
+.ro-tracker-table tr.row-picked td {
+  background: #cfe8ff;
+}
+
+.ro-tracker-table tr.row-picked td:nth-child(1) {
+  background: #cfe8ff;
+}
+
+.ro-tracker-table tr.row-picked .cell-edit {
+  background: inherit;
+}
+
 .ro-tracker-table tr.row-waiter td:nth-child(1) {
   background: #fff36a;
 }

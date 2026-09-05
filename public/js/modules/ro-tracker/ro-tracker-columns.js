@@ -51,9 +51,14 @@ export const RO_TRACKER_COLUMNS = [
     label: "Location",
   },
 
-  {
+    {
     key: "readyCalled",
     label: "Ready Called",
+  },
+
+  {
+    key: "pickedUp",
+    label: "Picked Up",
   },
 
   {
