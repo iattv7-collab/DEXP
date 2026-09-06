@@ -89,9 +89,9 @@ export async function saveDealerFollowupSettings(settings = {}) {
 
   await updateDoc(doc(db, "dealers", session.dealerId), {
     "settings.followup": {
-      followUpDelayDays: Number(merged.followUpDelayDays || 3),
+      followUpDelayDays: Number(merged.followUpDelayDays ?? 3),
       followUpTime: String(merged.followUpTime || "10:00"),
-      followUpDay2: Number(merged.followUpDay2 || 0),
+      followUpDay2: Number(merged.followUpDay2 ?? 0),
       followUpTime2: String(merged.followUpTime2 || "14:00"),
       smsTemplate: String(merged.smsTemplate || ""),
     },

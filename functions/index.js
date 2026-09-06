@@ -12,6 +12,10 @@ const {
   releaseStaleNotifications,
 } = require("./notifications/release-stale-notifications");
 
+const {
+  followUpDuePush,
+} = require("./notifications/followup-due-push");
+
 const { setGlobalOptions } = require("firebase-functions");
 
 const {
@@ -591,3 +595,5 @@ exports.sendPushForNotificationRequest =
 
 exports.releaseStaleNotifications =
   releaseStaleNotifications;
+
+exports.followUpDuePush = followUpDuePush;

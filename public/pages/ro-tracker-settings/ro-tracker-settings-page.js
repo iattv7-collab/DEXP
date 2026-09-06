@@ -7,7 +7,7 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 import {
   loadDealerFollowupSettings,
   saveDealerFollowupSettings,
-} from "/js/modules/ro-tracker/ro-tracker-followup-settings.js?v=2";
+} from "/js/modules/ro-tracker/ro-tracker-followup-settings.js?v=3";
 
 protectRoute();
 
@@ -45,9 +45,9 @@ async function initializePage() {
 async function loadSettings() {
   const settings = await loadDealerFollowupSettings();
 
-  delayInput.value = String(settings.followUpDelayDays || 3);
+  delayInput.value = String(settings.followUpDelayDays ?? 3);
   timeInput.value = settings.followUpTime || "10:00";
-  day2Input.value = String(settings.followUpDay2 || 0);
+  day2Input.value = String(settings.followUpDay2 ?? 0);
   time2Input.value = settings.followUpTime2 || "14:00";
   templateInput.value = settings.smsTemplate || "";
 }
@@ -62,7 +62,7 @@ async function handleSave() {
 
   try {
     await saveDealerFollowupSettings({
-      followUpDelayDays: Number(delayInput.value || 3),
+      followUpDelayDays: Number(delayInput.value === "" ? 3 : delayInput.value),
       followUpTime: String(timeInput.value || "10:00"),
       followUpDay2: Number(day2Input.value || 0),
       followUpTime2: String(time2Input.value || "14:00"),

@@ -1,6 +1,6 @@
 // public/js/modules/ro-tracker/ro-tracker-actions.js
 
-import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js";
+import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js?v=2";
 import { getSession } from "/js/core/session.js";
 
 import {

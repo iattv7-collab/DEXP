@@ -166,7 +166,7 @@ export async function archiveRO(roId, options = {}) {
   const archivedAtMs = Date.now();
   const settings = await loadDealerFollowupSettings();
 
-  const followUpDelayDays = Number(settings.followUpDelayDays || 3);
+  const followUpDelayDays = Number(settings.followUpDelayDays ?? 3);
   const followUpTime = String(settings.followUpTime || "10:00");
   const followUpDay2 = Number(settings.followUpDay2 || 0);
   const followUpTime2 = String(settings.followUpTime2 || "14:00");
