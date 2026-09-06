@@ -11,6 +11,10 @@ import {
 } from "/js/services/firestore/requests-service.js";
 import { getNotificationGroups } from "/js/services/firestore/notification-groups-service.js";
 import { watchDealerNotifications } from "/js/services/firestore/notification-requests-service.js";
+import {
+  watchDealerROs,
+  updateRO,
+} from "/js/services/firestore/ros-service.js";
 
 protectRoute({
   allowedModules: [MODULES.OPERATIONS],
@@ -22,6 +26,10 @@ const liveOperationsTabButton = document.getElementById(
 
 const operationsHistoryTabButton = document.getElementById(
   "operationsHistoryTabButton",
+);
+
+const operationsReadyTabButton = document.getElementById(
+  "operationsReadyTabButton",
 );
 
 const operationsGroupFilterRow = document.getElementById(
@@ -36,12 +44,20 @@ const operationsHistorySection = document.getElementById(
   "operationsHistorySection",
 );
 
+const operationsReadySection = document.getElementById(
+  "operationsReadySection",
+);
+
 const liveOperationsTableBody = document.getElementById(
   "liveOperationsTableBody",
 );
 
 const operationsHistoryTableBody = document.getElementById(
   "operationsHistoryTableBody",
+);
+
+const operationsReadyTableBody = document.getElementById(
+  "operationsReadyTableBody",
 );
 
 const LIVE_COMPLETED_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -52,6 +68,7 @@ let selectedGroupId = "all";
 let notificationGroups = [];
 let dealerRequests = [];
 let dealerNotifications = [];
+let dealerROs = [];
 let searchText = "";
 
 window.addEventListener("dexp-session-ready", () => {
@@ -87,6 +104,11 @@ async function initializeOperationsPage() {
     dealerRequests = requests;
     renderOperations();
   });
+
+  watchDealerROs((rows) => {
+    dealerROs = Array.isArray(rows) ? rows : [];
+    renderOperations();
+  });
 }
 
 function wireTabs() {
@@ -100,6 +122,13 @@ function wireTabs() {
     renderTabs();
   });
 
+  operationsReadyTabButton.addEventListener("click", () => {
+    currentTab = "ready";
+    renderTabs();
+  });
+
+  operationsReadyTableBody?.addEventListener("change", handleReadyPickupChange);
+
   renderTabs();
 }
 
@@ -111,8 +140,19 @@ function renderTabs() {
     currentTab !== "history",
   );
 
+  operationsReadyTabButton.classList.toggle(
+    "secondary",
+    currentTab !== "ready",
+  );
+
   liveOperationsSection.classList.toggle("hidden", currentTab !== "live");
   operationsHistorySection.classList.toggle("hidden", currentTab !== "history");
+  operationsReadySection.classList.toggle("hidden", currentTab !== "ready");
+
+  if (operationsGroupFilterRow) {
+    operationsGroupFilterRow.style.display =
+      currentTab === "ready" ? "none" : "";
+  }
 
   renderOperations();
 }
@@ -202,6 +242,7 @@ function getVisibleGroups() {
 function renderOperations() {
   renderLiveOperations();
   renderHistoryOperations();
+  renderReadyOperations();
 }
 
 function renderLiveOperations() {
@@ -245,6 +286,112 @@ function renderHistoryOperations() {
   }
 
   operationsHistoryTableBody.innerHTML = rows.map(renderHistoryRow).join("");
+}
+
+function renderReadyOperations() {
+  const rows = getReadyRows();
+
+  if (!rows.length) {
+    operationsReadyTableBody.innerHTML = `
+      <tr>
+        <td colspan="7">No vehicles ready for pickup.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  operationsReadyTableBody.innerHTML = rows.map(renderReadyRow).join("");
+}
+
+function getReadyRows() {
+  let rows = dealerROs.filter((ro) => {
+    const readyCalled = Boolean(
+      ro.readyCalled ||
+        String(ro.status || "").toLowerCase() === "ready called",
+    );
+
+    return readyCalled && !ro.pickedUpAtMs;
+  });
+
+  if (!searchText) {
+    return rows;
+  }
+
+  return rows.filter((ro) => {
+    return (
+      String(ro.roNumber || "")
+        .toLowerCase()
+        .includes(searchText) ||
+      String(ro.tagNumber || "")
+        .toLowerCase()
+        .includes(searchText)
+    );
+  });
+}
+
+function renderReadyRow(ro) {
+  const roId = escapeHtml(ro.id || ro.roNumber || "");
+
+  return `
+    <tr>
+      <td>${escapeHtml(ro.roNumber || "")}</td>
+      <td>${escapeHtml(ro.tagNumber || "")}</td>
+      <td>${escapeHtml(ro.customerName || "")}</td>
+      <td>${escapeHtml(ro.model || "")}</td>
+      <td>${escapeHtml(ro.currentLocation || ro.location || "")}</td>
+      <td>${escapeHtml(formatDateTime(ro.readyCalledAtMs))}</td>
+      <td>
+        <label>
+          <input
+            type="checkbox"
+            class="js-ready-picked-up"
+            data-ro-id="${roId}"
+          />
+          Picked up
+        </label>
+      </td>
+    </tr>
+  `;
+}
+
+async function handleReadyPickupChange(event) {
+  const checkbox = event.target.closest(".js-ready-picked-up");
+
+  if (!checkbox) {
+    return;
+  }
+
+  const roId = checkbox.dataset.roId;
+  const session = getSession();
+  const checked = Boolean(checkbox.checked);
+
+  if (!roId) {
+    return;
+  }
+
+  checkbox.disabled = true;
+
+  try {
+    await updateRO(
+      roId,
+      {
+        pickedUpAtMs: checked ? Date.now() : null,
+        pickedUpBy: checked ? session?.uid || "" : null,
+        pickedUpByName: checked ? session?.displayName || "" : null,
+        pickedUpByRole: checked ? session?.role || "" : null,
+      },
+      {
+        module: "operations",
+        eventType: "picked_up_updated",
+        message: checked ? "Customer picked up" : "Picked up cleared",
+      },
+    );
+  } catch (error) {
+    checkbox.checked = !checked;
+    alert(error?.message || "Could not update picked up.");
+  } finally {
+    checkbox.disabled = false;
+  }
 }
 
 function getFilteredRequests() {

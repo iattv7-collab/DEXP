@@ -17,9 +17,9 @@ import {
   clearROTrackerViewOwner,
 } from "/js/modules/ro-tracker/ro-tracker-view-context.js";
 
-import { RO_TRACKER_COLUMNS } from "/js/modules/ro-tracker/ro-tracker-columns.js";
+import { RO_TRACKER_COLUMNS } from "/js/modules/ro-tracker/ro-tracker-columns.js?v=11";
 
-import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js";
+import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js?v=11";
 
 import {
   getDefaultVisibleColumnKeys,
@@ -28,7 +28,7 @@ import {
   saveROTrackerColumnSettings,
 } from "/js/modules/ro-tracker/ro-tracker-settings.js";
 
-import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js";
+import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js?v=11";
 
 import { openROTrackerSharingModal } from "/js/modules/ro-tracker-sharing/ro-tracker-sharing-ui.js?v=2";
 
@@ -325,6 +325,7 @@ function getROTrackerColumnClass(key) {
     concern: "col-concern",
     currentLocation: "col-location",
     readyCalled: "col-ready",
+    pickedUp: "col-ready",
     notes: "col-notes",
     techVideo: "col-video",
     calledTime: "col-called",

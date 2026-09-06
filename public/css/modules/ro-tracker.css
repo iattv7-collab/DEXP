@@ -333,11 +333,11 @@
 }
 
 .ro-tracker-table tr.row-picked td {
-  background: #cfe8ff;
+  background: #4a9fd4;
 }
 
 .ro-tracker-table tr.row-picked td:nth-child(1) {
-  background: #cfe8ff;
+  background: #4a9fd4;
 }
 
 .ro-tracker-table tr.row-picked .cell-edit {

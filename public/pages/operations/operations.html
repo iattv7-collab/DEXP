@@ -53,6 +53,14 @@
           >
             History
           </button>
+
+          <button
+            id="operationsReadyTabButton"
+            type="button"
+            class="small-button secondary"
+          >
+            Ready
+          </button>
         </div>
 
         <div
@@ -131,6 +139,43 @@
           </div>
         </div>
       </section>
+
+      <section
+        id="operationsReadySection"
+        class="page-section hidden"
+      >
+        <div class="dexp-admin-card">
+          <h3>Ready for pickup</h3>
+
+          <p class="tool-help">
+            Ready called and still on the lot. Mark Picked Up when the customer takes the vehicle.
+          </p>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>RO</th>
+                  <th>Tag</th>
+                  <th>Customer</th>
+                  <th>Model</th>
+                  <th>Location</th>
+                  <th>Ready Called</th>
+                  <th>Picked Up</th>
+                </tr>
+              </thead>
+
+              <tbody id="operationsReadyTableBody">
+                <tr>
+                  <td colspan="7">
+                    No vehicles ready for pickup.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script
@@ -140,7 +185,7 @@
 
     <script
       type="module"
-      src="/pages/operations/operations-page.js?v=2"
+      src="/pages/operations/operations-page.js?v=3"
     ></script>
   </body>
 </html>
