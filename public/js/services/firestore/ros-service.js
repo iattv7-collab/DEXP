@@ -20,7 +20,7 @@ import { getSession } from "../../core/session.js";
 import { ROS_FIELDS } from "../../config/ros-fields.js";
 import { ROS_STATUS } from "../../config/ros-statuses.js";
 import { ROLES } from "../../config/roles.js";
-import { loadROTrackerFollowupSettings } from "../../modules/ro-tracker/ro-tracker-followup-settings.js";
+import { loadDealerFollowupSettings } from "../../modules/ro-tracker/ro-tracker-followup-settings.js";
 
 const ROS_COLLECTION = "ros";
 const USERS_COLLECTION = "users";
@@ -164,17 +164,23 @@ export async function archiveRO(roId, options = {}) {
 
   const archiveReason = String(options.archiveReason || "").trim();
   const archivedAtMs = Date.now();
-  const settings = loadROTrackerFollowupSettings();
+  const settings = await loadDealerFollowupSettings();
 
   const followUpDelayDays = Number(settings.followUpDelayDays || 3);
-
   const followUpTime = String(settings.followUpTime || "10:00");
+  const followUpDay2 = Number(settings.followUpDay2 || 0);
+  const followUpTime2 = String(settings.followUpTime2 || "14:00");
 
   const followupDueAtMs = buildFollowupDueAtMs(
     archivedAtMs,
     followUpDelayDays,
     followUpTime,
   );
+
+  const followup2DueAtMs =
+    followUpDay2 > 0
+      ? buildFollowupDueAtMs(archivedAtMs, followUpDay2, followUpTime2)
+      : null;
 
   await updateRO(
     roId,
@@ -188,6 +194,7 @@ export async function archiveRO(roId, options = {}) {
       [ROS_FIELDS.archiveReason]: archiveReason,
       [ROS_FIELDS.followupStatus]: "pending",
       [ROS_FIELDS.followupDueAtMs]: followupDueAtMs,
+      followup2DueAtMs,
       [ROS_FIELDS.followupCompletedAtMs]: null,
       [ROS_FIELDS.followupCompletedBy]: "",
       [ROS_FIELDS.followupCompletedByName]: "",

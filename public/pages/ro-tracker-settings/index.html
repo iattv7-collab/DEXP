@@ -28,7 +28,7 @@
           <h2>RO Tracker Settings</h2>
 
           <p>
-            Follow-up timing and SMS settings.
+            Follow-up timing and SMS settings for this dealer.
           </p>
         </div>
 
@@ -54,13 +54,9 @@
 
           <label
             for="followUpDelayDays"
-            style="
-              display:block;
-              margin-bottom:6px;
-              font-weight:bold;
-            "
+            style="display:block;margin-bottom:6px;font-weight:bold;"
           >
-            Follow Up Delay (Days)
+            Follow Up 1 (Days after archive)
           </label>
 
           <input
@@ -77,13 +73,9 @@
 
           <label
             for="followUpTime"
-            style="
-              display:block;
-              margin-bottom:6px;
-              font-weight:bold;
-            "
+            style="display:block;margin-bottom:6px;font-weight:bold;"
           >
-            Follow Up Time
+            Follow Up 1 Time
           </label>
 
           <input
@@ -97,12 +89,44 @@
         <div>
 
           <label
+            for="followUpDay2"
+            style="display:block;margin-bottom:6px;font-weight:bold;"
+          >
+            Follow Up 2 (Days after archive, 0 = off)
+          </label>
+
+          <input
+            id="followUpDay2"
+            type="number"
+            min="0"
+            max="30"
+            style="width:100%;"
+          />
+
+        </div>
+
+        <div>
+
+          <label
+            for="followUpTime2"
+            style="display:block;margin-bottom:6px;font-weight:bold;"
+          >
+            Follow Up 2 Time
+          </label>
+
+          <input
+            id="followUpTime2"
+            type="time"
+            style="width:100%;"
+          />
+
+        </div>
+
+        <div>
+
+          <label
             for="smsTemplate"
-            style="
-              display:block;
-              margin-bottom:6px;
-              font-weight:bold;
-            "
+            style="display:block;margin-bottom:6px;font-weight:bold;"
           >
             SMS Template
           </label>
@@ -113,12 +137,7 @@
             style="width:100%;"
           ></textarea>
 
-          <div
-            style="
-              margin-top:8px;
-              font-size:12px;
-            "
-          >
+          <div style="margin-top:8px;font-size:12px;">
             Available variables:
             {firstName}
             {name}
@@ -152,7 +171,7 @@
 
   <script
     type="module"
-    src="/pages/ro-tracker-settings/ro-tracker-settings-page.js?v=1"
+    src="/pages/ro-tracker-settings/ro-tracker-settings-page.js?v=3"
   ></script>
 
 </body>

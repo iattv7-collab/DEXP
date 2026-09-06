@@ -13,26 +13,29 @@ import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
 import { getSession } from "/js/core/session.js";
 
-import { loadROTrackerFollowupSettings } from "/js/modules/ro-tracker/ro-tracker-followup-settings.js";
+import {
+  loadROTrackerFollowupSettings,
+  loadDealerFollowupSettings,
+} from "/js/modules/ro-tracker/ro-tracker-followup-settings.js?v=2";
 
 import { getROTrackerViewOwner } from "/js/modules/ro-tracker/ro-tracker-view-context.js";
 
 protectRoute();
 
 const tableBody = document.getElementById("roFollowupTableBody");
-
 const searchInput = document.getElementById("searchFollowup");
-
 const backButton = document.getElementById("btnBackToROTracker");
 
 let allRows = [];
 
 window.addEventListener("dexp-session-ready", initializePage);
 
-function initializePage() {
+async function initializePage() {
   renderAppHeader({
     title: "RO Follow Up",
   });
+
+  await loadDealerFollowupSettings();
 
   backButton?.addEventListener("click", () => {
     window.location.href = "/pages/ro-tracker/index.html";
@@ -45,8 +48,6 @@ function initializePage() {
     getSession()?.role === "advisor" ? viewOwner?.advisorId : null;
 
   watchArchivedROs((rows) => {
-    const session = getSession();
-
     let filtered = rows.filter((ro) => {
       return ro.followupStatus === "pending";
     });
@@ -59,7 +60,6 @@ function initializePage() {
     });
 
     allRows = filtered;
-
     renderRows();
   }, advisorId);
 }
@@ -86,19 +86,17 @@ function renderRows() {
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td colspan="6">
+      <td colspan="8">
         No pending follow-ups.
       </td>
     `;
 
     tableBody.appendChild(tr);
-
     return;
   }
 
   rows.forEach((ro) => {
     const tr = document.createElement("tr");
-
     const isDue = Number(ro.followupDueAtMs || 0) <= Date.now();
 
     if (isDue) {
@@ -107,13 +105,11 @@ function renderRows() {
 
     tr.innerHTML = `
       <td>${escapeHTML(ro.roNumber)}</td>
-
       <td>${escapeHTML(ro.customerName)}</td>
-
       <td>${escapeHTML(ro.customerPhone)}</td>
-
       <td>${escapeHTML(ro.model)}</td>
-
+      <td>${escapeHTML(formatWhen(ro.archivedAtMs))}</td>
+      <td>${escapeHTML(formatWhen(ro.followupDueAtMs))}</td>
       <td>
         <button
           type="button"
@@ -123,7 +119,6 @@ function renderRows() {
           Text
         </button>
       </td>
-
       <td>
         <button
           type="button"
@@ -145,7 +140,6 @@ function bindButtons(rows) {
   tableBody.querySelectorAll('[data-action="text"]').forEach((button) => {
     button.addEventListener("click", async () => {
       const roId = button.dataset.roId;
-
       const ro = rows.find((r) => r.id === roId);
 
       if (!ro) {
@@ -153,9 +147,7 @@ function bindButtons(rows) {
       }
 
       const settings = loadROTrackerFollowupSettings();
-
       const message = buildSMSMessage(settings.smsTemplate, ro);
-
       const phone = String(ro.customerPhone || "").replace(/\D/g, "");
 
       if (!phone) {
@@ -174,25 +166,41 @@ function bindButtons(rows) {
   tableBody.querySelectorAll('[data-action="done"]').forEach((button) => {
     button.addEventListener("click", async () => {
       const roId = button.dataset.roId;
-
       const session = getSession();
 
       await updateRO(roId, {
         [ROS_FIELDS.followupStatus]: "done",
-
         [ROS_FIELDS.followupCompletedAtMs]: Date.now(),
-
         [ROS_FIELDS.followupCompletedBy]: session?.uid || "",
-
         [ROS_FIELDS.followupCompletedByName]: session?.displayName || "",
       });
     });
   });
 }
 
+function formatWhen(ms) {
+  const value = Number(ms || 0);
+
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString([], {
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function buildSMSMessage(template, ro) {
   const fullName = String(ro.customerName || "").trim();
-
   const firstName = fullName.split(" ")[0] || "";
 
   return String(template || "")
