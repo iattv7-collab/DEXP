@@ -61,6 +61,14 @@
           >
             Ready
           </button>
+
+          <button
+            id="operationsStatusTabButton"
+            type="button"
+            class="small-button secondary"
+          >
+            Status
+          </button>
         </div>
 
         <div
@@ -176,6 +184,45 @@
           </div>
         </div>
       </section>
+
+      <section
+        id="operationsStatusSection"
+        class="page-section hidden"
+      >
+        <div class="dexp-admin-card">
+          <h3>Vehicle status</h3>
+
+          <p class="tool-help">
+            Search RO or tag. Shows location, wash, tech done, ready, and picked up only.
+          </p>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>RO</th>
+                  <th>Tag</th>
+                  <th>Customer</th>
+                  <th>Model</th>
+                  <th>Location</th>
+                  <th>Wash</th>
+                  <th>Tech Done</th>
+                  <th>Ready Called</th>
+                  <th>Picked Up</th>
+                </tr>
+              </thead>
+
+              <tbody id="operationsStatusTableBody">
+                <tr>
+                  <td colspan="9">
+                    Enter an RO or tag to see vehicle status.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script
@@ -185,7 +232,7 @@
 
     <script
       type="module"
-      src="/pages/operations/operations-page.js?v=3"
+      src="/pages/operations/operations-page.js?v=4"
     ></script>
   </body>
 </html>

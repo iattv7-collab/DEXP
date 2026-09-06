@@ -32,6 +32,10 @@ const operationsReadyTabButton = document.getElementById(
   "operationsReadyTabButton",
 );
 
+const operationsStatusTabButton = document.getElementById(
+  "operationsStatusTabButton",
+);
+
 const operationsGroupFilterRow = document.getElementById(
   "operationsGroupFilterRow",
 );
@@ -48,6 +52,10 @@ const operationsReadySection = document.getElementById(
   "operationsReadySection",
 );
 
+const operationsStatusSection = document.getElementById(
+  "operationsStatusSection",
+);
+
 const liveOperationsTableBody = document.getElementById(
   "liveOperationsTableBody",
 );
@@ -58,6 +66,10 @@ const operationsHistoryTableBody = document.getElementById(
 
 const operationsReadyTableBody = document.getElementById(
   "operationsReadyTableBody",
+);
+
+const operationsStatusTableBody = document.getElementById(
+  "operationsStatusTableBody",
 );
 
 const LIVE_COMPLETED_WINDOW_MS = 2 * 60 * 60 * 1000;
@@ -127,6 +139,11 @@ function wireTabs() {
     renderTabs();
   });
 
+  operationsStatusTabButton.addEventListener("click", () => {
+    currentTab = "status";
+    renderTabs();
+  });
+
   operationsReadyTableBody?.addEventListener("change", handleReadyPickupChange);
 
   renderTabs();
@@ -145,13 +162,19 @@ function renderTabs() {
     currentTab !== "ready",
   );
 
+  operationsStatusTabButton.classList.toggle(
+    "secondary",
+    currentTab !== "status",
+  );
+
   liveOperationsSection.classList.toggle("hidden", currentTab !== "live");
   operationsHistorySection.classList.toggle("hidden", currentTab !== "history");
   operationsReadySection.classList.toggle("hidden", currentTab !== "ready");
+  operationsStatusSection.classList.toggle("hidden", currentTab !== "status");
 
   if (operationsGroupFilterRow) {
     operationsGroupFilterRow.style.display =
-      currentTab === "ready" ? "none" : "";
+      currentTab === "ready" || currentTab === "status" ? "none" : "";
   }
 
   renderOperations();
@@ -243,6 +266,7 @@ function renderOperations() {
   renderLiveOperations();
   renderHistoryOperations();
   renderReadyOperations();
+  renderStatusOperations();
 }
 
 function renderLiveOperations() {
@@ -318,14 +342,7 @@ function getReadyRows() {
   }
 
   return rows.filter((ro) => {
-    return (
-      String(ro.roNumber || "")
-        .toLowerCase()
-        .includes(searchText) ||
-      String(ro.tagNumber || "")
-        .toLowerCase()
-        .includes(searchText)
-    );
+    return matchesROSearch(ro);
   });
 }
 
@@ -352,6 +369,101 @@ function renderReadyRow(ro) {
       </td>
     </tr>
   `;
+}
+
+function renderStatusOperations() {
+  if (!searchText) {
+    operationsStatusTableBody.innerHTML = `
+      <tr>
+        <td colspan="9">Enter an RO or tag to see vehicle status.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  const rows = dealerROs.filter((ro) => matchesROSearch(ro));
+
+  if (!rows.length) {
+    operationsStatusTableBody.innerHTML = `
+      <tr>
+        <td colspan="9">No active RO matches that search.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  operationsStatusTableBody.innerHTML = rows.map(renderStatusRow).join("");
+}
+
+function renderStatusRow(ro) {
+  const readyCalled = Boolean(
+    ro.readyCalled || String(ro.status || "").toLowerCase() === "ready called",
+  );
+
+  const techDone = Boolean(ro.repairCompleted || ro.techDone);
+
+  return `
+    <tr>
+      <td>${escapeHtml(ro.roNumber || "")}</td>
+      <td>${escapeHtml(ro.tagNumber || "")}</td>
+      <td>${escapeHtml(ro.customerName || "")}</td>
+      <td>${escapeHtml(ro.model || "")}</td>
+      <td>${escapeHtml(ro.currentLocation || ro.location || "")}</td>
+      <td>${escapeHtml(formatWashStatus(ro))}</td>
+      <td>${techDone ? "Yes" : ""}</td>
+      <td>${
+        readyCalled
+          ? escapeHtml(formatDateTime(ro.readyCalledAtMs) || "Yes")
+          : ""
+      }</td>
+      <td>${
+        ro.pickedUpAtMs ? escapeHtml(formatDateTime(ro.pickedUpAtMs)) : ""
+      }</td>
+    </tr>
+  `;
+}
+
+function formatWashStatus(ro = {}) {
+  const status = String(ro.washStatus || "")
+    .trim()
+    .toLowerCase();
+
+  if (!status || status === "none") {
+    return "";
+  }
+
+  if (status === "pending") {
+    return "In queue";
+  }
+
+  if (status === "washing") {
+    return "Washing";
+  }
+
+  if (status === "rewash_requested") {
+    return "Rewash";
+  }
+
+  if (status === "done" || status === "completed") {
+    return "Wash done";
+  }
+
+  return ro.washStatus || "";
+}
+
+function matchesROSearch(ro = {}) {
+  if (!searchText) {
+    return false;
+  }
+
+  return (
+    String(ro.roNumber || "")
+      .toLowerCase()
+      .includes(searchText) ||
+    String(ro.tagNumber || "")
+      .toLowerCase()
+      .includes(searchText)
+  );
 }
 
 async function handleReadyPickupChange(event) {
