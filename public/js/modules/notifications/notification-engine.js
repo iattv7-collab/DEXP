@@ -387,84 +387,78 @@ function getVisibleNotifications(requests = [], session) {
 }
 
 function renderNotificationTray(notifications = []) {
+  const headerButton = document.getElementById("headerAlertsButton");
+  const headerCount = document.getElementById("headerAlertsCount");
+
   let tray = document.getElementById("dexpNotificationTray");
 
   if (!tray) {
     tray = document.createElement("div");
     tray.id = "dexpNotificationTray";
     tray.className = "dexp-notification-tray";
-
     document.body.appendChild(tray);
+    ensureCompactTrayStyles();
   }
 
-  if (!notifications.length) {
-    notificationTrayExpanded = false;
+  const count = notifications.length;
 
+  if (headerButton && headerCount) {
+    headerCount.textContent = String(count);
+    headerButton.style.display = count ? "" : "none";
+
+    if (count) {
+      headerButton.classList.add("is-open");
+    } else {
+      headerButton.classList.remove("is-open");
+    }
+
+    headerButton.onclick = () => {
+      notificationTrayExpanded = !notificationTrayExpanded;
+      renderNotificationTray(notifications);
+    };
+  }
+
+  if (!count) {
+    notificationTrayExpanded = false;
     tray.innerHTML = "";
     tray.style.display = "none";
+    return;
+  }
 
+  if (!notificationTrayExpanded) {
+    tray.innerHTML = "";
+    tray.style.display = "none";
     return;
   }
 
   tray.style.display = "block";
 
-  if (notifications.length >= 2 && !notificationTrayExpanded) {
-    tray.innerHTML = `
-      <button
-        type="button"
-        class="dexp-notification-count-button"
-        id="dexpNotificationCountButton"
-      >
-        ${notifications.length} Notifications
-      </button>
-    `;
-
-    document
-      .getElementById("dexpNotificationCountButton")
-      ?.addEventListener("click", () => {
-        notificationTrayExpanded = true;
-
-        renderNotificationTray(notifications);
-      });
-
-    return;
-  }
-
-  if (notifications.length === 1) {
-    notificationTrayExpanded = false;
-  }
-
-  const collapseButton =
-    notifications.length >= 2
-      ? `
+  tray.innerHTML = `
+    <div class="dexp-notification-inbox">
+      <div class="dexp-notification-inbox-head">
+        <strong>Alerts (${count})</strong>
         <button
           type="button"
           class="dexp-notification-collapse-button"
           id="dexpNotificationCollapseButton"
         >
-          Hide ${notifications.length} Notifications
+          Hide
         </button>
-      `
-      : "";
-
-  tray.innerHTML = `
-    ${collapseButton}
-
-    ${notifications.map((item) => renderNotificationCard(item)).join("")}
+      </div>
+      ${notifications.map((item) => renderNotificationCard(item)).join("")}
+    </div>
   `;
 
   document
     .getElementById("dexpNotificationCollapseButton")
     ?.addEventListener("click", () => {
       notificationTrayExpanded = false;
-
       renderNotificationTray(notifications);
     });
 
   tray.querySelectorAll("[data-open-notification-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.openNotificationId;
-
       const notification = notifications.find(
         (item) => item.id === notificationId,
       );
@@ -474,9 +468,7 @@ function renderNotificationTray(notifications = []) {
       }
 
       silenceNotificationAlert(notificationId);
-
       await openNotificationRequest(notificationId);
-
       window.location.href = buildNotificationRoute(notification);
     });
   });
@@ -484,9 +476,7 @@ function renderNotificationTray(notifications = []) {
   tray.querySelectorAll("[data-dismiss-notification-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.dismissNotificationId;
-
       silenceNotificationAlert(notificationId);
-
       await dismissNotificationRequest(notificationId);
     });
   });
@@ -494,13 +484,59 @@ function renderNotificationTray(notifications = []) {
   tray.querySelectorAll("[data-silence-notification-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const notificationId = button.dataset.silenceNotificationId;
-
       silenceNotificationAlert(notificationId);
-
       button.textContent = "Silenced";
       button.disabled = true;
     });
   });
+}
+
+function ensureCompactTrayStyles() {
+  if (document.getElementById("dexpCompactTrayStyles")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "dexpCompactTrayStyles";
+  style.textContent = `
+    #dexpNotificationTray {
+      position: fixed;
+      top: 64px;
+      right: 12px;
+      z-index: 9990;
+      width: auto;
+      max-width: 360px;
+    }
+
+    .dexp-notification-count-button {
+      min-width: 120px;
+    }
+
+    .dexp-notification-inbox {
+      width: 360px;
+      max-width: 92vw;
+      max-height: 70vh;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #cfd6df;
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.18);
+      padding: 10px;
+    }
+
+    .dexp-notification-inbox-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .dexp-notification-card {
+      margin: 0 0 8px 0;
+    }
+  `;
+
+  document.head.appendChild(style);
 }
 
 function renderNotificationCard(item) {
@@ -532,21 +568,19 @@ function renderNotificationCard(item) {
         ${escapeHtml(item.message)}
       </div>
 
-      ${
-        isOpened
-          ? `
+      ${isOpened
+      ? `
             <div class="dexp-notification-opened-label">
               Opened by ${escapeHtml(openedByName)}
             </div>
           `
-          : ""
-      }
+      : ""
+    }
 
       <div class="dexp-notification-actions">
 
-      ${
-        ringingNotificationIds.has(item.id)
-          ? `
+      ${ringingNotificationIds.has(item.id)
+      ? `
       <button
         type="button"
         class="dexp-notification-silence"
@@ -555,12 +589,11 @@ function renderNotificationCard(item) {
         Silence
       </button>
     `
-          : ""
-      }
+      : ""
+    }
 
-        ${
-          showOpen
-            ? `
+        ${showOpen
+      ? `
               <button
                 type="button"
                 class="dexp-notification-open"
@@ -569,12 +602,11 @@ function renderNotificationCard(item) {
                 Open
               </button>
             `
-            : ""
-        }
+      : ""
+    }
 
-        ${
-          showDismiss
-            ? `
+        ${showDismiss
+      ? `
               <button
                 type="button"
                 class="dexp-notification-dismiss"
@@ -583,8 +615,8 @@ function renderNotificationCard(item) {
                 Dismiss
               </button>
             `
-            : ""
-        }
+      : ""
+    }
 
       </div>
     </div>

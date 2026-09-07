@@ -227,6 +227,11 @@ function showNotificationsBlockedMessage() {
 export async function getCurrentDeviceNotificationPreferences() {
   const device = await getCurrentDeviceRecord();
   const preferences = normalizePreferences(device);
+  const hasToken = !!(device && String(device.fcmToken || "").trim());
+
+  if (isCapacitorNative() && !hasToken) {
+    preferences.notificationsEnabled = false;
+  }
 
   if (
     !isCapacitorNative() &&

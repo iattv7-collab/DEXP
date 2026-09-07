@@ -22,9 +22,9 @@ export function renderAppHeader(options = {}) {
   const dealerName = platformMode
     ? "DEXP Platform"
     : session?.dealerName ||
-      session?.dealer?.name ||
-      session?.dealerId ||
-      "Dealer";
+    session?.dealer?.name ||
+    session?.dealerId ||
+    "Dealer";
 
   const userName = session?.displayName || session?.email || "";
 
@@ -78,9 +78,8 @@ export function renderAppHeader(options = {}) {
 
     <nav class="app-header-nav">
 
-      ${
-        showHome
-          ? `
+      ${showHome
+      ? `
             <button
               id="homeButton"
               type="button"
@@ -88,12 +87,11 @@ export function renderAppHeader(options = {}) {
               Home
             </button>
           `
-          : ""
-      }
+      : ""
+    }
 
-      ${
-        showFollowUpCounter
-          ? `
+      ${showFollowUpCounter
+      ? `
             <button
               id="roReminderCounterButton"
               type="button"
@@ -103,8 +101,18 @@ export function renderAppHeader(options = {}) {
               (<span id="roReminderCounter">0</span>)
             </button>
           `
-          : ""
-      }
+      : ""
+    }
+
+      <button
+        id="headerAlertsButton"
+        type="button"
+        title="Shop alerts"
+        style="display:none"
+      >
+        Alerts
+        (<span id="headerAlertsCount">0</span>)
+      </button>
 
       <button
         id="notificationStatusButton"

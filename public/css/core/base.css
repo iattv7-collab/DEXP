@@ -120,9 +120,12 @@ button:hover {
     flex-direction: column;
   }
 
-  #appHeader nav {
+  #appHeader nav,
+  .app-header-nav {
     width: 100%;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
   }
 
   #dashboardPage {
@@ -625,6 +628,11 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+#headerAlertsButton.is-open {
+  background: #d32f2f;
+  border-color: #b71c1c;
 }
 
 /* =========================
