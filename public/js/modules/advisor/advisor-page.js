@@ -40,7 +40,10 @@ import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 
 import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
 
-import { canAcceptNeedBy } from "/js/services/firestore/wash-capacity-service.js";
+import {
+  canAcceptNeedBy,
+  projectWashQueue,
+} from "/js/services/firestore/wash-capacity-service.js";
 
 import {
   markCpBooked,
@@ -87,6 +90,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const advisorViewLabel = $("advisorViewLabel");
 
   let rows = [];
+  let currentWashSettings = null;
+  let projectedById = {};
 
   let currentView = session?.role === "advisor" ? "mine" : "all";
 
@@ -116,10 +121,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   function advisorNameValue(ticket) {
     return clean(
       ticket.advisorName ||
-      ticket.advisorDisplayName ||
-      ticket.advisorEmail ||
-      ticket.advisorCompanyId ||
-      "",
+        ticket.advisorDisplayName ||
+        ticket.advisorEmail ||
+        ticket.advisorCompanyId ||
+        "",
     );
   }
 
@@ -264,29 +269,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const settings = await getWashSettings();
 
+    currentWashSettings = settings;
+
     const schedule = {
       monFri:
         Number(settings.mfBays || 0) > 0
           ? {
-            start: settings.mfOpen || "07:30",
-            end: settings.mfClose || "19:00",
-          }
+              start: settings.mfOpen || "07:30",
+              end: settings.mfClose || "19:00",
+            }
           : null,
 
       sat:
         Number(settings.satBays || 0) > 0
           ? {
-            start: settings.satOpen || "08:00",
-            end: settings.satClose || "15:00",
-          }
+              start: settings.satOpen || "08:00",
+              end: settings.satClose || "15:00",
+            }
           : null,
 
       sun:
         Number(settings.sunBays || 0) > 0
           ? {
-            start: settings.sunOpen || "00:00",
-            end: settings.sunClose || "00:00",
-          }
+              start: settings.sunOpen || "00:00",
+              end: settings.sunClose || "00:00",
+            }
           : null,
     };
 
@@ -372,6 +379,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     return "";
+  }
+
+  function refreshProjected() {
+    const washRows = rows.filter((row) =>
+      ["pending", "washing", "rewash_requested"].includes(
+        clean(row.washStatus).toLowerCase(),
+      ),
+    );
+
+    const projected = projectWashQueue(washRows, currentWashSettings || {});
+
+    projectedById = {};
+
+    projected.forEach((ticket) => {
+      projectedById[ticket.id] = ticket;
+    });
   }
 
   function washLabel(ticket) {
@@ -487,8 +510,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     allRosButton.classList.toggle("active-view", currentView === "all");
 
     if (currentView === "mine") {
-      advisorViewLabel.textContent = `Viewing: ${session?.displayName || session?.email || "My"
-        } ROs`;
+      advisorViewLabel.textContent = `Viewing: ${
+        session?.displayName || session?.email || "My"
+      } ROs`;
 
       return;
     }
@@ -586,6 +610,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <th>QC</th>
           <th>Pickup Status</th>
           <th>Need By</th>
+          <th>Projected</th>
           <th>Rewash</th>
           <th>CP Booked</th>
           <th>WTY Booked</th>
@@ -596,35 +621,42 @@ document.addEventListener("DOMContentLoaded", async () => {
       </thead>
 
       <tbody>
-        ${filtered.length
-        ? filtered
-          .map((ticket) => {
-            const cpDone =
-              Boolean(ticket.cpBookedAtMs) || Boolean(ticket.cpBookedAt);
+        ${
+          filtered.length
+            ? filtered
+                .map((ticket) => {
+                  const cpDone =
+                    Boolean(ticket.cpBookedAtMs) || Boolean(ticket.cpBookedAt);
 
-            const wtyDone =
-              Boolean(ticket.wtyBookedAtMs) ||
-              Boolean(ticket.wtyBookedAt);
+                  const wtyDone =
+                    Boolean(ticket.wtyBookedAtMs) ||
+                    Boolean(ticket.wtyBookedAt);
 
-            const pickupStatus = clean(ticket.pickupStatus).toLowerCase();
+                  const pickupStatus = clean(ticket.pickupStatus).toLowerCase();
 
-            const pickupRequested =
-              pickupStatus === "requested" ||
-              pickupStatus === "on_the_way";
+                  const pickupRequested =
+                    pickupStatus === "requested" ||
+                    pickupStatus === "on_the_way";
 
-            const washStatus = clean(ticket.washStatus).toLowerCase();
+                  const washStatus = clean(ticket.washStatus).toLowerCase();
 
-            const canRewashTicket = washStatus === "washed";
+                  const canRewashTicket = washStatus === "washed";
 
-            const qcStatus = clean(ticket.qcStatus).toLowerCase();
+                  const qcStatus = clean(ticket.qcStatus).toLowerCase();
 
-            const qcLocked =
-              qcStatus === "requested" ||
-              qcStatus === "working" ||
-              qcStatus === "complete" ||
-              qcStatus === "not_required";
+                  const qcLocked =
+                    qcStatus === "requested" ||
+                    qcStatus === "working" ||
+                    qcStatus === "complete" ||
+                    qcStatus === "not_required";
 
-            return `
+                  const projected = projectedById[ticket.id] || {};
+                  const late = projected.needByMissed === true;
+                  const lateStyle = late
+                    ? "color:crimson;font-weight:700;"
+                    : "";
+
+                  return `
                     <tr data-id="${escapeHtml(ticket.id)}">
                       <td>
                         <b>
@@ -650,8 +682,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                       <td>
                         ${escapeHtml(
-              ticket.currentLocation || ticket.location || "",
-            )}
+                          ticket.currentLocation || ticket.location || "",
+                        )}
                       </td>
 
                       <td>
@@ -675,31 +707,38 @@ document.addEventListener("DOMContentLoaded", async () => {
                        </td>
 
                        <td>
-                                                  <button
+                         <button
                            class="needByBtn"
                            type="button"
-                           ${!canSetNeedBy ||
-                ticket.customerWaiting === true ||
-                ticket.isWaiter === true ||
-                Boolean(ticket.pickedUpAtMs) ||
-                !["pending", "washing", "rewash_requested"].includes(
-                  washStatus,
-                )
-                ? "disabled"
-                : ""
-              }
+                           style="${lateStyle}"
+                           ${
+                             !canSetNeedBy ||
+                             ticket.customerWaiting === true ||
+                             ticket.isWaiter === true ||
+                             Boolean(ticket.pickedUpAtMs) ||
+                             !["pending", "washing", "rewash_requested"].includes(
+                               washStatus,
+                             )
+                               ? "disabled"
+                               : ""
+                           }
                          >
                            ${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}
                          </button>
                        </td>
 
+                       <td style="${lateStyle}">
+                         ${escapeHtml(fmtTime(projected.projectedFinishAtMs))}
+                       </td>
+
                       <td>
                         <button
                           class="rewashBtn"
-                          ${!canRequestRewash || !canRewashTicket
-                ? "disabled"
-                : ""
-              }
+                          ${
+                            !canRequestRewash || !canRewashTicket
+                              ? "disabled"
+                              : ""
+                          }
                         >
                           Request Rewash
                         </button>
@@ -744,30 +783,32 @@ document.addEventListener("DOMContentLoaded", async () => {
                       <td>
                         <button
                           class="pickupBtn"
-                          ${!canRequestPickup || pickupRequested
-                ? "disabled"
-                : ""
-              }
+                          ${
+                            !canRequestPickup || pickupRequested
+                              ? "disabled"
+                              : ""
+                          }
                        >
-                          ${pickupRequested
-                ? "Pickup Requested"
-                : "Request Pickup"
-              }
+                          ${
+                            pickupRequested
+                              ? "Pickup Requested"
+                              : "Request Pickup"
+                          }
                         </button>
                       </td>
 
                     </tr>
                   `;
-          })
-          .join("")
-        : `
+                })
+                .join("")
+            : `
               <tr>
-                <td colspan="18">
+                <td colspan="19">
                   No repair orders found.
                 </td>
               </tr>
             `
-      }
+        }
       </tbody>
     `;
   }
@@ -845,10 +886,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   watchDealerROs((dealerRows) => {
     rows = Array.isArray(dealerRows) ? dealerRows : [];
 
+    refreshProjected();
     populateAdvisorFilter();
     updateViewControls();
     render();
   });
+
+  getWashSettings()
+    .then((settings) => {
+      currentWashSettings = settings;
+      refreshProjected();
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+    });
 });
 
 function waitForSession() {
