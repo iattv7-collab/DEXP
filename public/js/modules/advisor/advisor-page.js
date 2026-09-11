@@ -359,6 +359,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg(`Need By set for ${fmtTime(selectedMs)}.`);
   }
 
+  async function resolveNeedByLateAlert(ticketId, needBy) {
+    const alertId = `needby-late-${ticketId}-${Number(needBy || 0)}`;
+
+    try {
+      await updateDoc(doc(db, "notificationRequests", alertId), {
+        status: "resolved",
+        resolvedAt: serverTimestamp(),
+        resolvedAtMs: Date.now(),
+        resolvedBy: auth.currentUser?.uid || "",
+        updatedAt: serverTimestamp(),
+        updatedAtMs: Date.now(),
+      });
+    } catch (error) {
+      console.warn("Need By late alert was not open:", alertId, error?.message);
+    }
+  }
+
+  async function clearNeedBy(id, ticket) {
+    if (!ticket) {
+      throw new Error("Repair order not found.");
+    }
+
+    const currentNeedBy = Number(ticket.needByAtMs || 0);
+
+    if (!currentNeedBy) {
+      setMsg("No Need By to clear.", false);
+      return;
+    }
+
+    const confirmed = confirm(
+      `Remove Need By for RO ${roValue(ticket)}? This car goes back to normal wash order.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await updateDoc(doc(db, "ros", id), {
+      needByAtMs: null,
+      needBySlotEndMs: null,
+      needBySetBy: null,
+
+      washEvents: arrayUnion(washEvent("wash_need_by_cleared")),
+
+      ...auditPatch(["needByAtMs", "needBySlotEndMs", "needBySetBy"]),
+    });
+
+    await resolveNeedByLateAlert(id, currentNeedBy);
+
+    setMsg("Need By removed.");
+  }
+
   function qcLabel(ticket) {
     const status = clean(ticket.qcStatus).toLowerCase();
 
@@ -725,6 +777,16 @@ document.addEventListener("DOMContentLoaded", async () => {
                          >
                            ${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}
                          </button>
+                         ${
+                           ticket.needByAtMs &&
+                           canSetNeedBy &&
+                           !ticket.pickedUpAtMs &&
+                           ["pending", "washing", "rewash_requested"].includes(
+                             washStatus,
+                           )
+                             ? `<button class="clearNeedByBtn" type="button">Clear</button>`
+                             : ""
+                         }
                        </td>
 
                        <td style="${lateStyle}">
@@ -828,6 +890,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       if (button.classList.contains("needByBtn")) {
         await setNeedBy(id, ticket, button);
+      }
+
+      if (button.classList.contains("clearNeedByBtn")) {
+        await clearNeedBy(id, ticket);
       }
       if (button.classList.contains("pickupBtn")) {
         await requestPickup(id);
