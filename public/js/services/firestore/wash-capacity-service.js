@@ -98,14 +98,28 @@ export function getDayPlan(settings, nowMs = Date.now()) {
   const openMs = atTimeOnDay(nowMs, open.hours, open.minutes);
   const closeMs = atTimeOnDay(nowMs, close.hours, close.minutes);
 
+  const isToday = sameCalendarDay(nowMs, Date.now());
+  const hasHours = (Number.isFinite(bays) && bays > 0 ? bays : 0) > 0 && closeMs > openMs;
+
   return {
     bays: Number.isFinite(bays) && bays > 0 ? bays : 0,
     openMs,
     closeMs,
-    isOpenDay: Boolean(settings?.isOpen) && bays > 0 && closeMs > openMs,
+    isOpenDay: hasHours && (!isToday || Boolean(settings?.isOpen)),
     minutes: minutesPerCar(settings),
     durationMs: durationMs(settings),
   };
+}
+
+export function sameCalendarDay(aMs, bMs) {
+  const a = new Date(aMs);
+  const b = new Date(bMs);
+
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
 export function sortWashTickets(tickets, nowMs = Date.now()) {
@@ -231,15 +245,8 @@ export function canAcceptNeedBy({
   ticketId = "",
   nowMs = Date.now(),
 }) {
-  const plan = getDayPlan(settings, nowMs);
   const proposed = Number(proposedFinishAtMs || 0);
-
-  if (!plan.isOpenDay) {
-    return {
-      ok: false,
-      reason: "Wash is closed or has no bays today.",
-    };
-  }
+  const plan = getDayPlan(settings, proposed || nowMs);
 
   if (!proposed || proposed <= nowMs) {
     return {
@@ -248,10 +255,24 @@ export function canAcceptNeedBy({
     };
   }
 
+  if (!plan.isOpenDay) {
+    return {
+      ok: false,
+      reason: "Wash is closed or has no bays that day.",
+    };
+  }
+
   if (proposed > plan.closeMs) {
     return {
       ok: false,
-      reason: "Need By is after wash close today.",
+      reason: "Need By is after wash close that day.",
+    };
+  }
+
+  if (proposed < plan.openMs) {
+    return {
+      ok: false,
+      reason: "Need By is before wash open that day.",
     };
   }
 
@@ -280,11 +301,12 @@ export function canAcceptNeedBy({
 
     const otherNeedBy = needByMs(ticket);
 
-    if (!otherNeedBy) {
+    if (!otherNeedBy || !sameCalendarDay(otherNeedBy, proposed)) {
       return;
     }
 
-    const otherSlot = slotEndForNeedBy(otherNeedBy, plan);
+    const otherPlan = getDayPlan(settings, otherNeedBy);
+    const otherSlot = slotEndForNeedBy(otherNeedBy, otherPlan);
 
     if (otherSlot === slotEnd) {
       taken += 1;
