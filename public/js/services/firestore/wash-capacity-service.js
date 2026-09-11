@@ -194,12 +194,48 @@ function slotEndForNeedBy(needBy, plan) {
   return start + plan.durationMs;
 }
 
+function addDays(dayMs, days) {
+  const date = new Date(dayMs);
+
+  date.setDate(date.getDate() + days);
+  date.setHours(12, 0, 0, 0);
+
+  return date.getTime();
+}
+
+function projectionWindow(settings, nowMs) {
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const dayMs = offset === 0 ? nowMs : addDays(nowMs, offset);
+    const plan = getDayPlan(settings, dayMs);
+
+    if (!plan.bays || plan.closeMs <= plan.openMs) {
+      continue;
+    }
+
+    if (offset === 0 && nowMs > plan.closeMs) {
+      continue;
+    }
+
+    const startMs = offset === 0 ? Math.max(nowMs, plan.openMs) : plan.openMs;
+
+    if (startMs >= plan.closeMs) {
+      continue;
+    }
+
+    return { plan, startMs };
+  }
+
+  return {
+    plan: getDayPlan(settings, nowMs),
+    startMs: nowMs,
+  };
+}
+
 export function projectWashQueue(tickets, settings, nowMs = Date.now()) {
-  const plan = getDayPlan(settings, nowMs);
   const sorted = sortWashTickets(tickets, nowMs);
-  const bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () =>
-    Math.max(nowMs, plan.openMs),
-  );
+  const window = projectionWindow(settings, nowMs);
+  const plan = window.plan;
+  const bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => window.startMs);
 
   if (!plan.bays) {
     return sorted.map((ticket) => ({
@@ -213,19 +249,25 @@ export function projectWashQueue(tickets, settings, nowMs = Date.now()) {
   return sorted.map((ticket) => {
     const status = clean(ticket.washStatus).toLowerCase();
     const started = Number(ticket.washingStartedAtMs || 0);
+    const plannedFinish = started > 0 ? started + plan.durationMs : 0;
 
-    let startMs;
-
-    if (status === "washing" && started > 0) {
-      startMs = started;
-    } else {
-      startMs = Math.min(...bayFreeAt);
-    }
-
-    const finishMs = startMs + plan.durationMs;
     const bayIndex = bayFreeAt.indexOf(Math.min(...bayFreeAt));
 
-    bayFreeAt[bayIndex] = finishMs;
+    let startMs;
+    let finishMs;
+
+    if (status === "washing" && started > 0 && plannedFinish > nowMs) {
+      startMs = started;
+      finishMs = plannedFinish;
+    } else if (status === "washing") {
+      startMs = nowMs;
+      finishMs = nowMs;
+    } else {
+      startMs = Math.min(...bayFreeAt);
+      finishMs = startMs + plan.durationMs;
+    }
+
+    bayFreeAt[bayIndex] = Math.max(bayFreeAt[bayIndex], finishMs);
 
     const needBy = needByMs(ticket);
 
