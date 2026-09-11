@@ -40,6 +40,8 @@ import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 
 import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
 
+import { canAcceptNeedBy } from "/js/services/firestore/wash-capacity-service.js";
+
 import {
   markCpBooked,
   markWarrantyBooked,
@@ -252,6 +254,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw new Error("The vehicle must be in Wash before setting Need By.");
     }
 
+    if (ticket.customerWaiting === true || ticket.isWaiter === true) {
+      throw new Error("Waiter cars cannot take a Need By slot.");
+    }
+
+    if (ticket.pickedUpAtMs) {
+      throw new Error("This vehicle is already picked up.");
+    }
+
     const settings = await getWashSettings();
 
     const schedule = {
@@ -294,19 +304,49 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    // Reject past Need By times
     if (selectedMs <= Date.now()) {
       setMsg("Need By must be in the future.", false);
       return;
     }
 
+    const washRows = rows.filter((row) =>
+      ["pending", "washing", "rewash_requested"].includes(
+        clean(row.washStatus).toLowerCase(),
+      ),
+    );
+
+    const check = canAcceptNeedBy({
+      tickets: washRows,
+      settings,
+      proposedFinishAtMs: selectedMs,
+      ticketId: id,
+    });
+
+    if (!check.ok) {
+      setMsg(check.reason || "That wash slot is not available.", false);
+      return;
+    }
+
+    const currentNeedBy = Number(ticket.needByAtMs || 0);
+
+    if (currentNeedBy && selectedMs > currentNeedBy) {
+      const confirmed = confirm(
+        `Wash may not finish by ${fmtTime(currentNeedBy)}. Move Need By later to ${fmtTime(selectedMs)}?`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
     await updateDoc(doc(db, "ros", id), {
       needByAtMs: selectedMs,
+      needBySlotEndMs: check.slotEndMs || selectedMs,
       needBySetBy: auth.currentUser?.uid || "",
 
       washEvents: arrayUnion(washEvent("wash_need_by_set")),
 
-      ...auditPatch(["needByAtMs", "needBySetBy"]),
+      ...auditPatch(["needByAtMs", "needBySlotEndMs", "needBySetBy"]),
     });
 
     setMsg(`Need By set for ${fmtTime(selectedMs)}.`);
@@ -635,12 +675,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                        </td>
 
                        <td>
-                         <button
+                                                  <button
                            class="needByBtn"
                            type="button"
                            ${!canSetNeedBy ||
                 ticket.customerWaiting === true ||
                 ticket.isWaiter === true ||
+                Boolean(ticket.pickedUpAtMs) ||
                 !["pending", "washing", "rewash_requested"].includes(
                   washStatus,
                 )
