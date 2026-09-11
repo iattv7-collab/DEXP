@@ -30,9 +30,11 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -59,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let roWashRows = [];
   let courtesyWashRows = [];
+  const lateNeedByNotified = new Set();
 
   function waitForSession() {
     return new Promise((resolve) => {
@@ -334,6 +337,80 @@ document.addEventListener("DOMContentLoaded", async () => {
   // COMBINED QUEUE
   // ====================================================
 
+  async function notifyAdvisorNeedByLate(tickets) {
+    for (const ticket of tickets) {
+      if (!ticket?.needByMissed) {
+        continue;
+      }
+
+      if (isCourtesyWash(ticket)) {
+        continue;
+      }
+
+      const advisorId = clean(ticket.advisorId);
+
+      if (!advisorId) {
+        continue;
+      }
+
+      const needBy = Number(ticket.needByAtMs || 0);
+      const alertId = `needby-late-${ticket.id}-${needBy}`;
+
+      if (lateNeedByNotified.has(alertId)) {
+        continue;
+      }
+
+      const alertRef = doc(db, "notificationRequests", alertId);
+      const existing = await getDoc(alertRef);
+
+      if (existing.exists()) {
+        lateNeedByNotified.add(alertId);
+        continue;
+      }
+
+      const roNumber = roValue(ticket);
+      const projectedLabel = fmtTime(ticket.projectedFinishAtMs);
+      const needByLabel = fmtTime(needBy);
+
+      await setDoc(alertRef, {
+        id: alertId,
+        dealerId: currentDealerId,
+        module: "advisor",
+        eventType: "needby_late",
+        title: "Wash late for Need By",
+        message: `RO ${roNumber} Need By ${needByLabel}, projected ${projectedLabel}.`,
+        status: "active",
+        targetType: "user",
+        targetUserId: advisorId,
+        targetUserName: clean(ticket.advisorName || ""),
+        route: "/pages/advisor/advisor.html",
+        routeParams: {
+          roId: ticket.id,
+          roNumber,
+        },
+        relatedRoId: ticket.id,
+        relatedRoNumber: roNumber,
+        relatedTagNumber: tagValue(ticket),
+        createdAt: serverTimestamp(),
+        createdAtMs: Date.now(),
+        createdBy: auth.currentUser?.uid || "",
+        createdByName: clean(auth.currentUser?.displayName || ""),
+        updatedAt: serverTimestamp(),
+        updatedAtMs: Date.now(),
+        resolvedAt: null,
+        resolvedAtMs: null,
+        openedBy: "",
+        openedAtMs: null,
+      });
+
+      lateNeedByNotified.add(alertId);
+    }
+  }
+
+  function getCombinedRows() {
+    return [...roWashRows, ...courtesyWashRows];
+  }
+
   function getCombinedRows() {
     return [...roWashRows, ...courtesyWashRows];
   }
@@ -435,6 +512,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       sortWashRows(rows),
       currentWashSettings || {},
     );
+
+    notifyAdvisorNeedByLate(sorted).catch((error) => {
+      console.error("Need By late alert failed:", error);
+    });
 
     if (!sorted.length) {
       rowsEl.innerHTML = `
