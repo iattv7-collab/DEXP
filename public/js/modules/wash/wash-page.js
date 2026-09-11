@@ -18,6 +18,8 @@ import {
   setWashOpen,
 } from "/js/services/firestore/wash-settings-service.js";
 
+import { projectWashQueue } from "/js/services/firestore/wash-capacity-service.js";
+
 import {
   listenToActiveCourtesyWashes,
   setCourtesyWashStatus,
@@ -53,6 +55,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentSession = await waitForSession();
   let currentDealerId = currentSession?.dealerId || "";
   let washIsOpen = true;
+  let currentWashSettings = null;
 
   let roWashRows = [];
   let courtesyWashRows = [];
@@ -428,12 +431,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderRows(rows) {
-    const sorted = sortWashRows(rows);
+    const sorted = projectWashQueue(
+      sortWashRows(rows),
+      currentWashSettings || {},
+    );
 
     if (!sorted.length) {
       rowsEl.innerHTML = `
         <tr>
-          <td colspan="13">
+          <td colspan="14">
             No active wash tickets.
           </td>
         </tr>
@@ -505,6 +511,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             <td>
               ${escapeHtml(fmtTime(ticket.needByAtMs))}
+            </td>
+
+            <td style="${
+              ticket.needByMissed
+                ? "color:crimson;font-weight:700;"
+                : ""
+            }">
+              ${escapeHtml(fmtTime(ticket.projectedFinishAtMs))}
             </td>
 
             <td>
@@ -605,9 +619,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ====================================================
 
   async function loadWashSettings() {
-    const settings = await getWashSettings();
+    currentWashSettings = await getWashSettings();
 
-    updateWashDayControls(settings.isOpen);
+    updateWashDayControls(currentWashSettings.isOpen);
   }
 
   function updateWashDayControls(isOpen) {
@@ -625,6 +639,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const settings = await setWashOpen(true);
 
+      currentWashSettings = settings;
+
       updateWashDayControls(settings.isOpen);
 
       setMsg("Wash day opened.");
@@ -638,6 +654,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   closeBtn.addEventListener("click", async () => {
     try {
       const settings = await setWashOpen(false);
+
+      currentWashSettings = settings;
 
       updateWashDayControls(settings.isOpen);
 
