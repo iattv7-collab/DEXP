@@ -359,6 +359,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg(`Need By set for ${fmtTime(selectedMs)}.`);
   }
 
+  function confirmNeedByOverride(ticket, actionLabel) {
+    const ownerId = advisorIdValue(ticket);
+    const actorId = clean(session?.uid);
+
+    if (!ownerId || ownerId === actorId) {
+      return true;
+    }
+
+    const ownerName = advisorNameValue(ticket) || "another advisor";
+    const actorName =
+      clean(session?.displayName || session?.email) || "you";
+
+    return confirm(
+      `This RO belongs to ${ownerName}.\n\n` +
+        `You are about to ${actionLabel}. This action is recorded under ${actorName}.\n\n` +
+        `Continue?`,
+    );
+  }
+
   async function resolveNeedByLateAlert(ticketId, needBy) {
     const alertId = `needby-late-${ticketId}-${Number(needBy || 0)}`;
 
@@ -385,6 +404,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!currentNeedBy) {
       setMsg("No Need By to clear.", false);
+      return;
+    }
+
+    if (!confirmNeedByOverride(ticket, "clear Need By")) {
       return;
     }
 
