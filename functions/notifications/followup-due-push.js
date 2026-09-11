@@ -92,6 +92,47 @@ const followUpDuePush = onSchedule(
     }
 
     console.log(`Created ${created} follow-up due notifications.`);
+
+    const activeAlerts = await firestore
+      .collection("notificationRequests")
+      .where("eventType", "==", "followup_due")
+      .where("status", "==", "active")
+      .limit(100)
+      .get();
+
+    let resolved = 0;
+
+    for (const alertDoc of activeAlerts.docs) {
+      const alert = alertDoc.data() || {};
+      const roId = String(alert.relatedRoId || "").trim();
+
+      if (!roId) {
+        continue;
+      }
+
+      const roSnap = await firestore.collection("ros").doc(roId).get();
+      const ro = roSnap.exists ? roSnap.data() || {} : {};
+      const followupStatus = String(ro.followupStatus || "").toLowerCase();
+
+      if (followupStatus === "pending") {
+        continue;
+      }
+
+      await alertDoc.ref.update({
+        status: "resolved",
+        resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        resolvedAtMs: now,
+        resolvedBy: "followUpDuePush",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAtMs: now,
+      });
+
+      resolved += 1;
+    }
+
+    if (resolved) {
+      console.log(`Resolved ${resolved} follow-up alerts for completed ROs.`);
+    }
   },
 );
 

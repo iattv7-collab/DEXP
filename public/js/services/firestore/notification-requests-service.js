@@ -4,6 +4,8 @@
 import {
   collection,
   doc,
+  getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -388,4 +390,85 @@ export async function dismissNotificationRequest(notificationId) {
     updatedAtMs: Date.now(),
     updatedBy: session.uid,
   });
+}
+
+export function followupDueNotificationId(roId) {
+  return `followup-${String(roId || "").trim()}-1`;
+}
+
+/**
+ * Resolve the follow-up due alert(s) tied to one RO.
+ * Primary link: deterministic id followup-{roId}-1 from followUpDuePush.
+ * Also resolves any other active followup_due rows with the same relatedRoId.
+ */
+export async function resolveFollowupDueAlertsForRo(roId) {
+  const session = getSession();
+  const safeRoId = String(roId || "").trim();
+
+  if (!session?.uid) {
+    throw new Error("Missing user session.");
+  }
+
+  if (!safeRoId) {
+    return;
+  }
+
+  const primaryId = followupDueNotificationId(safeRoId);
+  await resolveNotificationRequestIfActive(primaryId);
+
+  if (!session.dealerId) {
+    return;
+  }
+
+  const relatedQuery = query(
+    collection(db, NOTIFICATION_REQUESTS_COLLECTION),
+    where("dealerId", "==", session.dealerId),
+    where("eventType", "==", "followup_due"),
+    where("relatedRoId", "==", safeRoId),
+    where("status", "==", NOTIFICATION_STATUS.ACTIVE),
+  );
+
+  try {
+    const snapshot = await getDocs(relatedQuery);
+
+    for (const docSnap of snapshot.docs) {
+      if (docSnap.id === primaryId) {
+        continue;
+      }
+
+      await resolveNotificationRequestIfActive(docSnap.id);
+    }
+  } catch (error) {
+    console.warn(
+      "Could not query extra follow-up alerts for RO.",
+      safeRoId,
+      error,
+    );
+  }
+}
+
+async function resolveNotificationRequestIfActive(notificationId) {
+  if (!notificationId) {
+    return;
+  }
+
+  const notificationRef = doc(
+    db,
+    NOTIFICATION_REQUESTS_COLLECTION,
+    notificationId,
+  );
+
+  const snapshot = await getDoc(notificationRef);
+
+  if (!snapshot.exists()) {
+    return;
+  }
+
+  const data = snapshot.data() || {};
+
+  if (String(data.status || "") === NOTIFICATION_STATUS.RESOLVED) {
+    return;
+  }
+
+  await resolveNotificationRequest(notificationId);
 }

@@ -9,6 +9,8 @@ import {
   updateRO,
 } from "/js/services/firestore/ros-service.js";
 
+import { resolveFollowupDueAlertsForRo } from "/js/services/firestore/notification-requests-service.js";
+
 import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
 import { getSession } from "/js/core/session.js";
@@ -174,6 +176,14 @@ function bindButtons(rows) {
         [ROS_FIELDS.followupCompletedBy]: session?.uid || "",
         [ROS_FIELDS.followupCompletedByName]: session?.displayName || "",
       });
+
+      /*
+       * Follow-up due alerts live in notificationRequests as
+       * followup-{roId}-1 (created by followUpDuePush).
+       * Completing the RO follow-up must resolve that alert
+       * or the Alerts tray/count stays active.
+       */
+      await resolveFollowupDueAlertsForRo(roId);
     });
   });
 }
