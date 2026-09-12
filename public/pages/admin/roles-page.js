@@ -105,9 +105,7 @@ function attachRolePermissionEvents(dealer) {
     "wash.waiter.set",
 
     "booking.cp.mark",
-    "booking.cp.clear",
     "booking.wty.mark",
-    "booking.wty.clear",
 
     "qc.request",
     "qc.noQc",

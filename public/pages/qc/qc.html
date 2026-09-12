@@ -1,39 +1,61 @@
 <!-- FILE: /public/pages/qc/qc.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QC</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/qc.css?v=1" />
+  </head>
+  <body>
+    <div id="appHeader"></div>
 
-  <title>QC</title>
+    <main class="qc-shell">
+      <section class="page-section">
+        <h1>QC</h1>
+        <p>Inspect jobs that Advisor or Booker sent. Prefer before wash; wash may go first if you are backed up.</p>
 
-  <link rel="stylesheet" href="/css/core/reset.css" />
-  <link rel="stylesheet" href="/css/core/base.css" />
-</head>
+        <div class="qc-tabs" id="qcTabs">
+          <button type="button" data-tab="active" disabled>Active (0)</button>
+          <button type="button" data-tab="done" disabled>Done today (0)</button>
+        </div>
+      </section>
 
-<body>
-  <div id="appHeader"></div>
+      <section class="page-section">
+        <div id="msg" class="small-muted"></div>
 
-  <main class="page-shell">
-    <section class="page-section">
-      <h1>QC</h1>
-      <p>Quality control review screen.</p>
-    </section>
+        <div class="form-row">
+          <label for="qcSearchInput">Search:</label>
+          <input
+            id="qcSearchInput"
+            type="text"
+            placeholder="Tag, RO, or vehicle..."
+          />
+        </div>
 
-    <section class="page-section">
-      <div id="msg" class="small-muted"></div>
+        <div class="qc-table-wrap">
+          <table class="qc-table">
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>RO</th>
+                <th>Vehicle</th>
+                <th>Advisor</th>
+                <th>Status</th>
+                <th>Requested</th>
+                <th>Started</th>
+                <th>Done</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="qcTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
 
-      <div class="form-row">
-        <label for="searchInput">Search:</label>
-        <input id="searchInput" type="text" placeholder="Tag or RO..." />
-      </div>
-
-      <div class="table-wrap" style="margin-top:10px;">
-        <table id="qcTable" class="data-table"></table>
-      </div>
-    </section>
-  </main>
-
-  <script type="module" src="/js/modules/qc/qc-page.js"></script>
-</body>
+    <script type="module" src="/js/modules/qc/qc-page.js?v=2"></script>
+  </body>
 </html>

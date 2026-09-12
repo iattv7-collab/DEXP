@@ -48,6 +48,8 @@ import {
 import {
   markCpBooked,
   markWarrantyBooked,
+  clearCpBooked,
+  clearWarrantyBooked,
 } from "/js/modules/shared/booking-actions-service.js";
 
 import {
@@ -71,8 +73,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const canRequestRewash = hasPermission(PERMISSIONS.WASH_REWASH_REQUEST);
 
   const canMarkCp = hasPermission(PERMISSIONS.BOOKING_CP_MARK);
+  const canClearCp = canMarkCp;
 
   const canMarkWty = hasPermission(PERMISSIONS.BOOKING_WTY_MARK);
+  const canClearWty = canMarkWty;
 
   const canRequestQc = hasPermission(PERMISSIONS.QC_REQUEST);
 
@@ -834,21 +838,27 @@ document.addEventListener("DOMContentLoaded", async () => {
                       </td>
 
                       <td>
-                        <button
-                          class="cpBookedBtn"
-                          ${!canMarkCp || cpDone ? "disabled" : ""}
-                        >
-                          ${cpDone ? "CP Booked" : "Mark CP Booked"}
-                        </button>
+                        ${
+                          cpDone
+                            ? `${canClearCp
+                                ? `<span>Booked</span> <button class="cpClearBtn">Clear CP</button>`
+                                : "Booked"}`
+                            : canMarkCp
+                              ? `<button class="cpBookedBtn">Mark CP Booked</button>`
+                              : ""
+                        }
                       </td>
 
                       <td>
-                        <button
-                          class="wtyBookedBtn"
-                          ${!canMarkWty || wtyDone ? "disabled" : ""}
-                        >
-                          ${wtyDone ? "WTY Booked" : "Mark WTY Booked"}
-                        </button>
+                        ${
+                          wtyDone
+                            ? `${canClearWty
+                                ? `<span>Booked</span> <button class="wtyClearBtn">Clear WTY</button>`
+                                : "Booked"}`
+                            : canMarkWty
+                              ? `<button class="wtyBookedBtn">Mark WTY Booked</button>`
+                              : ""
+                        }
                       </td>
 
                       <td>
@@ -935,9 +945,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         setMsg("CP booked.");
       }
 
+      if (button.classList.contains("cpClearBtn")) {
+        await clearCpBooked(id);
+        setMsg("CP cleared.");
+      }
+
       if (button.classList.contains("wtyBookedBtn")) {
         await markWarrantyBooked(id);
         setMsg("Warranty booked.");
+      }
+
+      if (button.classList.contains("wtyClearBtn")) {
+        await clearWarrantyBooked(id);
+        setMsg("Warranty cleared.");
       }
 
       if (button.classList.contains("requestQcBtn")) {

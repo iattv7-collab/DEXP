@@ -1,0 +1,136 @@
+/* public/css/modules/qc.css */
+
+:root {
+  --qc-blue: #0b3d91;
+  --qc-teal: #4066e2;
+  --qc-grid: #c9c9c9;
+}
+
+.qc-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px 28px;
+  box-sizing: border-box;
+}
+
+.qc-shell .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+.qc-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.qc-tabs button {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--qc-blue);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--qc-blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.qc-tabs button:disabled {
+  background: #e8e8e8;
+  color: #8a8a8a;
+  border-color: #c9c9c9;
+  cursor: default;
+}
+
+.qc-tabs button.has-rows {
+  background: #ffffff;
+  color: var(--qc-blue);
+  border-color: var(--qc-blue);
+}
+
+.qc-tabs button.active {
+  background: var(--qc-blue);
+  color: #ffffff;
+  border-color: var(--qc-blue);
+}
+
+.qc-shell .form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qc-shell #qcSearchInput {
+  flex: 1 1 280px;
+  min-width: 200px;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #a0bcdf);
+  border-radius: 7px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.qc-table-wrap {
+  width: 100%;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid var(--qc-grid);
+  border-radius: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.qc-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #ffffff;
+}
+
+.qc-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--qc-teal);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.qc-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e4e4e4;
+  border-right: 1px solid #eee;
+  font-size: 15px;
+  vertical-align: middle;
+}
+
+.qc-table .action-cell {
+  white-space: nowrap;
+}
+
+.qc-table button {
+  margin: 2px 3px 2px 0;
+}
+
+.qc-table button:disabled {
+  background: #e8e8e8;
+  color: #8a8a8a;
+  border-color: #c9c9c9;
+}
