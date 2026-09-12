@@ -149,7 +149,7 @@ function renderActions(ro) {
       Start
     </button>
     <button type="button" data-action="hold" ${status === "working" ? "" : "disabled"}>
-      Waiting Parts
+      Hold
     </button>
     <button type="button" data-action="resume" ${status === "hold" ? "" : "disabled"}>
       Resume
