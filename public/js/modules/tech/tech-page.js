@@ -1,3 +1,6 @@
+// ======================================================
+// FILE: /public/js/modules/tech/tech-page.js
+
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
@@ -23,6 +26,8 @@ let session = null;
 let rows = [];
 let requestTypes = [];
 let openRequestsByRoId = {};
+let activeTab = "assigned";
+let searchText = "";
 
 const $ = (id) => document.getElementById(id);
 
@@ -31,8 +36,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAppHeader();
   session = await waitForSession();
 
-  $("techTable").addEventListener("click", onTableClick);
-  $("techTable").addEventListener("blur", onNotesBlur, true);
+  $("techTabs").addEventListener("click", onTabClick);
+  $("techTableBody").addEventListener("click", onTableClick);
+  $("techTableBody").addEventListener("blur", onNotesBlur, true);
+  $("techSearchInput").addEventListener("input", (event) => {
+    searchText = String(event.target.value || "").trim().toLowerCase();
+    render();
+  });
 
   listenToAssignedRos();
   listenToOpenRequests();
@@ -42,8 +52,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     render();
   } catch (error) {
     console.error(error);
+    setMsg("Could not load request types.");
   }
 });
+
+function onTabClick(event) {
+  const button = event.target.closest("button[data-tab]");
+  if (!button) return;
+
+  activeTab = button.dataset.tab;
+  $("techTabs")
+    .querySelectorAll("button[data-tab]")
+    .forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === activeTab));
+  render();
+}
 
 function listenToAssignedRos() {
   const q = query(
@@ -66,11 +88,7 @@ function listenToOpenRequests() {
     openRequestsByRoId = {};
 
     (list || []).forEach((request) => {
-      [request.roId, request.roNumber, request.tagNumber]
-        .filter(Boolean)
-        .forEach((key) => {
-          openRequestsByRoId[String(key)] = request;
-        });
+      if (request.roId) openRequestsByRoId[String(request.roId)] = request;
     });
 
     render();
@@ -78,12 +96,7 @@ function listenToOpenRequests() {
 }
 
 function openRequestForRo(ro) {
-  return (
-    openRequestsByRoId[ro.id] ||
-    openRequestsByRoId[String(ro.roNumber || "")] ||
-    openRequestsByRoId[String(ro.tagNumber || "")] ||
-    null
-  );
+  return openRequestsByRoId[ro.id] || null;
 }
 
 function openRequestLabel(ro) {
@@ -104,14 +117,21 @@ function statusLabel(ro) {
   return "Assigned";
 }
 
-function requestTypesForStatus(status) {
-  return (requestTypes || []).filter((type) => {
-    if (type.showOnTech !== true) return false;
-    const marksDone = type.techMarksDone === true;
-    if (status === "assigned") return !marksDone;
-    if (status === "working" || status === "hold") return marksDone;
-    return false;
-  });
+function isPickedUp(ro) {
+  return Boolean(
+    ro.pickedUp === true ||
+      ro.pickedUpAtMs ||
+      String(ro.pickupStatus || "").toLowerCase() === "picked_up",
+  );
+}
+
+function matchesSearch(ro) {
+  if (!searchText) return true;
+  const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
+  const hay = [ro.tagNumber, ro.roNumber, vehicle, ro.advisorName]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(searchText);
 }
 
 function renderRequestButtons(ro) {
@@ -122,18 +142,19 @@ function renderRequestButtons(ro) {
     .filter((type) => type.showOnTech === true)
     .map((type) => {
       const marksDone = type.techMarksDone === true;
-      const allowed =
-        (!marksDone && status === "assigned") ||
-        (marksDone && (status === "working" || status === "hold"));
+      const allowed = marksDone
+        ? status === "working" || status === "hold"
+        : status === "assigned" || status === "working" || status === "hold";
 
-      const disabled = !allowed || hasOpenRequest;
+      if (!allowed) return "";
 
       return `
         <button
           type="button"
+          class="small-button"
           data-action="requestType"
           data-request-type-id="${escapeHtml(type.id)}"
-          ${disabled ? "disabled" : ""}
+          ${hasOpenRequest ? "disabled" : ""}
         >
           ${escapeHtml(type.name || type.requestType)}
         </button>`;
@@ -143,101 +164,121 @@ function renderRequestButtons(ro) {
 
 function renderActions(ro) {
   const status = techStatus(ro);
+  const buttons = [];
 
-  return `
-    <button type="button" data-action="start" ${status === "assigned" ? "" : "disabled"}>
-      Start
-    </button>
-    <button type="button" data-action="hold" ${status === "working" ? "" : "disabled"}>
-      Hold
-    </button>
-    <button type="button" data-action="resume" ${status === "hold" ? "" : "disabled"}>
-      Resume
-    </button>
-    <button type="button" data-action="complete" ${
-      status === "working" || status === "hold" ? "" : "disabled"
-    }>
-      Done
-    </button>
-    <button type="button" data-action="returnToWorking" ${
-      status === "completed" ? "" : "disabled"
-    }>
-      Return to Working
-    </button>
-    ${renderRequestButtons(ro)}
-  `;
+  if (status === "assigned") {
+    buttons.push(`<button type="button" class="small-button" data-action="start">Start</button>`);
+  }
+  if (status === "working") {
+    buttons.push(
+      `<button type="button" class="small-button" data-action="hold">Waiting Parts</button>`,
+    );
+    buttons.push(`<button type="button" class="small-button" data-action="complete">Done</button>`);
+  }
+  if (status === "hold") {
+    buttons.push(`<button type="button" class="small-button" data-action="resume">Resume</button>`);
+    buttons.push(`<button type="button" class="small-button" data-action="complete">Done</button>`);
+  }
+  if (status === "completed") {
+    buttons.push(
+      `<button type="button" class="small-button" data-action="returnToWorking">Return to Working</button>`,
+    );
+  }
+
+  return `${buttons.join("")}${renderRequestButtons(ro)}`;
 }
 
 function sortRows(list) {
-  const order = { working: 0, hold: 1, assigned: 2, completed: 3 };
-  return [...list].sort((a, b) => {
-    const aOrder = order[techStatus(a)] ?? 9;
-    const bOrder = order[techStatus(b)] ?? 9;
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    return String(a.roNumber || "").localeCompare(String(b.roNumber || ""), undefined, {
+  return [...list].sort((a, b) =>
+    String(a.roNumber || "").localeCompare(String(b.roNumber || ""), undefined, {
       numeric: true,
-    });
-  });
+    }),
+  );
+}
+
+function setMsg(text) {
+  const el = $("msg");
+  if (el) el.textContent = text || "";
 }
 
 function render() {
-  const tableEl = $("techTable");
-  const list = sortRows(rows);
+  const body = $("techTableBody");
+  if (!body) return;
+
+  const activeNotes = document.activeElement?.classList?.contains("tech-notes")
+    ? document.activeElement
+    : null;
+  const activeRoId = activeNotes?.dataset?.roId;
+  const activeValue = activeNotes?.value;
+  const activePos = activeNotes?.selectionStart;
+
+  const counts = { assigned: 0, working: 0, hold: 0, completed: 0 };
+  rows.forEach((ro) => {
+    if (isPickedUp(ro) && techStatus(ro) !== "completed") return;
+    const status = techStatus(ro);
+    if (counts[status] !== undefined) counts[status] += 1;
+  });
+
+  $("techTabs")
+    .querySelectorAll("button[data-tab]")
+    .forEach((tab) => {
+      const key = tab.dataset.tab;
+      const labels = {
+        assigned: "Assigned",
+        working: "Working",
+        hold: "Hold",
+        completed: "Done",
+      };
+      tab.textContent = `${labels[key]} (${counts[key] || 0})`;
+    });
+
+  const list = sortRows(
+    rows.filter((ro) => {
+      if (techStatus(ro) !== activeTab) return false;
+      if (activeTab !== "completed" && isPickedUp(ro)) return false;
+      return matchesSearch(ro);
+    }),
+  );
 
   if (!list.length) {
-    tableEl.innerHTML = `
-      <thead>
-        <tr>
-          <th>Tag</th><th>RO</th><th>Vehicle</th><th>Advisor</th>
-          <th>Status</th><th>Open request</th><th>Notes</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="8">No repair orders assigned.</td></tr>
-      </tbody>
-    `;
+    body.innerHTML = `<tr><td colspan="8">No repair orders in this view.</td></tr>`;
     return;
   }
 
-  tableEl.innerHTML = `
-    <thead>
-      <tr>
-        <th>Tag</th>
-        <th>RO</th>
-        <th>Vehicle</th>
-        <th>Advisor</th>
-        <th>Status</th>
-        <th>Open request</th>
-        <th>Notes</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${list
-        .map((ro) => {
-          const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
-          const status = techStatus(ro);
-          const notes =
-            status === "assigned" || status === "completed"
-              ? escapeHtml(ro.techNotes || "")
-              : `<input class="tech-notes" data-ro-id="${escapeHtml(ro.id)}" value="${escapeHtml(ro.techNotes || "")}" placeholder="Notes" />`;
+  body.innerHTML = list
+    .map((ro) => {
+      const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
+      return `
+        <tr data-ro-id="${escapeHtml(ro.id)}">
+          <td><b>${escapeHtml(ro.tagNumber || "")}</b></td>
+          <td>${escapeHtml(ro.roNumber || "")}</td>
+          <td>${escapeHtml(vehicle)}</td>
+          <td>${escapeHtml(ro.advisorName || "")}</td>
+          <td>${escapeHtml(statusLabel(ro))}</td>
+          <td>${escapeHtml(openRequestLabel(ro))}</td>
+          <td>
+            <input
+              class="tech-notes"
+              data-ro-id="${escapeHtml(ro.id)}"
+              value="${escapeHtml(ro.techNotes || "")}"
+              placeholder="Notes"
+            />
+          </td>
+          <td class="action-cell">${renderActions(ro)}</td>
+        </tr>`;
+    })
+    .join("");
 
-          return `
-            <tr data-ro-id="${escapeHtml(ro.id)}">
-              <td><b>${escapeHtml(ro.tagNumber || "")}</b></td>
-              <td>${escapeHtml(ro.roNumber || "")}</td>
-              <td>${escapeHtml(vehicle)}</td>
-              <td>${escapeHtml(ro.advisorName || "")}</td>
-              <td>${escapeHtml(statusLabel(ro))}</td>
-              <td>${escapeHtml(openRequestLabel(ro))}</td>
-              <td>${notes}</td>
-              <td>${renderActions(ro)}</td>
-            </tr>
-          `;
-        })
-        .join("")}
-    </tbody>
-  `;
+  if (activeRoId) {
+    const next = body.querySelector(`.tech-notes[data-ro-id="${activeRoId}"]`);
+    if (next) {
+      next.value = activeValue;
+      next.focus();
+      try {
+        next.setSelectionRange(activePos, activePos);
+      } catch (_err) {}
+    }
+  }
 }
 
 async function onTableClick(event) {
@@ -257,13 +298,17 @@ async function onTableClick(event) {
         techCompletedAtMs: Date.now(),
       });
     }
-    if (action === "returnToWorking") await updateTechStatus(roId, "working", "tech_reopened");
+    if (action === "returnToWorking") {
+      await updateTechStatus(roId, "working", "tech_reopened", {
+        techCompletedAtMs: null,
+      });
+    }
     if (action === "requestType") {
       await handleTechRequestType(roId, button.dataset.requestTypeId);
     }
   } catch (error) {
     console.error(error);
-    window.alert(error?.message || "Action failed.");
+    setMsg(error?.message || "Action failed.");
   }
 }
 
@@ -272,6 +317,9 @@ async function onNotesBlur(event) {
   if (!notes) return;
   const roId = notes.dataset.roId;
   if (!roId) return;
+
+  const ro = rows.find((row) => row.id === roId);
+  if ((ro?.techNotes || "") === notes.value) return;
 
   await updateDoc(doc(db, "ros", roId), {
     techNotes: notes.value,
@@ -300,7 +348,7 @@ async function handleTechRequestType(roId, requestTypeId) {
     message:
       requestType.defaultMessage ||
       `Tech ${session?.displayName || session?.email || ""} requested ${requestType.name}. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
-    route: requestType.route || "/pages/move-locate/move-locate.html",
+    route: requestType.route || "/pages/operations/operations.html",
     routeParams: { tagNumber: ro.tagNumber || "" },
   });
 
@@ -312,12 +360,12 @@ async function handleTechRequestType(roId, requestTypeId) {
     });
   }
 
-  window.alert(`${requestType.name || "Request"} sent.`);
+  setMsg(`${requestType.name || "Request"} sent.`);
 }
 
-async function updateTechStatus(roId, techStatus, activityType, extraFields = {}) {
+async function updateTechStatus(roId, nextStatus, activityType, extraFields = {}) {
   await updateDoc(doc(db, "ros", roId), {
-    techStatus,
+    techStatus: nextStatus,
     updatedAt: serverTimestamp(),
     updatedBy: session?.uid || "",
     ...extraFields,

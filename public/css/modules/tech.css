@@ -1,0 +1,159 @@
+/* public/css/modules/tech.css */
+/* Tech board — same shell, tabs, and teal table as Wash / Advisor. */
+
+:root {
+  --tech-blue: #0b3d91;
+  --tech-teal: #4066e2;
+  --tech-grid: #c9c9c9;
+}
+
+.tech-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px 28px;
+  box-sizing: border-box;
+}
+
+.tech-shell .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+.tech-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tech-tabs button {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--tech-blue);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--tech-blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tech-tabs button.active {
+  background: var(--tech-blue);
+  color: #ffffff;
+  border-color: var(--tech-blue);
+}
+
+.tech-shell .form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tech-shell #techSearchInput {
+  flex: 1 1 280px;
+  min-width: 200px;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #a0bcdf);
+  border-radius: 7px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.tech-table-wrap {
+  width: 100%;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid var(--tech-grid);
+  border-radius: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tech-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #ffffff;
+}
+
+.tech-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--tech-teal);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tech-table td {
+  height: 32px;
+  padding: 3px 6px;
+  border-right: 1px solid var(--tech-grid);
+  border-bottom: 1px solid var(--tech-grid);
+  font-size: 15px;
+  line-height: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tech-table th:last-child,
+.tech-table td:last-child {
+  border-right: 0;
+}
+
+.tech-table button {
+  min-height: 26px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.tech-table .tech-notes {
+  width: 160px;
+  min-height: 28px;
+  padding: 4px 6px;
+  margin: 0;
+  border: 1px solid var(--tech-grid);
+  border-radius: 6px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.tech-table .action-cell {
+  white-space: nowrap;
+}
+
+.tech-table .action-cell button {
+  margin-right: 4px;
+}
+
+@media (max-width: 700px) {
+  .tech-shell {
+    padding: 10px 8px 20px;
+  }
+
+  .tech-shell .form-row input {
+    min-height: 38px;
+  }
+
+  .tech-table button {
+    min-height: 32px;
+  }
+}

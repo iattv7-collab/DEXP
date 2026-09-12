@@ -1,28 +1,62 @@
+<!-- FILE: /public/pages/tech/index.html -->
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DEXP Tech</title>
+    <title>Tech</title>
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
-    <link rel="stylesheet" href="/pages/tech/tech.css" />
+    <link rel="stylesheet" href="/css/modules/tech.css?v=1" />
   </head>
   <body>
     <div id="appHeader"></div>
-    <main class="page-shell full-page">
-      <section class="page-card">
-        <div class="page-title-row">
-          <div>
-            <h2>Tech</h2>
-            <p>My assigned repair orders.</p>
-          </div>
+
+    <main class="tech-shell">
+      <section class="page-section">
+        <h1>Tech</h1>
+        <p>My assigned repair orders. Start work, hold for parts, send requests, mark done.</p>
+
+        <div class="tech-tabs" id="techTabs">
+          <button type="button" class="active" data-tab="assigned">Assigned (0)</button>
+          <button type="button" data-tab="working">Working (0)</button>
+          <button type="button" data-tab="hold">Hold (0)</button>
+          <button type="button" data-tab="completed">Done (0)</button>
         </div>
-        <div class="table-wrap">
-          <table id="techTable" class="data-table advisor-table"></table>
+      </section>
+
+      <section class="page-section">
+        <div id="msg" class="small-muted"></div>
+
+        <div class="form-row">
+          <label for="techSearchInput">Search:</label>
+          <input
+            id="techSearchInput"
+            type="text"
+            placeholder="Tag, RO, or vehicle..."
+          />
+        </div>
+
+        <div class="tech-table-wrap">
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>RO</th>
+                <th>Vehicle</th>
+                <th>Advisor</th>
+                <th>Status</th>
+                <th>Open request</th>
+                <th>Notes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="techTableBody"></tbody>
+          </table>
         </div>
       </section>
     </main>
-    <script type="module" src="/js/modules/tech/tech-page.js"></script>
+
+    <script type="module" src="/js/modules/tech/tech-page.js?v=2"></script>
   </body>
 </html>

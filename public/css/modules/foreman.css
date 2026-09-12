@@ -1,0 +1,176 @@
+/* public/css/modules/foreman.css */
+/* Foreman board — same shell, tabs, and teal table as Wash / Advisor. */
+
+:root {
+  --foreman-blue: #0b3d91;
+  --foreman-teal: #4066e2;
+  --foreman-grid: #c9c9c9;
+}
+
+.foreman-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 14px 28px;
+  box-sizing: border-box;
+}
+
+.foreman-shell .page-section {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+.foreman-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.foreman-tabs button {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--foreman-blue);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--foreman-blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.foreman-tabs button.active {
+  background: var(--foreman-blue);
+  color: #ffffff;
+  border-color: var(--foreman-blue);
+}
+
+.foreman-shell .form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.foreman-shell .form-row input,
+.foreman-shell .form-row select {
+  padding: 7px 10px;
+  border: 1px solid var(--border, #a0bcdf);
+  border-radius: 7px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.foreman-shell #foremanSearchInput {
+  flex: 1 1 260px;
+  min-width: 180px;
+}
+
+.foreman-table-wrap {
+  width: 100%;
+  margin-top: 10px;
+  background: #ffffff;
+  border: 1px solid var(--foreman-grid);
+  border-radius: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.foreman-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: "Times New Roman", Times, serif;
+  background: #ffffff;
+}
+
+.foreman-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  background: var(--foreman-teal);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.foreman-table td {
+  height: 32px;
+  padding: 3px 6px;
+  border-right: 1px solid var(--foreman-grid);
+  border-bottom: 1px solid var(--foreman-grid);
+  font-size: 15px;
+  line-height: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foreman-table th:last-child,
+.foreman-table td:last-child {
+  border-right: 0;
+}
+
+.foreman-table select {
+  min-width: 140px;
+  padding: 4px 6px;
+  border: 1px solid var(--foreman-grid);
+  border-radius: 6px;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+}
+
+.foreman-table button {
+  min-height: 26px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.priority-badge {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.priority-badge.waiter {
+  background: #ffe0e0;
+  color: #a40000;
+}
+
+.priority-badge.due {
+  background: #fff4cc;
+  color: #7a5200;
+}
+
+.priority-badge.waiting {
+  background: #e6efff;
+  color: #0b4ea2;
+}
+
+@media (max-width: 700px) {
+  .foreman-shell {
+    padding: 10px 8px 20px;
+  }
+
+  .foreman-shell .form-row button {
+    min-height: 38px;
+  }
+
+  .foreman-table button {
+    min-height: 32px;
+  }
+}
