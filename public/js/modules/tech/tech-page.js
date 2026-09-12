@@ -2,7 +2,10 @@ import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { db } from "/js/services/firebase/firestore.js";
-import { createRequest } from "/js/services/firestore/requests-service.js";
+import {
+  createRequest,
+  watchActiveRequests,
+} from "/js/services/firestore/requests-service.js";
 import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
 
 import {
@@ -19,6 +22,7 @@ import {
 let session = null;
 let rows = [];
 let requestTypes = [];
+let openRequestsByRoId = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -31,6 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("techTable").addEventListener("blur", onNotesBlur, true);
 
   listenToAssignedRos();
+  listenToOpenRequests();
 
   try {
     requestTypes = await getActiveRequestTypes();
@@ -54,6 +59,37 @@ function listenToAssignedRos() {
     }));
     render();
   });
+}
+
+function listenToOpenRequests() {
+  watchActiveRequests((list) => {
+    openRequestsByRoId = {};
+
+    (list || []).forEach((request) => {
+      [request.roId, request.roNumber, request.tagNumber]
+        .filter(Boolean)
+        .forEach((key) => {
+          openRequestsByRoId[String(key)] = request;
+        });
+    });
+
+    render();
+  });
+}
+
+function openRequestForRo(ro) {
+  return (
+    openRequestsByRoId[ro.id] ||
+    openRequestsByRoId[String(ro.roNumber || "")] ||
+    openRequestsByRoId[String(ro.tagNumber || "")] ||
+    null
+  );
+}
+
+function openRequestLabel(ro) {
+  const request = openRequestForRo(ro);
+  if (!request) return "";
+  return request.title || request.requestType || "Open request";
 }
 
 function techStatus(ro) {
@@ -143,11 +179,11 @@ function render() {
       <thead>
         <tr>
           <th>Tag</th><th>RO</th><th>Vehicle</th><th>Advisor</th>
-          <th>Status</th><th>Notes</th><th>Actions</th>
+          <th>Status</th><th>Open request</th><th>Notes</th><th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="7">No repair orders assigned.</td></tr>
+        <tr><td colspan="8">No repair orders assigned.</td></tr>
       </tbody>
     `;
     return;
@@ -161,6 +197,7 @@ function render() {
         <th>Vehicle</th>
         <th>Advisor</th>
         <th>Status</th>
+        <th>Open request</th>
         <th>Notes</th>
         <th>Actions</th>
       </tr>
@@ -182,6 +219,7 @@ function render() {
               <td>${escapeHtml(vehicle)}</td>
               <td>${escapeHtml(ro.advisorName || "")}</td>
               <td>${escapeHtml(statusLabel(ro))}</td>
+              <td>${escapeHtml(openRequestLabel(ro))}</td>
               <td>${notes}</td>
               <td>${renderActions(ro)}</td>
             </tr>
