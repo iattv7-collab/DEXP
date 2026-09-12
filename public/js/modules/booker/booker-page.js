@@ -8,250 +8,268 @@
 // and no QC required.
 // ======================================================
 
-import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+import { db } from "/js/services/firebase/firestore.js";
+import {
+  markCpBooked,
+  markWarrantyBooked,
+  clearCpBooked,
+  clearWarrantyBooked,
+} from "/js/modules/shared/booking-actions-service.js";
+import {
+  requestQc,
+  markNoQcRequired,
+} from "/js/modules/shared/qc-actions-service.js";
 
 import {
   collection,
   onSnapshot,
   query,
-  where
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-import {
-  markCpBooked,
-  markWarrantyBooked
-} from "/js/modules/shared/booking-actions-service.js";
-
-import {
-  requestQc,
-  markNoQcRequired
-} from "/js/modules/shared/qc-actions-service.js";
+let session = null;
+let rows = [];
+let searchText = "";
 
 const $ = (id) => document.getElementById(id);
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({ allowedModules: ["booker"] });
   renderAppHeader();
+  session = await waitForSession();
 
-  const session = await waitForSession();
-  const dealerId = session?.dealerId || "";
+  $("bookerTableBody").addEventListener("click", onTableClick);
+  $("bookerSearchInput").addEventListener("input", (event) => {
+    searchText = String(event.target.value || "").trim().toLowerCase();
+    render();
+  });
 
-  const tableEl = $("bookerTable");
-  const searchEl = $("searchInput");
-  const msgEl = $("msg");
+  listenToDoneRos();
+});
 
-  let rows = [];
+function listenToDoneRos() {
+  const q = query(
+    collection(db, "ros"),
+    where("dealerId", "==", session.dealerId),
+    where("techStatus", "==", "completed"),
+  );
 
-  function setMsg(text, ok = true) {
-    msgEl.textContent = text || "";
-    msgEl.style.color = ok ? "green" : "crimson";
-  }
+  onSnapshot(q, (snapshot) => {
+    rows = snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }));
+    render();
+  });
+}
 
-  function clean(v) {
-    return String(v || "").trim();
-  }
+function isArchived(ro) {
+  return (
+    String(ro.status || "").toLowerCase() === "archived" ||
+    Boolean(ro.archivedAtMs) ||
+    Boolean(ro.archivedAt)
+  );
+}
 
-  function roValue(t) {
-    return clean(t.roNumber || t.ro || "");
-  }
+function isPickedUp(ro) {
+  return Boolean(
+    ro.pickedUp === true ||
+      ro.pickedUpAtMs ||
+      String(ro.pickupStatus || "").toLowerCase() === "picked_up",
+  );
+}
 
-  function tagValue(t) {
-    return clean(t.tagNumber || t.tag || "");
-  }
+function qcStatus(ro) {
+  return String(ro.qcStatus || "").toLowerCase();
+}
 
-  function fmtTime(ms) {
-    if (!ms) return "";
-    return new Date(ms).toLocaleString([], {
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit"
-    });
-  }
+function qcLabel(ro) {
+  const status = qcStatus(ro);
+  if (status === "requested") return "Requested";
+  if (status === "working") return "Working";
+  if (status === "complete") return "Done";
+  if (status === "not_required") return "No QC";
+  return "";
+}
 
-  function qcLabel(t) {
-    const status = clean(t.qcStatus).toLowerCase();
+function qcLocked(ro) {
+  const status = qcStatus(ro);
+  return (
+    status === "requested" ||
+    status === "working" ||
+    status === "complete" ||
+    status === "not_required"
+  );
+}
 
-    if (status === "requested") return "Requested";
-    if (status === "working") return "Working";
-    if (status === "complete") return "Done";
-    if (status === "not_required") return "No QC";
+function isCpBooked(ro) {
+  return Boolean(ro.cpBookedAtMs || ro.cpBookedAt);
+}
 
-    return "";
-  }
+function isWtyBooked(ro) {
+  return Boolean(ro.wtyBookedAtMs || ro.wtyBookedAt);
+}
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[c]));
-  }
+function isBooked(ro) {
+  return isCpBooked(ro) || isWtyBooked(ro);
+}
 
-  function render() {
-    const search = clean(searchEl.value).toLowerCase();
+function matchesSearch(ro) {
+  if (!searchText) return true;
+  const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
+  const hay = [ro.tagNumber, ro.roNumber, vehicle, ro.advisorName, ro.techName]
+    .join(" ")
+    .toLowerCase();
+  return hay.includes(searchText);
+}
 
-    const filtered = rows.filter((t) => {
-      if (!search) return true;
+function liveRows() {
+  return rows.filter((ro) => !isArchived(ro) && !isPickedUp(ro) && matchesSearch(ro));
+}
 
-      return (
-        roValue(t).toLowerCase().includes(search) ||
-        tagValue(t).toLowerCase().includes(search)
-      );
-    });
+function setMsg(text) {
+  const el = $("msg");
+  if (el) el.textContent = text || "";
+}
 
-    tableEl.innerHTML = `
-      <thead>
-        <tr>
-          <th>Tag</th>
-          <th>RO</th>
-          <th>Model</th>
-          <th>Customer</th>
-          <th>Location</th>
-          <th>Washed</th>
-          <th>CP</th>
-          <th>WTY</th>
-          <th>QC</th>
-          <th>CP Booked</th>
-          <th>WTY Booked</th>
-          <th>Request QC</th>
-          <th>No QC</th>
-        </tr>
-      </thead>
+function updateCounts(list) {
+  const tabs = $("bookerTabs");
+  if (!tabs) return;
 
-      <tbody>
-        ${
-          filtered.length
-            ? filtered.map((t) => {
-              const cpDone = !!t.cpBookedAtMs || !!t.cpBookedAt;
-              const wtyDone = !!t.wtyBookedAtMs || !!t.wtyBookedAt;
+  const counts = {
+    open: list.length,
+    qc: list.filter((ro) => {
+      const status = qcStatus(ro);
+      return status === "requested" || status === "working";
+    }).length,
+    booked: list.filter(isBooked).length,
+  };
 
-              const qcStatus = clean(t.qcStatus).toLowerCase();
-              const qcLocked =
-                qcStatus === "requested" ||
-                qcStatus === "working" ||
-                qcStatus === "complete" ||
-                qcStatus === "not_required";
+  const labels = { open: "Tech Done", qc: "QC pending", booked: "Booked" };
 
-              return `
-                <tr data-id="${escapeHtml(t.id)}">
-                  <td><b>${escapeHtml(tagValue(t))}</b></td>
-                  <td>${escapeHtml(roValue(t))}</td>
-                  <td>${escapeHtml(t.model || "")}</td>
-                  <td>${escapeHtml(t.customerName || "")}</td>
-                  <td>${escapeHtml(t.currentLocation || t.location || "")}</td>
-                  <td>${escapeHtml(fmtTime(t.washedAtMs))}</td>
+  tabs.querySelectorAll("button[data-tab]").forEach((tab) => {
+    const key = tab.dataset.tab;
+    const count = counts[key] || 0;
+    tab.textContent = `${labels[key]} (${count})`;
+    tab.disabled = true;
+    tab.classList.toggle("has-rows", count > 0);
+    tab.classList.toggle("active", count > 0);
+  });
+}
 
-                  <td>${cpDone ? "✅" : ""}</td>
-                  <td>${wtyDone ? "✅" : ""}</td>
-                  <td>${escapeHtml(qcLabel(t))}</td>
-
-                  <td>
-                    <button class="cpBookedBtn" ${cpDone ? "disabled" : ""}>
-                      CP Booked
-                    </button>
-                  </td>
-
-                  <td>
-                    <button class="wtyBookedBtn" ${wtyDone ? "disabled" : ""}>
-                      WTY Booked
-                    </button>
-                  </td>
-
-                  <td>
-                    <button class="requestQcBtn" ${qcLocked ? "disabled" : ""}>
-                      Request QC
-                    </button>
-                  </td>
-
-                  <td>
-                    <button class="noQcBtn" ${qcLocked ? "disabled" : ""}>
-                      No QC Required
-                    </button>
-                  </td>
-                </tr>
-              `;
-            }).join("")
-            : `<tr><td colspan="13">No booking records.</td></tr>`
-        }
-      </tbody>
+function bookingCell(booked, bookAction, unbookAction, label) {
+  if (booked) {
+    return `
+      <span>Booked</span>
+      <button type="button" class="small-button" data-action="${unbookAction}">Clear ${label}</button>
     `;
   }
 
-  tableEl.addEventListener("click", async (event) => {
-    const btn = event.target.closest("button");
-    const tr = event.target.closest("tr[data-id]");
+  return `
+    <button type="button" class="small-button" data-action="${bookAction}">Book ${label}</button>
+  `;
+}
 
-    if (!btn || !tr) return;
+function renderQcActions(ro) {
+  const locked = qcLocked(ro);
+  return `
+    <button type="button" class="small-button" data-action="requestQc" ${locked ? "disabled" : ""}>Request QC</button>
+    <button type="button" class="small-button" data-action="noQc" ${locked ? "disabled" : ""}>No QC needed</button>
+  `;
+}
 
-    const id = tr.dataset.id;
+function render() {
+  const body = $("bookerTableBody");
+  if (!body) return;
 
-    try {
-      if (btn.classList.contains("cpBookedBtn")) {
-        await markCpBooked(id);
-        setMsg("CP booked.");
-      }
-
-      if (btn.classList.contains("wtyBookedBtn")) {
-        await markWarrantyBooked(id);
-        setMsg("Warranty booked.");
-      }
-
-      if (btn.classList.contains("requestQcBtn")) {
-        await requestQc(id);
-        setMsg("QC requested.");
-      }
-
-      if (btn.classList.contains("noQcBtn")) {
-        await markNoQcRequired(id);
-        setMsg("No QC required.");
-      }
-    } catch (err) {
-      console.error(err);
-      setMsg(err?.message || "Action failed.", false);
-    }
-  });
-
-  searchEl.addEventListener("input", render);
-
-  const q = query(
-    collection(db, "ros"),
-    where("dealerId", "==", dealerId),
-    where("washStatus", "==", "washed")
+  const list = liveRows().sort(
+    (a, b) => Number(b.techCompletedAtMs || 0) - Number(a.techCompletedAtMs || 0),
   );
+  updateCounts(list);
 
-  onSnapshot(q, (snap) => {
-    rows = snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data()
-    }));
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="9">No Tech Done repair orders.</td></tr>`;
+    return;
+  }
 
-    rows.sort((a, b) =>
-      Number(b.washedAtMs || 0) - Number(a.washedAtMs || 0)
-    );
+  body.innerHTML = list
+    .map((ro) => {
+      const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
+      return `
+        <tr data-ro-id="${escapeHtml(ro.id)}">
+          <td><b>${escapeHtml(ro.tagNumber || "")}</b></td>
+          <td>${escapeHtml(ro.roNumber || "")}</td>
+          <td>${escapeHtml(vehicle)}</td>
+          <td>${escapeHtml(ro.advisorName || "")}</td>
+          <td>${escapeHtml(ro.techName || "")}</td>
+          <td>${escapeHtml(qcLabel(ro))}</td>
+          <td class="action-cell">${bookingCell(isCpBooked(ro), "cp", "unbookCp", "CP")}</td>
+          <td class="action-cell">${bookingCell(isWtyBooked(ro), "wty", "unbookWty", "WTY")}</td>
+          <td class="action-cell">${renderQcActions(ro)}</td>
+        </tr>`;
+    })
+    .join("");
+}
 
-    render();
-  });
-});
+async function onTableClick(event) {
+  const button = event.target.closest("button[data-action]");
+  const row = event.target.closest("tr[data-ro-id]");
+  if (!button || !row) return;
+
+  const roId = row.dataset.roId;
+  const action = button.dataset.action;
+
+  try {
+    if (action === "cp") {
+      await markCpBooked(roId);
+      setMsg("CP booked.");
+    }
+    if (action === "unbookCp") {
+      await clearCpBooked(roId);
+      setMsg("CP unbooked.");
+    }
+    if (action === "wty") {
+      await markWarrantyBooked(roId);
+      setMsg("Warranty booked.");
+    }
+    if (action === "unbookWty") {
+      await clearWarrantyBooked(roId);
+      setMsg("Warranty unbooked.");
+    }
+    if (action === "requestQc") {
+      await requestQc(roId);
+      setMsg("QC requested. Wash can still take the car if QC is backed up.");
+    }
+    if (action === "noQc") {
+      await markNoQcRequired(roId);
+      setMsg("No QC required.");
+    }
+  } catch (error) {
+    console.error(error);
+    setMsg(error?.message || "Action failed.");
+  }
+}
+
+function escapeHtml(value) {
+  return String(value || "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[char]);
+}
 
 function waitForSession() {
   return new Promise((resolve) => {
     const existing = getSession();
-
     if (existing?.dealerId) {
       resolve(existing);
       return;
     }
-
-    window.addEventListener(
-      "dexp-session-ready",
-      () => resolve(getSession()),
-      { once: true }
-    );
+    window.addEventListener("dexp-session-ready", () => resolve(getSession()), { once: true });
   });
 }

@@ -344,6 +344,16 @@ async function handleTechRequestType(roId, requestTypeId) {
   if (!ro) throw new Error("Repair order not found.");
   if (!requestType?.targetGroupId) throw new Error("Request type is missing a target group.");
 
+  if (isWashType(requestType)) {
+    const ok = window.confirm(
+      `RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}\n\nTake completed paperwork to Booking before you leave the stall.\n\nMark Done and send to wash?`,
+    );
+    if (!ok) {
+      setMsg("Done / wash canceled.");
+      return;
+    }
+  }
+
   await createRequest({
     roId: ro.id,
     roNumber: ro.roNumber || "",
@@ -421,4 +431,5 @@ function waitForSession() {
     window.addEventListener("dexp-session-ready", () => resolve(getSession()), { once: true });
   });
 }
+
 
