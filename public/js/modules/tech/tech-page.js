@@ -11,6 +11,8 @@ import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { db } from "/js/services/firebase/firestore.js";
+import { createRequest } from "/js/services/firestore/requests-service.js";
+import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
 
 import {
   addDoc,
@@ -71,65 +73,73 @@ function initializeWorkflow() {
 
     if (!roId) return;
 
-    if (action === "start") {
-      await updateTechStatus(roId, "working", "tech_started");
-    }
+    try {
+      if (action === "start") {
+        await updateTechStatus(roId, "working", "tech_started");
+      }
 
-    if (action === "hold") {
-      await updateTechStatus(roId, "hold", "tech_hold");
-    }
+      if (action === "hold") {
+        await updateTechStatus(roId, "hold", "tech_hold");
+      }
 
-    if (action === "resume") {
-      await updateTechStatus(roId, "working", "tech_resumed");
-    }
+      if (action === "resume") {
+        await updateTechStatus(roId, "working", "tech_resumed");
+      }
 
-    if (action === "complete") {
-      await updateTechStatus(roId, "completed", "tech_completed", {
-        techCompletedAtMs: Date.now(),
-      });
-    }
+      if (action === "complete") {
+        await updateTechStatus(roId, "completed", "tech_completed", {
+          techCompletedAtMs: Date.now(),
+        });
+      }
 
-    if (action === "sendToWash") {
-      await updateTechStatus(roId, "completed", "tech_sent_to_wash", {
-        techCompletedAtMs: Date.now(),
-        sentToWashAtMs: Date.now(),
-      });
-    }
+      if (action === "sendToWash") {
+        await updateTechStatus(roId, "completed", "tech_sent_to_wash", {
+          techCompletedAtMs: Date.now(),
+          sentToWashAtMs: Date.now(),
+        });
+      }
 
-    if (action === "returnToWorking") {
-      await updateTechStatus(roId, "working", "tech_reopened");
-    }
+      if (action === "returnToWorking") {
+        await updateTechStatus(roId, "working", "tech_reopened");
+      }
 
-    if (action === "bringToShop") {
-      await logActivity(roId, "tech_requested_vehicle_to_shop");
-      alert("Bring To Shop request will be connected to Requests next.");
+      if (action === "bringToShop") {
+        await requestBringToShop(roId);
+      }
+    } catch (error) {
+      console.error(error);
+      window.alert(error?.message || "Action failed.");
     }
   });
 
-  document.body.addEventListener("blur", async (event) => {
-    const notes = event.target.closest(".tech-notes");
+  document.body.addEventListener(
+    "blur",
+    async (event) => {
+      const notes = event.target.closest(".tech-notes");
 
-    if (!notes) return;
+      if (!notes) return;
 
-    const roId = notes.dataset.roId;
+      const roId = notes.dataset.roId;
 
-    if (!roId) return;
+      if (!roId) return;
 
-    await updateDoc(doc(db, "ros", roId), {
-      techNotes: notes.value,
-      updatedAt: serverTimestamp(),
-      updatedBy: session?.uid || "",
-    });
+      await updateDoc(doc(db, "ros", roId), {
+        techNotes: notes.value,
+        updatedAt: serverTimestamp(),
+        updatedBy: session?.uid || "",
+      });
 
-    await logActivity(roId, "tech_note_updated");
-  }, true);
+      await logActivity(roId, "tech_note_updated");
+    },
+    true,
+  );
 }
 
 function listenToAssignedRos() {
   const q = query(
     collection(db, "ros"),
     where("dealerId", "==", session.dealerId),
-    where("techId", "==", session.uid)
+    where("techId", "==", session.uid),
   );
 
   onSnapshot(q, (snapshot) => {
@@ -180,11 +190,7 @@ function renderCards(status) {
 }
 
 function renderCard(ro, status) {
-  const vehicle = [
-    ro.year,
-    ro.make,
-    ro.model,
-  ].filter(Boolean).join(" ");
+  const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
 
   return `
     <div class="tech-card" data-ro-id="${escapeHtml(ro.id)}">
@@ -274,6 +280,63 @@ function renderActions(status) {
   return "";
 }
 
+function findBringToShopType(requestTypes) {
+  return (requestTypes || []).find((type) => {
+    const key = String(type.requestType || "").toLowerCase();
+    const name = String(type.name || "").toLowerCase();
+
+    return (
+      key === "bring_to_shop" ||
+      key.includes("bring") ||
+      (name.includes("bring") && name.includes("shop"))
+    );
+  });
+}
+
+async function requestBringToShop(roId) {
+  const ro = rows.find((row) => row.id === roId);
+
+  if (!ro) {
+    throw new Error("Repair order not found.");
+  }
+
+  const requestTypes = await getActiveRequestTypes();
+  const requestType = findBringToShopType(requestTypes);
+
+  if (!requestType?.targetGroupId) {
+    throw new Error(
+      "No Bring To Shop request type is set. Add it in Admin request types.",
+    );
+  }
+
+  await createRequest({
+    roId: ro.id,
+    roNumber: ro.roNumber || "",
+    tagNumber: ro.tagNumber || "",
+    vinLast8: ro.vinLast8 || "",
+
+    requestType: requestType.requestType,
+    sourceModule: "tech",
+
+    targetGroupId: requestType.targetGroupId,
+    targetGroupName: requestType.targetGroupName || "",
+
+    title: requestType.name || "Bring To Shop",
+
+    message: `Tech ${session?.displayName || session?.email || ""} requested Bring To Shop. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
+
+    route: requestType.route || "/pages/move-locate/move-locate.html",
+
+    routeParams: {
+      tagNumber: ro.tagNumber || "",
+    },
+  });
+
+  await logActivity(roId, "tech_requested_vehicle_to_shop");
+
+  window.alert("Bring To Shop request sent.");
+}
+
 async function updateTechStatus(roId, techStatus, activityType, extraFields = {}) {
   await updateDoc(doc(db, "ros", roId), {
     techStatus,
@@ -320,7 +383,7 @@ function updateTabCounts() {
 
 function setTabText(match, text) {
   const tab = Array.from(document.querySelectorAll(".tech-tab")).find((item) =>
-    item.textContent.toLowerCase().includes(match)
+    item.textContent.toLowerCase().includes(match),
   );
 
   if (tab) {
