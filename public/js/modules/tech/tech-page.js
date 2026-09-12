@@ -26,7 +26,6 @@ let session = null;
 let rows = [];
 let requestTypes = [];
 let openRequestsByRoId = {};
-let activeTab = "assigned";
 let searchText = "";
 
 const $ = (id) => document.getElementById(id);
@@ -36,7 +35,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderAppHeader();
   session = await waitForSession();
 
-  $("techTabs").addEventListener("click", onTabClick);
   $("techTableBody").addEventListener("click", onTableClick);
   $("techTableBody").addEventListener("blur", onNotesBlur, true);
   $("techSearchInput").addEventListener("input", (event) => {
@@ -55,17 +53,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg("Could not load request types.");
   }
 });
-
-function onTabClick(event) {
-  const button = event.target.closest("button[data-tab]");
-  if (!button) return;
-
-  activeTab = button.dataset.tab;
-  $("techTabs")
-    .querySelectorAll("button[data-tab]")
-    .forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === activeTab));
-  render();
-}
 
 function listenToAssignedRos() {
   const q = query(
@@ -86,11 +73,9 @@ function listenToAssignedRos() {
 function listenToOpenRequests() {
   watchActiveRequests((list) => {
     openRequestsByRoId = {};
-
     (list || []).forEach((request) => {
       if (request.roId) openRequestsByRoId[String(request.roId)] = request;
     });
-
     render();
   });
 }
@@ -105,6 +90,14 @@ function openRequestLabel(ro) {
   return request.title || request.requestType || "Open request";
 }
 
+function isArchived(ro) {
+  return (
+    String(ro.status || "").toLowerCase() === "archived" ||
+    Boolean(ro.archivedAtMs) ||
+    Boolean(ro.archivedAt)
+  );
+}
+
 function techStatus(ro) {
   return String(ro.techStatus || "assigned").toLowerCase();
 }
@@ -113,16 +106,9 @@ function statusLabel(ro) {
   const status = techStatus(ro);
   if (status === "working") return "Working";
   if (status === "hold") return "Hold";
+  if (status === "parked") return "Parked";
   if (status === "completed") return "Done";
   return "Assigned";
-}
-
-function isPickedUp(ro) {
-  return Boolean(
-    ro.pickedUp === true ||
-      ro.pickedUpAtMs ||
-      String(ro.pickupStatus || "").toLowerCase() === "picked_up",
-  );
 }
 
 function matchesSearch(ro) {
@@ -134,71 +120,125 @@ function matchesSearch(ro) {
   return hay.includes(searchText);
 }
 
-function renderRequestButtons(ro) {
-  const status = techStatus(ro);
-  const hasOpenRequest = Boolean(openRequestForRo(ro));
+function requestKey(type) {
+  return `${type.requestType || ""} ${type.name || ""}`.toLowerCase();
+}
 
-  return (requestTypes || [])
-    .filter((type) => type.showOnTech === true)
-    .map((type) => {
-      const marksDone = type.techMarksDone === true;
-      const allowed = marksDone
-        ? status === "working" || status === "hold"
-        : status === "assigned" || status === "working" || status === "hold";
+function isWashType(type) {
+  const key = requestKey(type);
+  return key.includes("wash") && !key.includes("park");
+}
 
-      if (!allowed) return "";
+function isParkType(type) {
+  return requestKey(type).includes("park");
+}
 
-      return `
-        <button
-          type="button"
-          class="small-button"
-          data-action="requestType"
-          data-request-type-id="${escapeHtml(type.id)}"
-          ${hasOpenRequest ? "disabled" : ""}
-        >
-          ${escapeHtml(type.name || type.requestType)}
-        </button>`;
-    })
-    .join("");
+function requestLabel(type) {
+  if (isWashType(type)) return "Done, send to wash";
+  if (isParkType(type)) return "Send to park";
+  return type.name || type.requestType || "Request";
+}
+
+function firstType(predicate) {
+  return (requestTypes || []).find((type) => type.showOnTech === true && predicate(type));
+}
+
+function requestButton(type, label, enabled) {
+  if (!type) {
+    return `<button type="button" class="small-button" disabled>${escapeHtml(label)}</button>`;
+  }
+
+  return `
+    <button
+      type="button"
+      class="small-button"
+      data-action="requestType"
+      data-request-type-id="${escapeHtml(type.id)}"
+      ${enabled ? "" : "disabled"}
+    >
+      ${escapeHtml(label)}
+    </button>`;
 }
 
 function renderActions(ro) {
   const status = techStatus(ro);
-  const buttons = [];
+  const hasOpenRequest = Boolean(openRequestForRo(ro));
+  const washType = firstType(isWashType);
+  const parkType = firstType(isParkType);
 
-  if (status === "assigned") {
-    buttons.push(`<button type="button" class="small-button" data-action="start">Start</button>`);
-  }
-  if (status === "working") {
-    buttons.push(
-      `<button type="button" class="small-button" data-action="hold">Waiting Parts</button>`,
-    );
-    buttons.push(`<button type="button" class="small-button" data-action="complete">Done</button>`);
-  }
-  if (status === "hold") {
-    buttons.push(`<button type="button" class="small-button" data-action="resume">Resume</button>`);
-    buttons.push(`<button type="button" class="small-button" data-action="complete">Done</button>`);
-  }
-  if (status === "completed") {
-    buttons.push(
-      `<button type="button" class="small-button" data-action="returnToWorking">Return to Working</button>`,
-    );
-  }
+  const startEnabled = status === "assigned" || status === "completed" || status === "parked";
+  const holdEnabled = status === "working" || status === "parked";
+  const resumeEnabled = status === "hold";
+  const parkEnabled =
+    (status === "working" || status === "hold") && Boolean(parkType) && !hasOpenRequest;
+  const washEnabled =
+    (status === "working" || status === "hold" || status === "parked" || status === "completed") &&
+    Boolean(washType) &&
+    !hasOpenRequest;
 
-  return `${buttons.join("")}${renderRequestButtons(ro)}`;
+  const startLabel =
+    status === "completed" || status === "parked" ? "Start work again" : "Start";
+
+  return `
+    <button type="button" class="small-button" data-action="start" ${startEnabled ? "" : "disabled"}>
+      ${startLabel}
+    </button>
+    <button type="button" class="small-button" data-action="hold" ${holdEnabled ? "" : "disabled"}>
+      Hold
+    </button>
+    <button type="button" class="small-button" data-action="resume" ${resumeEnabled ? "" : "disabled"}>
+      Resume
+    </button>
+    ${requestButton(parkType, "Send to park", parkEnabled)}
+    ${requestButton(washType, "Done, send to wash", washEnabled)}`;
 }
 
 function sortRows(list) {
-  return [...list].sort((a, b) =>
-    String(a.roNumber || "").localeCompare(String(b.roNumber || ""), undefined, {
+  const order = { working: 0, assigned: 1, hold: 2, parked: 3, completed: 4 };
+  return [...list].sort((a, b) => {
+    const statusDiff = (order[techStatus(a)] ?? 9) - (order[techStatus(b)] ?? 9);
+    if (statusDiff !== 0) return statusDiff;
+    return String(a.roNumber || "").localeCompare(String(b.roNumber || ""), undefined, {
       numeric: true,
-    }),
-  );
+    });
+  });
 }
 
 function setMsg(text) {
   const el = $("msg");
   if (el) el.textContent = text || "";
+}
+
+function liveRows() {
+  return rows.filter((ro) => !isArchived(ro) && matchesSearch(ro));
+}
+
+function updateTabCounts(list) {
+  const tabs = $("techTabs");
+  if (!tabs) return;
+
+  const counts = { assigned: 0, working: 0, hold: 0, parked: 0, completed: 0 };
+  list.forEach((ro) => {
+    const status = techStatus(ro);
+    if (counts[status] !== undefined) counts[status] += 1;
+  });
+
+  const labels = {
+    assigned: "Assigned",
+    working: "Working",
+    hold: "Hold",
+    parked: "Parked",
+    completed: "Done",
+  };
+
+  tabs.querySelectorAll("button[data-tab]").forEach((tab) => {
+    const key = tab.dataset.tab;
+    const count = counts[key] || 0;
+    tab.textContent = `${labels[key]} (${count})`;
+    tab.disabled = true;
+    tab.classList.toggle("has-rows", count > 0);
+    tab.classList.toggle("active", count > 0);
+  });
 }
 
 function render() {
@@ -212,36 +252,11 @@ function render() {
   const activeValue = activeNotes?.value;
   const activePos = activeNotes?.selectionStart;
 
-  const counts = { assigned: 0, working: 0, hold: 0, completed: 0 };
-  rows.forEach((ro) => {
-    if (isPickedUp(ro) && techStatus(ro) !== "completed") return;
-    const status = techStatus(ro);
-    if (counts[status] !== undefined) counts[status] += 1;
-  });
-
-  $("techTabs")
-    .querySelectorAll("button[data-tab]")
-    .forEach((tab) => {
-      const key = tab.dataset.tab;
-      const labels = {
-        assigned: "Assigned",
-        working: "Working",
-        hold: "Hold",
-        completed: "Done",
-      };
-      tab.textContent = `${labels[key]} (${counts[key] || 0})`;
-    });
-
-  const list = sortRows(
-    rows.filter((ro) => {
-      if (techStatus(ro) !== activeTab) return false;
-      if (activeTab !== "completed" && isPickedUp(ro)) return false;
-      return matchesSearch(ro);
-    }),
-  );
+  const list = sortRows(liveRows());
+  updateTabCounts(list);
 
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="8">No repair orders in this view.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8">No live repair orders.</td></tr>`;
     return;
   }
 
@@ -290,19 +305,13 @@ async function onTableClick(event) {
   const action = button.dataset.action;
 
   try {
-    if (action === "start") await updateTechStatus(roId, "working", "tech_started");
-    if (action === "hold") await updateTechStatus(roId, "hold", "tech_hold");
-    if (action === "resume") await updateTechStatus(roId, "working", "tech_resumed");
-    if (action === "complete") {
-      await updateTechStatus(roId, "completed", "tech_completed", {
-        techCompletedAtMs: Date.now(),
-      });
-    }
-    if (action === "returnToWorking") {
-      await updateTechStatus(roId, "working", "tech_reopened", {
+    if (action === "start") {
+      await updateTechStatus(roId, "working", "tech_started", {
         techCompletedAtMs: null,
       });
     }
+    if (action === "hold") await updateTechStatus(roId, "hold", "tech_hold");
+    if (action === "resume") await updateTechStatus(roId, "working", "tech_resumed");
     if (action === "requestType") {
       await handleTechRequestType(roId, button.dataset.requestTypeId);
     }
@@ -354,10 +363,18 @@ async function handleTechRequestType(roId, requestTypeId) {
 
   await logActivity(roId, `tech_request_${requestType.requestType || requestType.id}`);
 
-  if (requestType.techMarksDone === true) {
+  if (isWashType(requestType)) {
     await updateTechStatus(roId, "completed", "tech_completed", {
       techCompletedAtMs: Date.now(),
     });
+    setMsg("Sent to wash. Job marked Done.");
+    return;
+  }
+
+  if (isParkType(requestType)) {
+    await updateTechStatus(roId, "parked", "tech_parked");
+    setMsg("Sent to park. Job is Parked — not Done.");
+    return;
   }
 
   setMsg(`${requestType.name || "Request"} sent.`);
@@ -404,3 +421,4 @@ function waitForSession() {
     window.addEventListener("dexp-session-ready", () => resolve(getSession()), { once: true });
   });
 }
+

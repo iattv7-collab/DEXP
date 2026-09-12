@@ -51,7 +51,7 @@ export const RO_TRACKER_COLUMNS = [
     label: "Location",
   },
 
-    {
+  {
     key: "readyCalled",
     label: "Ready Called",
   },
@@ -93,7 +93,7 @@ export const RO_TRACKER_COLUMNS = [
 
   {
     key: "techDone",
-    label: "Tech Done",
+    label: "Tech Status",
   },
 
   {

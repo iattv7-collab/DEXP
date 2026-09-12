@@ -123,6 +123,7 @@ function render() {
     assigned: 0,
     working: 0,
     hold: 0,
+    parked: 0,
     completed: 0,
   };
 
@@ -136,6 +137,7 @@ function render() {
   setTabText("assigned", `Assigned (${counts.assigned})`);
   setTabText("working", `Working (${counts.working})`);
   setTabText("hold", `Hold (${counts.hold})`);
+  setTabText("parked", `Parked (${counts.parked})`);
   setTabText("completed", `Done (${counts.completed})`);
 
   const filtered = rows
@@ -174,7 +176,6 @@ function renderPriority(ro) {
   if (ro.isWaiter) return `<span class="priority-badge waiter">WAITER</span>`;
   if (isPastDue(ro)) return `<span class="priority-badge waiter">PAST DUE</span>`;
   if (isDueSoon(ro)) return `<span class="priority-badge due">DUE SOON</span>`;
-  if (getForemanStatus(ro) === "hold") return `<span class="priority-badge waiting">HOLD</span>`;
   return "";
 }
 
@@ -205,6 +206,7 @@ function getForemanStatus(ro) {
   if (!ro.techId) return "unassigned";
   if (techStatus === "working") return "working";
   if (techStatus === "hold") return "hold";
+  if (techStatus === "parked") return "parked";
   if (techStatus === "completed") return "completed";
   return "assigned";
 }
@@ -214,6 +216,7 @@ function statusLabel(status) {
   if (status === "assigned") return "Assigned";
   if (status === "working") return "Working";
   if (status === "hold") return "Hold";
+  if (status === "parked") return "Parked";
   if (status === "completed") return "Done";
   return status;
 }

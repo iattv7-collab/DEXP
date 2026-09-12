@@ -56,6 +56,22 @@
   flex-wrap: wrap;
 }
 
+.foreman-shell .form-row button {
+  padding: 7px 14px;
+  border: 1px solid var(--foreman-blue);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--foreman-blue);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.foreman-shell .form-row button.active {
+  background: var(--foreman-blue);
+  color: #ffffff;
+  border-color: var(--foreman-blue);
+}
+
 .foreman-shell .form-row input,
 .foreman-shell .form-row select {
   padding: 7px 10px;

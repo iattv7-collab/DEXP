@@ -85,7 +85,7 @@ function buildCell(ro, key) {
       "waiter",
       Boolean(ro.customerWaiting || ro.isWaiter),
     );
-  if (key === "techDone") return buildTechDoneCell(ro);
+  if (key === "techDone") return buildTechStatusCell(ro);
   if (key === "textSent") return buildButtonCell(ro, "textSent", "Text");
   if (key === "actions") return buildButtonCell(ro, "archive", "Archive");
 
@@ -258,11 +258,21 @@ function buildCheckboxCell(ro, action, checked, opts = {}) {
   return td;
 }
 
-function buildTechDoneCell(ro) {
+function buildTechStatusCell(ro) {
   const td = document.createElement("td");
   td.className = "center";
-  td.textContent = ro.repairCompleted || ro.techDone ? "✅" : "";
+  td.textContent = techStatusLabel(ro);
   return td;
+}
+
+function techStatusLabel(ro) {
+  const status = String(ro.techStatus || "").toLowerCase();
+  if (status === "working") return "Working";
+  if (status === "hold") return "Hold";
+  if (status === "parked") return "Parked";
+  if (status === "completed") return "Done";
+  if (status === "assigned" || ro.techId) return "Assigned";
+  return "";
 }
 
 function buildButtonCell(ro, action, label) {

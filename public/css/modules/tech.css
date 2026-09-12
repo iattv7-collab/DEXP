@@ -49,6 +49,25 @@
   border-color: var(--tech-blue);
 }
 
+.tech-tabs button:disabled {
+  background: #e8e8e8;
+  color: #8a8a8a;
+  border-color: #c9c9c9;
+  cursor: default;
+}
+
+.tech-tabs button.has-rows {
+  background: #ffffff;
+  color: var(--tech-blue);
+  border-color: var(--tech-blue);
+}
+
+.tech-table button:disabled {
+  background: #e8e8e8;
+  color: #8a8a8a;
+  border-color: #c9c9c9;
+}
+
 .tech-shell .form-row {
   display: flex;
   align-items: center;
