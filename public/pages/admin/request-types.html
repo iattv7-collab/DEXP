@@ -73,6 +73,18 @@
             />
           </label>
 
+          <div class="tool-row" style="margin-top: 12px">
+            <label>
+              <input id="requestTypeShowOnTechInput" type="checkbox" />
+              Show on Tech
+            </label>
+
+            <label>
+              <input id="requestTypeTechMarksDoneInput" type="checkbox" />
+              Mark Tech work done
+            </label>
+          </div>
+
           <div style="margin-top: 12px">
             <button id="addRequestTypeButton" type="button">
               Add Request Type
@@ -92,13 +104,14 @@
                   <th>Target Group</th>
                   <th>Sort</th>
                   <th>Message</th>
+                  <th>Tech</th>
                   <th>Actions</th>
                 </tr>
               </thead>
 
               <tbody id="activeRequestTypesTableBody">
                 <tr>
-                  <td colspan="6">Loading...</td>
+                  <td colspan="7">Loading...</td>
                 </tr>
               </tbody>
             </table>
@@ -117,13 +130,14 @@
                   <th>Target Group</th>
                   <th>Sort</th>
                   <th>Message</th>
+                  <th>Tech</th>
                   <th>Actions</th>
                 </tr>
               </thead>
 
               <tbody id="inactiveRequestTypesTableBody">
                 <tr>
-                  <td colspan="6">Loading...</td>
+                  <td colspan="7">Loading...</td>
                 </tr>
               </tbody>
             </table>

@@ -99,6 +99,9 @@ export async function createRequestType(data = {}) {
     active: data.active !== false,
     sortOrder: Number(data.sortOrder || 0),
 
+    showOnTech: data.showOnTech === true,
+    techMarksDone: data.techMarksDone === true,
+
     createdAt: serverTimestamp(),
     createdAtMs: Date.now(),
     createdBy: session.uid,

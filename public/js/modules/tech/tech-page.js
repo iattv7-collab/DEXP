@@ -86,25 +86,20 @@ function initializeWorkflow() {
         await updateTechStatus(roId, "working", "tech_resumed");
       }
 
-      if (action === "complete") {
-        await updateTechStatus(roId, "completed", "tech_completed", {
-          techCompletedAtMs: Date.now(),
-        });
-      }
-
-      if (action === "sendToWash") {
-        await updateTechStatus(roId, "completed", "tech_sent_to_wash", {
-          techCompletedAtMs: Date.now(),
-          sentToWashAtMs: Date.now(),
-        });
-      }
-
       if (action === "returnToWorking") {
         await updateTechStatus(roId, "working", "tech_reopened");
       }
 
       if (action === "bringToShop") {
-        await requestBringToShop(roId);
+        await requestVehicleMove(roId, "shop");
+      }
+
+      if (action === "doneWash") {
+        await finishAndRequestMove(roId, "wash");
+      }
+
+      if (action === "donePark") {
+        await finishAndRequestMove(roId, "park");
       }
     } catch (error) {
       console.error(error);
@@ -244,7 +239,7 @@ function renderActions(status) {
     return `
       <div class="tech-card-actions">
         <button class="tech-btn-primary" data-action="start">Start</button>
-        <button class="tech-btn-secondary" data-action="bringToShop">Bring To Shop</button>
+        <button class="tech-btn-secondary" data-action="bringToShop">Move To Shop</button>
       </div>
     `;
   }
@@ -253,8 +248,8 @@ function renderActions(status) {
     return `
       <div class="tech-card-actions">
         <button data-action="hold">Waiting Parts</button>
-        <button data-action="complete">Complete</button>
-        <button data-action="sendToWash">Send To Wash</button>
+        <button data-action="doneWash">Done — Wash</button>
+        <button data-action="donePark">Done — Park</button>
       </div>
     `;
   }
@@ -263,8 +258,8 @@ function renderActions(status) {
     return `
       <div class="tech-card-actions">
         <button data-action="resume">Resume Work</button>
-        <button data-action="complete">Complete</button>
-        <button data-action="sendToWash">Send To Wash</button>
+        <button data-action="doneWash">Done — Wash</button>
+        <button data-action="donePark">Done — Park</button>
       </div>
     `;
   }
@@ -280,20 +275,49 @@ function renderActions(status) {
   return "";
 }
 
-function findBringToShopType(requestTypes) {
+function normalizeKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/_/g, "-");
+}
+
+function findMoveType(requestTypes, destination) {
   return (requestTypes || []).find((type) => {
-    const key = String(type.requestType || "").toLowerCase();
+    const key = normalizeKey(type.requestType);
     const name = String(type.name || "").toLowerCase();
 
-    return (
-      key === "bring_to_shop" ||
-      key.includes("bring") ||
-      (name.includes("bring") && name.includes("shop"))
-    );
+    if (destination === "shop") {
+      return (
+        key === "move-to-shop" ||
+        key === "bring-to-shop" ||
+        key.includes("bring") ||
+        (name.includes("move") && name.includes("shop") && !name.includes("wash"))
+      );
+    }
+
+    if (destination === "wash") {
+      return (
+        key === "move-to-wash" ||
+        key.includes("wash") ||
+        (name.includes("wash") && name.includes("move"))
+      );
+    }
+
+    if (destination === "park") {
+      return (
+        key === "move-to-service-drive" ||
+        key.includes("service-drive") ||
+        key.includes("park") ||
+        name.includes("service drive") ||
+        name.includes("park")
+      );
+    }
+
+    return false;
   });
 }
 
-async function requestBringToShop(roId) {
+async function requestVehicleMove(roId, destination) {
   const ro = rows.find((row) => row.id === roId);
 
   if (!ro) {
@@ -301,13 +325,21 @@ async function requestBringToShop(roId) {
   }
 
   const requestTypes = await getActiveRequestTypes();
-  const requestType = findBringToShopType(requestTypes);
+  const requestType = findMoveType(requestTypes, destination);
+
+  const labels = {
+    shop: "Move To Shop",
+    wash: "Move to Wash",
+    park: "Move to Service Drive",
+  };
 
   if (!requestType?.targetGroupId) {
     throw new Error(
-      "No Bring To Shop request type is set. Add it in Admin request types.",
+      `No ${labels[destination] || destination} request type is set. Add it in Admin request types.`,
     );
   }
+
+  const title = requestType.name || labels[destination];
 
   await createRequest({
     roId: ro.id,
@@ -321,9 +353,9 @@ async function requestBringToShop(roId) {
     targetGroupId: requestType.targetGroupId,
     targetGroupName: requestType.targetGroupName || "",
 
-    title: requestType.name || "Bring To Shop",
+    title,
 
-    message: `Tech ${session?.displayName || session?.email || ""} requested Bring To Shop. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
+    message: `Tech ${session?.displayName || session?.email || ""} requested ${title}. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
 
     route: requestType.route || "/pages/move-locate/move-locate.html",
 
@@ -332,9 +364,17 @@ async function requestBringToShop(roId) {
     },
   });
 
-  await logActivity(roId, "tech_requested_vehicle_to_shop");
+  await logActivity(roId, `tech_requested_${destination}`);
 
-  window.alert("Bring To Shop request sent.");
+  window.alert(`${title} request sent.`);
+}
+
+async function finishAndRequestMove(roId, destination) {
+  await requestVehicleMove(roId, destination);
+
+  await updateTechStatus(roId, "completed", `tech_done_${destination}`, {
+    techCompletedAtMs: Date.now(),
+  });
 }
 
 async function updateTechStatus(roId, techStatus, activityType, extraFields = {}) {

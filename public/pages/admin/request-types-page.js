@@ -117,6 +117,11 @@ async function handleCreateRequestType() {
       targetGroupName: targetGroup.name || "",
       defaultMessage: requestTypeDefaultMessageInput.value.trim(),
       sortOrder,
+      showOnTech: document.getElementById("requestTypeShowOnTechInput")
+        ?.checked === true,
+      techMarksDone:
+        document.getElementById("requestTypeTechMarksDoneInput")
+          ?.checked === true,
     });
 
     requestTypeNameInput.value = "";
@@ -180,7 +185,7 @@ function renderRequestTypeTable(tableBody, rows, inactive) {
   if (!rows.length) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="6">No ${inactive ? "inactive" : "active"} request types.</td>
+        <td colspan="7">No ${inactive ? "inactive" : "active"} request types.</td>
       </tr>
     `;
     return;
@@ -271,6 +276,29 @@ function buildRequestTypeRow(requestType, inactive) {
           value="${escapeHtml(requestType.defaultMessage || "")}"
           disabled
         />
+      </td>
+
+      <td data-label="Tech">
+        <label>
+          <input
+            class="request-type-show-on-tech-input"
+            type="checkbox"
+            data-original="${requestType.showOnTech === true ? "1" : "0"}"
+            ${requestType.showOnTech === true ? "checked" : ""}
+            disabled
+          />
+          Show
+        </label>
+        <label>
+          <input
+            class="request-type-tech-marks-done-input"
+            type="checkbox"
+            data-original="${requestType.techMarksDone === true ? "1" : "0"}"
+            ${requestType.techMarksDone === true ? "checked" : ""}
+            disabled
+          />
+          Done
+        </label>
       </td>
 
       <td data-label="Actions">
@@ -379,6 +407,8 @@ function bindEditRow(row) {
     row.querySelector(".request-type-target-group-select"),
     row.querySelector(".request-type-sort-input"),
     row.querySelector(".request-type-message-input"),
+    row.querySelector(".request-type-show-on-tech-input"),
+    row.querySelector(".request-type-tech-marks-done-input"),
   ].filter(Boolean);
 
   const editButton = row.querySelector(".edit-request-type-button");
@@ -389,9 +419,17 @@ function bindEditRow(row) {
     return;
   }
 
+  const currentValue = (input) => {
+    if (input.type === "checkbox") {
+      return input.checked ? "1" : "0";
+    }
+
+    return String(input.value || "");
+  };
+
   const checkChanged = () => {
     const changed = inputs.some((input) => {
-      return String(input.value || "") !== String(input.dataset.original || "");
+      return currentValue(input) !== String(input.dataset.original || "");
     });
 
     saveButton.disabled = !changed;
@@ -413,7 +451,12 @@ function bindEditRow(row) {
 
   cancelButton.addEventListener("click", () => {
     inputs.forEach((input) => {
-      input.value = input.dataset.original;
+      if (input.type === "checkbox") {
+        input.checked = input.dataset.original === "1";
+      } else {
+        input.value = input.dataset.original;
+      }
+
       input.disabled = true;
     });
 
@@ -453,6 +496,12 @@ function bindEditRow(row) {
       defaultMessage: row
         .querySelector(".request-type-message-input")
         .value.trim(),
+      showOnTech:
+        row.querySelector(".request-type-show-on-tech-input")?.checked ===
+        true,
+      techMarksDone:
+        row.querySelector(".request-type-tech-marks-done-input")
+          ?.checked === true,
     });
 
     await loadRequestTypes();
