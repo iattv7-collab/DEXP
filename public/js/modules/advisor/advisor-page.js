@@ -267,6 +267,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw new Error("This vehicle is already picked up.");
     }
 
+    if (!confirmNeedByOverride(ticket, "change Need By")) {
+      return;
+    }
+
     const settings = await getWashSettings();
 
     currentWashSettings = settings;

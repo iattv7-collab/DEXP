@@ -520,7 +520,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!sorted.length) {
       rowsEl.innerHTML = `
         <tr>
-          <td colspan="14">
+          <td colspan="15">
             No active wash tickets.
           </td>
         </tr>
@@ -608,6 +608,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             <td>
               ${escapeHtml(fmtTime(ticket.washQueuedAtMs))}
+            </td>
+
+            <td>
+              ${escapeHtml(
+                ticket.washQueuedByName ||
+                  ticket.updatedByName ||
+                  ticket.createdByName ||
+                  "",
+              )}
             </td>
 
             <td>
