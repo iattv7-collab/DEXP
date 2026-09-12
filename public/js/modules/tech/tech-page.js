@@ -114,48 +114,58 @@ function requestTypesForStatus(status) {
   });
 }
 
-function renderRequestButtons(status) {
-  return requestTypesForStatus(status)
-    .map(
-      (type) => `
+function renderRequestButtons(ro) {
+  const status = techStatus(ro);
+  const hasOpenRequest = Boolean(openRequestForRo(ro));
+
+  return (requestTypes || [])
+    .filter((type) => type.showOnTech === true)
+    .map((type) => {
+      const marksDone = type.techMarksDone === true;
+      const allowed =
+        (!marksDone && status === "assigned") ||
+        (marksDone && (status === "working" || status === "hold"));
+
+      const disabled = !allowed || hasOpenRequest;
+
+      return `
         <button
           type="button"
           data-action="requestType"
           data-request-type-id="${escapeHtml(type.id)}"
+          ${disabled ? "disabled" : ""}
         >
           ${escapeHtml(type.name || type.requestType)}
-        </button>`,
-    )
+        </button>`;
+    })
     .join("");
 }
 
 function renderActions(ro) {
   const status = techStatus(ro);
 
-  if (status === "assigned") {
-    return `
-      <button type="button" data-action="start">Start</button>
-      ${renderRequestButtons(status)}
-    `;
-  }
-
-  if (status === "working") {
-    return `
-      <button type="button" data-action="hold">Waiting Parts</button>
-      <button type="button" data-action="complete">Done</button>
-      ${renderRequestButtons(status)}
-    `;
-  }
-
-  if (status === "hold") {
-    return `
-      <button type="button" data-action="resume">Resume</button>
-      <button type="button" data-action="complete">Done</button>
-      ${renderRequestButtons(status)}
-    `;
-  }
-
-  return `<button type="button" data-action="returnToWorking">Return to Working</button>`;
+  return `
+    <button type="button" data-action="start" ${status === "assigned" ? "" : "disabled"}>
+      Start
+    </button>
+    <button type="button" data-action="hold" ${status === "working" ? "" : "disabled"}>
+      Waiting Parts
+    </button>
+    <button type="button" data-action="resume" ${status === "hold" ? "" : "disabled"}>
+      Resume
+    </button>
+    <button type="button" data-action="complete" ${
+      status === "working" || status === "hold" ? "" : "disabled"
+    }>
+      Done
+    </button>
+    <button type="button" data-action="returnToWorking" ${
+      status === "completed" ? "" : "disabled"
+    }>
+      Return to Working
+    </button>
+    ${renderRequestButtons(ro)}
+  `;
 }
 
 function sortRows(list) {
