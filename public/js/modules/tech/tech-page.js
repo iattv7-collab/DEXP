@@ -2,9 +2,7 @@
 // FILE: /public/js/modules/tech/tech-page.js
 // MODULE: Tech
 // PURPOSE:
-// DEXP Tech page.
-// Shows assigned work for technician.
-// Reads and updates Master ROS tech workflow fields.
+// Request buttons come from Admin request type settings.
 // ======================================================
 
 import { getSession } from "/js/core/session.js";
@@ -27,35 +25,35 @@ import {
 
 let session = null;
 let rows = [];
+let requestTypes = [];
 let activeTab = "assigned";
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({ allowedModules: ["tech"] });
-
   renderAppHeader();
-
   session = await waitForSession();
-
   initializeTabs();
   initializeWorkflow();
   listenToAssignedRos();
+  try {
+    requestTypes = await getActiveRequestTypes();
+    render();
+  } catch (error) {
+    console.error(error);
+  }
 });
 
 function initializeTabs() {
   const tabs = document.querySelectorAll(".tech-tab");
-
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       tabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
-
       const label = tab.textContent.toLowerCase();
-
       if (label.includes("assigned")) activeTab = "assigned";
       if (label.includes("working")) activeTab = "working";
       if (label.includes("hold")) activeTab = "hold";
       if (label.includes("done")) activeTab = "completed";
-
       render();
     });
   });
@@ -65,69 +63,34 @@ function initializeWorkflow() {
   document.body.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-action]");
     const card = event.target.closest(".tech-card");
-
     if (!button || !card) return;
-
     const roId = card.dataset.roId;
     const action = button.dataset.action;
-
     if (!roId) return;
-
     try {
-      if (action === "start") {
-        await updateTechStatus(roId, "working", "tech_started");
-      }
-
-      if (action === "hold") {
-        await updateTechStatus(roId, "hold", "tech_hold");
-      }
-
-      if (action === "resume") {
-        await updateTechStatus(roId, "working", "tech_resumed");
-      }
-
-      if (action === "returnToWorking") {
-        await updateTechStatus(roId, "working", "tech_reopened");
-      }
-
-      if (action === "bringToShop") {
-        await requestVehicleMove(roId, "shop");
-      }
-
-      if (action === "doneWash") {
-        await finishAndRequestMove(roId, "wash");
-      }
-
-      if (action === "donePark") {
-        await finishAndRequestMove(roId, "park");
-      }
+      if (action === "start") await updateTechStatus(roId, "working", "tech_started");
+      if (action === "hold") await updateTechStatus(roId, "hold", "tech_hold");
+      if (action === "resume") await updateTechStatus(roId, "working", "tech_resumed");
+      if (action === "returnToWorking") await updateTechStatus(roId, "working", "tech_reopened");
+      if (action === "requestType") await handleTechRequestType(roId, button.dataset.requestTypeId);
     } catch (error) {
       console.error(error);
       window.alert(error?.message || "Action failed.");
     }
   });
 
-  document.body.addEventListener(
-    "blur",
-    async (event) => {
-      const notes = event.target.closest(".tech-notes");
-
-      if (!notes) return;
-
-      const roId = notes.dataset.roId;
-
-      if (!roId) return;
-
-      await updateDoc(doc(db, "ros", roId), {
-        techNotes: notes.value,
-        updatedAt: serverTimestamp(),
-        updatedBy: session?.uid || "",
-      });
-
-      await logActivity(roId, "tech_note_updated");
-    },
-    true,
-  );
+  document.body.addEventListener("blur", async (event) => {
+    const notes = event.target.closest(".tech-notes");
+    if (!notes) return;
+    const roId = notes.dataset.roId;
+    if (!roId) return;
+    await updateDoc(doc(db, "ros", roId), {
+      techNotes: notes.value,
+      updatedAt: serverTimestamp(),
+      updatedBy: session?.uid || "",
+    });
+    await logActivity(roId, "tech_note_updated");
+  }, true);
 }
 
 function listenToAssignedRos() {
@@ -136,14 +99,22 @@ function listenToAssignedRos() {
     where("dealerId", "==", session.dealerId),
     where("techId", "==", session.uid),
   );
-
   onSnapshot(q, (snapshot) => {
     rows = snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data(),
     }));
-
     render();
+  });
+}
+
+function getTechRequestTypes(tab) {
+  return (requestTypes || []).filter((type) => {
+    if (type.showOnTech !== true) return false;
+    const marksDone = type.techMarksDone === true;
+    if (tab === "assigned") return !marksDone;
+    if (tab === "working" || tab === "hold") return marksDone;
+    return false;
   });
 }
 
@@ -152,60 +123,36 @@ function render() {
   const workingContainer = document.getElementById("workingContainer");
   const waitingContainer = document.getElementById("waitingContainer");
   const doneContainer = document.getElementById("doneContainer");
-
   assignedContainer.style.display = activeTab === "assigned" ? "block" : "none";
   workingContainer.style.display = activeTab === "working" ? "block" : "none";
   waitingContainer.style.display = activeTab === "hold" ? "block" : "none";
   doneContainer.style.display = activeTab === "completed" ? "block" : "none";
-
   assignedContainer.innerHTML = renderCards("assigned");
   workingContainer.innerHTML = renderCards("working");
   waitingContainer.innerHTML = renderCards("hold");
   doneContainer.innerHTML = renderCards("completed");
-
   updateTabCounts();
 }
 
 function renderCards(status) {
-  const filtered = rows.filter((ro) => {
-    const techStatus = String(ro.techStatus || "assigned").toLowerCase();
-
-    return techStatus === status;
-  });
-
+  const filtered = rows.filter((ro) => String(ro.techStatus || "assigned").toLowerCase() === status);
   if (!filtered.length) {
-    return `
-      <div class="tech-card">
-        No vehicles in this view.
-      </div>
-    `;
+    return `<div class="tech-card">No vehicles in this view.</div>`;
   }
-
   return filtered.map((ro) => renderCard(ro, status)).join("");
 }
 
 function renderCard(ro, status) {
   const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ");
-
   return `
     <div class="tech-card" data-ro-id="${escapeHtml(ro.id)}">
       <div class="tech-card-header">
         <strong>RO ${escapeHtml(ro.roNumber || "")}</strong>
         <span>Tag ${escapeHtml(ro.tagNumber || "")}</span>
       </div>
-
-      <div class="tech-card-vehicle">
-        ${escapeHtml(vehicle)}
-      </div>
-
-      <div class="tech-card-advisor">
-        Advisor: ${escapeHtml(ro.advisorName || "")}
-      </div>
-
-      <div class="tech-card-concern">
-        ${escapeHtml(ro.concern || "")}
-      </div>
-
+      <div class="tech-card-vehicle">${escapeHtml(vehicle)}</div>
+      <div class="tech-card-advisor">Advisor: ${escapeHtml(ro.advisorName || "")}</div>
+      <div class="tech-card-concern">${escapeHtml(ro.concern || "")}</div>
       ${renderNotes(ro, status)}
       ${renderActions(status)}
     </div>
@@ -213,168 +160,81 @@ function renderCard(ro, status) {
 }
 
 function renderNotes(ro, status) {
-  if (status === "assigned") {
-    return "";
-  }
-
+  if (status === "assigned") return "";
   if (status === "completed") {
-    return `
-      <div class="tech-card-concern">
-        Tech Notes: ${escapeHtml(ro.techNotes || "")}
-      </div>
-    `;
+    return `<div class="tech-card-concern">Tech Notes: ${escapeHtml(ro.techNotes || "")}</div>`;
   }
-
   return `
-    <textarea
-      class="tech-notes"
-      data-ro-id="${escapeHtml(ro.id)}"
-      placeholder="Tech notes..."
-    >${escapeHtml(ro.techNotes || "")}</textarea>
+    <textarea class="tech-notes" data-ro-id="${escapeHtml(ro.id)}" placeholder="Tech notes...">${escapeHtml(ro.techNotes || "")}</textarea>
   `;
+}
+
+function renderRequestTypeButtons(tab) {
+  return getTechRequestTypes(tab).map((type) => `
+        <button class="tech-btn-secondary" data-action="requestType" data-request-type-id="${escapeHtml(type.id)}">
+          ${escapeHtml(type.name || type.requestType)}
+        </button>`).join("");
 }
 
 function renderActions(status) {
   if (status === "assigned") {
-    return `
-      <div class="tech-card-actions">
+    return `<div class="tech-card-actions">
         <button class="tech-btn-primary" data-action="start">Start</button>
-        <button class="tech-btn-secondary" data-action="bringToShop">Move To Shop</button>
-      </div>
-    `;
+        ${renderRequestTypeButtons("assigned")}
+      </div>`;
   }
-
   if (status === "working") {
-    return `
-      <div class="tech-card-actions">
+    return `<div class="tech-card-actions">
         <button data-action="hold">Waiting Parts</button>
-        <button data-action="doneWash">Done — Wash</button>
-        <button data-action="donePark">Done — Park</button>
-      </div>
-    `;
+        ${renderRequestTypeButtons("working")}
+      </div>`;
   }
-
   if (status === "hold") {
-    return `
-      <div class="tech-card-actions">
+    return `<div class="tech-card-actions">
         <button data-action="resume">Resume Work</button>
-        <button data-action="doneWash">Done — Wash</button>
-        <button data-action="donePark">Done — Park</button>
-      </div>
-    `;
+        ${renderRequestTypeButtons("hold")}
+      </div>`;
   }
-
   if (status === "completed") {
-    return `
-      <div class="tech-card-actions">
+    return `<div class="tech-card-actions">
         <button data-action="returnToWorking">Return To Working</button>
-      </div>
-    `;
+      </div>`;
   }
-
   return "";
 }
 
-function normalizeKey(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/_/g, "-");
-}
-
-function findMoveType(requestTypes, destination) {
-  return (requestTypes || []).find((type) => {
-    const key = normalizeKey(type.requestType);
-    const name = String(type.name || "").toLowerCase();
-
-    if (destination === "shop") {
-      return (
-        key === "move-to-shop" ||
-        key === "bring-to-shop" ||
-        key.includes("bring") ||
-        (name.includes("move") && name.includes("shop") && !name.includes("wash"))
-      );
-    }
-
-    if (destination === "wash") {
-      return (
-        key === "move-to-wash" ||
-        key.includes("wash") ||
-        (name.includes("wash") && name.includes("move"))
-      );
-    }
-
-    if (destination === "park") {
-      return (
-        key === "move-to-service-drive" ||
-        key.includes("service-drive") ||
-        key.includes("park") ||
-        name.includes("service drive") ||
-        name.includes("park")
-      );
-    }
-
-    return false;
-  });
-}
-
-async function requestVehicleMove(roId, destination) {
+async function handleTechRequestType(roId, requestTypeId) {
   const ro = rows.find((row) => row.id === roId);
-
-  if (!ro) {
-    throw new Error("Repair order not found.");
-  }
-
-  const requestTypes = await getActiveRequestTypes();
-  const requestType = findMoveType(requestTypes, destination);
-
-  const labels = {
-    shop: "Move To Shop",
-    wash: "Move to Wash",
-    park: "Move to Service Drive",
-  };
-
-  if (!requestType?.targetGroupId) {
-    throw new Error(
-      `No ${labels[destination] || destination} request type is set. Add it in Admin request types.`,
-    );
-  }
-
-  const title = requestType.name || labels[destination];
+  const requestType = requestTypes.find((type) => type.id === requestTypeId);
+  if (!ro) throw new Error("Repair order not found.");
+  if (!requestType?.targetGroupId) throw new Error("Request type is missing a target group.");
 
   await createRequest({
     roId: ro.id,
     roNumber: ro.roNumber || "",
     tagNumber: ro.tagNumber || "",
     vinLast8: ro.vinLast8 || "",
-
     requestType: requestType.requestType,
     sourceModule: "tech",
-
     targetGroupId: requestType.targetGroupId,
     targetGroupName: requestType.targetGroupName || "",
-
-    title,
-
-    message: `Tech ${session?.displayName || session?.email || ""} requested ${title}. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
-
+    title: requestType.name || requestType.requestType,
+    message:
+      requestType.defaultMessage ||
+      `Tech ${session?.displayName || session?.email || ""} requested ${requestType.name || requestType.requestType}. RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}`,
     route: requestType.route || "/pages/move-locate/move-locate.html",
-
-    routeParams: {
-      tagNumber: ro.tagNumber || "",
-    },
+    routeParams: { tagNumber: ro.tagNumber || "" },
   });
 
-  await logActivity(roId, `tech_requested_${destination}`);
+  await logActivity(roId, `tech_request_${requestType.requestType || requestType.id}`);
 
-  window.alert(`${title} request sent.`);
-}
+  if (requestType.techMarksDone === true) {
+    await updateTechStatus(roId, "completed", "tech_completed", {
+      techCompletedAtMs: Date.now(),
+    });
+  }
 
-async function finishAndRequestMove(roId, destination) {
-  await requestVehicleMove(roId, destination);
-
-  await updateTechStatus(roId, "completed", `tech_done_${destination}`, {
-    techCompletedAtMs: Date.now(),
-  });
+  window.alert(`${requestType.name || "Request"} sent.`);
 }
 
 async function updateTechStatus(roId, techStatus, activityType, extraFields = {}) {
@@ -384,7 +244,6 @@ async function updateTechStatus(roId, techStatus, activityType, extraFields = {}
     updatedBy: session?.uid || "",
     ...extraFields,
   });
-
   await logActivity(roId, activityType);
 }
 
@@ -400,21 +259,11 @@ async function logActivity(roId, type) {
 }
 
 function updateTabCounts() {
-  const counts = {
-    assigned: 0,
-    working: 0,
-    hold: 0,
-    completed: 0,
-  };
-
+  const counts = { assigned: 0, working: 0, hold: 0, completed: 0 };
   rows.forEach((ro) => {
     const status = String(ro.techStatus || "assigned").toLowerCase();
-
-    if (counts[status] !== undefined) {
-      counts[status] += 1;
-    }
+    if (counts[status] !== undefined) counts[status] += 1;
   });
-
   setTabText("assigned", `Assigned (${counts.assigned})`);
   setTabText("working", `Working (${counts.working})`);
   setTabText("hold", `Hold (${counts.hold})`);
@@ -425,10 +274,7 @@ function setTabText(match, text) {
   const tab = Array.from(document.querySelectorAll(".tech-tab")).find((item) =>
     item.textContent.toLowerCase().includes(match),
   );
-
-  if (tab) {
-    tab.textContent = text;
-  }
+  if (tab) tab.textContent = text;
 }
 
 function escapeHtml(value) {
@@ -444,14 +290,10 @@ function escapeHtml(value) {
 function waitForSession() {
   return new Promise((resolve) => {
     const existing = getSession();
-
     if (existing?.dealerId) {
       resolve(existing);
       return;
     }
-
-    window.addEventListener("dexp-session-ready", () => resolve(getSession()), {
-      once: true,
-    });
+    window.addEventListener("dexp-session-ready", () => resolve(getSession()), { once: true });
   });
 }
