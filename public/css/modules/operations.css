@@ -36,3 +36,35 @@
     padding: 10px;
   }
 }
+
+#operationsPage .data-table tbody tr.ops-waiting td {
+  background: #fff4d6;
+}
+
+#operationsPage .data-table tbody tr.ops-opened td {
+  background: #e8f0fe;
+}
+
+#operationsPage .data-table tbody tr.ops-in-progress td {
+  background: #d8f3e3;
+}
+
+#operationsPage .data-table tbody tr.ops-completed td {
+  background: #e8e8e8;
+}
+
+#operationsPage .data-table tbody tr.ops-waiting:hover td {
+  background: #ffe9a8;
+}
+
+#operationsPage .data-table tbody tr.ops-opened:hover td {
+  background: #d2e3fc;
+}
+
+#operationsPage .data-table tbody tr.ops-in-progress:hover td {
+  background: #c5ead4;
+}
+
+#operationsPage .data-table tbody tr.ops-completed:hover td {
+  background: #dcdcdc;
+}

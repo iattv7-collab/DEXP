@@ -181,25 +181,11 @@ function renderTabs() {
 }
 
 function getDefaultGroupId() {
-  const session = getSession();
-
-  if (session?.role === "platform-admin" || session?.role === "admin") {
-    return "all";
-  }
-
-  const assignedGroup = notificationGroups.find((group) => {
-    const memberUids = Array.isArray(group.memberUids) ? group.memberUids : [];
-
-    return memberUids.includes(session?.uid);
-  });
-
-  return assignedGroup?.id || "all";
+  return "all";
 }
 
 function canViewAllGroups() {
-  const session = getSession();
-
-  return session?.role === "platform-admin" || session?.role === "admin";
+  return true;
 }
 
 function renderGroupFilters() {
@@ -281,7 +267,7 @@ function renderLiveOperations() {
   if (!rows.length) {
     liveOperationsTableBody.innerHTML = `
       <tr>
-        <td colspan="8">No live operations.</td>
+        <td colspan="9">No live operations.</td>
       </tr>
     `;
 
@@ -331,7 +317,7 @@ function getReadyRows() {
   let rows = dealerROs.filter((ro) => {
     const readyCalled = Boolean(
       ro.readyCalled ||
-        String(ro.status || "").toLowerCase() === "ready called",
+      String(ro.status || "").toLowerCase() === "ready called",
     );
 
     return readyCalled && !ro.pickedUpAtMs;
@@ -411,14 +397,12 @@ function renderStatusRow(ro) {
       <td>${escapeHtml(ro.currentLocation || ro.location || "")}</td>
       <td>${escapeHtml(formatWashStatus(ro))}</td>
       <td>${techDone ? "Yes" : ""}</td>
-      <td>${
-        readyCalled
-          ? escapeHtml(formatDateTime(ro.readyCalledAtMs) || "Yes")
-          : ""
-      }</td>
-      <td>${
-        ro.pickedUpAtMs ? escapeHtml(formatDateTime(ro.pickedUpAtMs)) : ""
-      }</td>
+      <td>${readyCalled
+      ? escapeHtml(formatDateTime(ro.readyCalledAtMs) || "Yes")
+      : ""
+    }</td>
+      <td>${ro.pickedUpAtMs ? escapeHtml(formatDateTime(ro.pickedUpAtMs)) : ""
+    }</td>
     </tr>
   `;
 }
@@ -511,8 +495,8 @@ function getFilteredRequests() {
     selectedGroupId === "all"
       ? [...dealerRequests]
       : dealerRequests.filter((request) => {
-          return request.targetGroupId === selectedGroupId;
-        });
+        return request.targetGroupId === selectedGroupId;
+      });
 
   if (!searchText) {
     return rows;
@@ -532,34 +516,35 @@ function getFilteredRequests() {
 
 function renderLiveOperationRow(request) {
   const notification = getNotificationForRequest(request);
+  const rowClass = getLiveRowStatusClass(request, notification);
 
   return `
-    <tr>
+    <tr class="${rowClass}">
       <td data-label="Vehicle">${escapeHtml(formatVehicle(request))}</td>
       <td data-label="Operation">${escapeHtml(formatOperation(request))}</td>
+      <td data-label="Requested By">${escapeHtml(
+    formatPersonWithTime(request.requestedByName, request.createdAtMs),
+  )}</td>
       <td data-label="Status">${escapeHtml(formatStatus(request, notification))}</td>
       <td data-label="Target Group">${escapeHtml(
-        request.targetGroupName || getGroupName(request.targetGroupId),
-      )}</td>
+    request.targetGroupName || getGroupName(request.targetGroupId),
+  )}</td>
       <td data-label="Opened By">${escapeHtml(
-        formatPersonWithTime(
-          notification?.openedByName,
-          notification?.openedAtMs,
-        ),
-      )}</td>
-
+    formatPersonWithTime(
+      notification?.openedByName,
+      notification?.openedAtMs,
+    ),
+  )}</td>
       <td data-label="Started By">${escapeHtml(
-        formatPersonWithTime(request.startedByName, request.startedAtMs),
-      )}</td>
-
+    formatPersonWithTime(request.startedByName, request.startedAtMs),
+  )}</td>
       <td data-label="Completed By">${escapeHtml(
-        formatPersonWithTime(
-          request.completedByName || request.cancelledByName,
-          request.completedAtMs || request.cancelledAtMs,
-        ),
-      )}</td>
-
-    <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}</td>
+    formatPersonWithTime(
+      request.completedByName || request.cancelledByName,
+      request.completedAtMs || request.cancelledAtMs,
+    ),
+  )}</td>
+      <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}</td>
     </tr>
   `;
 }
@@ -571,17 +556,17 @@ function renderHistoryRow(request) {
       <td data-label="Operation">${escapeHtml(formatOperation(request))}</td>
       <td data-label="Status">${escapeHtml(formatStatus(request))}</td>
       <td data-label="Target Group">${escapeHtml(
-        request.targetGroupName || getGroupName(request.targetGroupId),
-      )}</td>
+    request.targetGroupName || getGroupName(request.targetGroupId),
+  )}</td>
       <td data-label="Completed By">${escapeHtml(
-        formatPersonWithTime(
-          request.completedByName || request.cancelledByName,
-          request.completedAtMs || request.cancelledAtMs,
-        ),
-      )}</td>
+    formatPersonWithTime(
+      request.completedByName || request.cancelledByName,
+      request.completedAtMs || request.cancelledAtMs,
+    ),
+  )}</td>
       <td data-label="Completed At">${escapeHtml(
-        formatDateTime(request.completedAtMs || request.cancelledAtMs),
-      )}</td>
+    formatDateTime(request.completedAtMs || request.cancelledAtMs),
+  )}</td>
     </tr>
   `;
 }
@@ -620,6 +605,22 @@ function formatOperation(request = {}) {
     .replace(/\bRequest\b/gi, "")
     .replace(/_/g, " ")
     .trim();
+}
+
+function getLiveRowStatusClass(request = {}, notification = null) {
+  if (request.status === REQUEST_STATUS.COMPLETED) {
+    return "ops-completed";
+  }
+
+  if (request.status === REQUEST_STATUS.IN_PROGRESS) {
+    return "ops-in-progress";
+  }
+
+  if (notification?.openedBy) {
+    return "ops-opened";
+  }
+
+  return "ops-waiting";
 }
 
 function formatStatus(request = {}, notification = null) {

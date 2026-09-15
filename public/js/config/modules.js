@@ -105,7 +105,7 @@ export const MODULE_CONFIG = {
   },
 
   [MODULES.MANAGER]: {
-    label: "Manager",
+    label: "Report Center",
     route: "/pages/manager/manager.html",
     icon: "manage_accounts",
     permission: PERMISSIONS.MASTER_RO_EDIT,
