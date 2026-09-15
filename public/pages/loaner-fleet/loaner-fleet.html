@@ -5,31 +5,50 @@
   <head>
     <meta charset="UTF-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
     <title>Loaners</title>
 
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
-    <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
-    <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=7" />
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaners-shared.css?v=3"
+    />
+    <link
+      rel="stylesheet"
+      href="/css/modules/loaner-fleet.css?v=7"
+    />
   </head>
 
   <body>
     <div id="appHeader"></div>
 
-    <main id="loanerFleetPage" class="loaner-fleet-shell">
+    <main
+      id="loanerFleetPage"
+      class="loaner-fleet-shell"
+    >
       <section class="page-section">
         <h1>Loaners</h1>
 
         <div class="subtabs">
-          <a href="/pages/loaner-fleet/loaner-fleet.html" class="active">
+          <a
+            href="/pages/loaner-fleet/loaner-fleet.html"
+            class="active"
+          >
             Fleet
           </a>
 
-          <a href="/pages/loaner-returns/loaner-returns.html"> Returns </a>
+          <a href="/pages/loaner-returns/loaner-returns.html">
+            Returns
+          </a>
 
-          <a href="/pages/loaner-wash/loaner-wash.html"> Wash Queue </a>
+          <a href="/pages/loaner-wash/loaner-wash.html">
+            Wash Queue
+          </a>
         </div>
 
         <div id="loanerCounts" class="loaner-counts">
@@ -74,22 +93,34 @@
           </div>
 
           <div class="fleet-toolbar-add">
-            <button id="toggleAddLoanerBtn" type="button">+ Add Loaner</button>
+            <button
+              id="toggleAddLoanerBtn"
+              type="button"
+            >
+              + Add Loaner
+            </button>
           </div>
         </div>
 
-               <div id="addLoanerSection" style="display: none; margin-top: 12px">
+        <div
+          id="addLoanerSection"
+          style="display: none; margin-top: 12px"
+        >
           <h2>Add Loaner</h2>
 
           <div class="form-row">
-            <button id="scanFleetBtn" type="button">Scan VIN</button>
+            <button id="scanFleetBtn" type="button">
+              Scan VIN
+            </button>
 
             <input
               id="vin"
               placeholder="VIN — scan or type, then press Enter"
             />
 
-            <button id="lookupVinBtn" type="button">Lookup</button>
+            <button id="lookupVinBtn" type="button">
+              Lookup
+            </button>
           </div>
 
           <video
@@ -100,7 +131,10 @@
             style="display: none"
           ></video>
 
-          <div id="scannerStatus" class="small-muted"></div>
+          <div
+            id="scannerStatus"
+            class="small-muted"
+          ></div>
 
           <div class="form-row" style="margin-top: 10px">
             <input id="year" placeholder="Year" />
@@ -108,14 +142,27 @@
             <input id="model" placeholder="Model" />
             <input id="unitNumber" placeholder="Unit #" />
             <input id="plate" placeholder="Plate" />
+            <input
+              id="mileage"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              placeholder="Mileage"
+            />
           </div>
 
           <div class="form-row">
-            <button id="saveFleetBtn" type="button" disabled>Save</button>
+            <button
+              id="saveFleetBtn"
+              type="button"
+              disabled
+            >
+              Save
+            </button>
 
             <div id="fleetMsg" class="small-muted"></div>
           </div>
-        </div> 
+        </div>
       </section>
 
       <section class="page-section">
@@ -152,7 +199,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaners-page.js?v=12"
+      src="/js/modules/loaners/loaners-page.js?v=13"
     ></script>
   </body>
 </html>

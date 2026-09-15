@@ -61,12 +61,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     "receivedBy",
     "mileage",
     "fuelLevel",
+    "damageYesNo",
     "damageNotes",
+    "returnDestination",
   ];
 
   let validatedReturnVin = "";
   let savedReturnSnapshot = "";
   let returnSaveInProgress = false;
+  let checkoutMileage = null;
 
   function getReturnFormSnapshot() {
     return JSON.stringify(
@@ -77,27 +80,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
-  function isReturnFormEmpty() {
-    return RETURN_FORM_FIELD_IDS.every(
-      (id) => !String($(id)?.value || "").trim(),
-    );
-  }
-
   function updateSaveReturnButton() {
     const button = $("saveReturnBtn");
 
     if (!button) return;
 
     const currentVin = normalizeVin($("vin")?.value);
-    const currentSnapshot = getReturnFormSnapshot();
-
     const hasValidatedVin =
       Boolean(validatedReturnVin) && currentVin === validatedReturnVin;
 
-    const hasChanges =
-      !isReturnFormEmpty() && currentSnapshot !== savedReturnSnapshot;
+    const mileageValue = Number($("mileage")?.value);
+    const hasMileage =
+      String($("mileage")?.value || "").trim() !== "" &&
+      Number.isFinite(mileageValue);
+    const mileageOk =
+      hasMileage &&
+      (checkoutMileage == null || mileageValue > checkoutMileage);
 
-    button.disabled = returnSaveInProgress || !hasValidatedVin || !hasChanges;
+    const fuelOk = Boolean(String($("fuelLevel")?.value || "").trim());
+    const damageChoice = String($("damageYesNo")?.value || "").trim();
+    const damageOk = damageChoice === "Yes" || damageChoice === "No";
+    const notesOk =
+      damageChoice !== "Yes" ||
+      Boolean(String($("damageNotes")?.value || "").trim());
+
+    button.disabled =
+      returnSaveInProgress ||
+      !hasValidatedVin ||
+      !mileageOk ||
+      !fuelOk ||
+      !damageOk ||
+      !notesOk;
 
     button.textContent = returnSaveInProgress ? "Saving..." : "Save Return";
   }
@@ -110,11 +123,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function setVinRejectMessage(message) {
-    const rejectEl = $("vinRejectMsg");
+  function applyCheckoutMileage(fleetData) {
+    const rawCheckout = Number(fleetData?.lastMileage);
+    checkoutMileage = Number.isFinite(rawCheckout) ? rawCheckout : null;
 
-    if (rejectEl) {
-      rejectEl.textContent = message || "";
+    if ($("mileage")) {
+      $("mileage").placeholder =
+        checkoutMileage == null
+          ? "Return mileage"
+          : `Must be more than ${checkoutMileage}`;
     }
   }
 
@@ -125,7 +142,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
+    if ($("returnDestination")) {
+      $("returnDestination").value = "At Wash";
+    }
+
+    if ($("mileage")) {
+      $("mileage").placeholder = "Return mileage";
+    }
+
     validatedReturnVin = "";
+    checkoutMileage = null;
     setVinRejectMessage("");
     savedReturnSnapshot = getReturnFormSnapshot();
     updateSaveReturnButton();
@@ -164,13 +190,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     video.style.background = "#000";
 
     if (video.requestFullscreen) {
-      video.requestFullscreen().catch(() => { });
+      video.requestFullscreen().catch(() => {});
     }
   }
 
   function closeScannerFullscreen() {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => { });
+      document.exitFullscreen().catch(() => {});
     }
 
     video.removeAttribute("style");
@@ -203,9 +229,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
     }
 
-    /*
-     * A full 17-character VIN can be validated directly.
-     */
     if (searchValue.length === 17) {
       const fullVin = normalizeVin(searchValue);
 
@@ -277,6 +300,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   }
 
+  async function findFleetDocForVin(vin) {
+    const cleanVin = normalizeVin(vin);
+
+    if (!cleanVin || !currentDealerId) {
+      return null;
+    }
+
+    const byIdRef = doc(db, "loanerFleet", cleanVin);
+    const byIdSnap = await getDoc(byIdRef);
+
+    if (byIdSnap.exists()) {
+      const fleetData = byIdSnap.data() || {};
+      const fleetVin = normalizeVin(fleetData.vin || byIdSnap.id);
+      const sameDealer =
+        !fleetData.dealerId || fleetData.dealerId === currentDealerId;
+
+      if (sameDealer && fleetVin === cleanVin) {
+        return { fleetRef: byIdRef, fleetData };
+      }
+    }
+
+    const vinQuery = query(
+      collection(db, "loanerFleet"),
+      where("dealerId", "==", currentDealerId),
+      where("vin", "==", cleanVin),
+    );
+
+    const vinSnap = await getDocs(vinQuery);
+
+    if (!vinSnap.empty) {
+      const match = vinSnap.docs[0];
+      return { fleetRef: match.ref, fleetData: match.data() || {} };
+    }
+
+    const dealerQuery = query(
+      collection(db, "loanerFleet"),
+      where("dealerId", "==", currentDealerId),
+    );
+
+    const dealerSnap = await getDocs(dealerQuery);
+
+    let found = null;
+
+    dealerSnap.forEach((fleetDocument) => {
+      if (found) return;
+
+      const fleetData = fleetDocument.data() || {};
+      const fleetVin = normalizeVin(fleetData.vin || fleetDocument.id);
+
+      if (fleetVin === cleanVin) {
+        found = { fleetRef: fleetDocument.ref, fleetData };
+      }
+    });
+
+    return found;
+  }
+
   async function validateLoanerForReturn(vin) {
     const cleanVin = normalizeVin(vin);
 
@@ -289,30 +369,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       };
     }
 
-    const fleetRef = doc(db, "loanerFleet", cleanVin);
-    const fleetSnap = await getDoc(fleetRef);
+    const match = await findFleetDocForVin(cleanVin);
 
-    if (!fleetSnap.exists()) {
+    if (!match) {
       return {
         valid: false,
         message: VIN_REJECT_NOT_IN_FLEET,
-        fleetRef,
+        fleetRef: null,
         fleetData: null,
       };
     }
 
-    const fleetData = fleetSnap.data() || {};
-
-    if (fleetData.dealerId !== currentDealerId) {
+    if (
+      match.fleetData.dealerId &&
+      match.fleetData.dealerId !== currentDealerId
+    ) {
       return {
         valid: false,
         message: "This vehicle does not belong to this dealer.",
-        fleetRef,
-        fleetData,
+        fleetRef: match.fleetRef,
+        fleetData: match.fleetData,
       };
     }
 
-    const fleetStatus = String(fleetData.status || "")
+    const fleetStatus = String(match.fleetData.status || "")
       .trim()
       .toUpperCase();
 
@@ -320,21 +400,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       return {
         valid: false,
         message: VIN_REJECT_NOT_CHECKED_OUT,
-        fleetRef,
-        fleetData,
+        fleetRef: match.fleetRef,
+        fleetData: match.fleetData,
       };
     }
 
     return {
       valid: true,
       message: "",
-      fleetRef,
-      fleetData,
+      fleetRef: match.fleetRef,
+      fleetData: match.fleetData,
     };
   }
 
   async function fillReturnFromVin(rawVin) {
     validatedReturnVin = "";
+    checkoutMileage = null;
     $("vin").value = "";
     setVinRejectMessage("");
     $("returnMsg").textContent = "";
@@ -361,6 +442,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       setVinRejectMessage(validation.message);
       return;
     }
+
+    applyCheckoutMileage(validation.fleetData);
 
     $("scannerStatus").textContent = "Decoding VIN...";
 
@@ -504,16 +587,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const vin = normalizeVin($("vin").value);
 
     if (!vin || vin !== validatedReturnVin) {
-      setVinRejectMessage(
-        "Scan or validate the loaner VIN before saving.",
-      );
+      setVinRejectMessage("Scan or validate the loaner VIN before saving.");
       $("returnMsg").textContent = "";
       updateSaveReturnButton();
-      return;
-    }
-
-        if (!vin) {
-      $("returnMsg").textContent = "VIN is required";
       return;
     }
 
@@ -521,6 +597,39 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("returnMsg").textContent = "Dealer session not ready";
       return;
     }
+
+    const mileageValue = Number($("mileage")?.value);
+    const fuelValue = String($("fuelLevel")?.value || "").trim();
+    const damageChoice = String($("damageYesNo")?.value || "").trim();
+    const notesValue = String($("damageNotes")?.value || "").trim();
+
+    if (!Number.isFinite(mileageValue) || String($("mileage")?.value || "").trim() === "") {
+      $("returnMsg").textContent = "Mileage is required.";
+      return;
+    }
+
+    if (checkoutMileage != null && mileageValue <= checkoutMileage) {
+      $("returnMsg").textContent = `Mileage must be more than ${checkoutMileage}.`;
+      return;
+    }
+
+    if (!fuelValue) {
+      $("returnMsg").textContent = "Fuel level is required.";
+      return;
+    }
+
+    if (damageChoice !== "Yes" && damageChoice !== "No") {
+      $("returnMsg").textContent = "Choose Damage Yes or No.";
+      return;
+    }
+
+    if (damageChoice === "Yes" && !notesValue) {
+      $("returnMsg").textContent = "Enter damage notes.";
+      return;
+    }
+
+    const damageRecord =
+      damageChoice === "Yes" ? `Yes — ${notesValue}` : "No";
 
     $("returnMsg").textContent = "Checking fleet status...";
 
@@ -543,11 +652,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const receivedByEmail =
       currentSession?.email || auth.currentUser?.email || "";
     const receivedByUid = currentSession?.uid || auth.currentUser?.uid || "";
-    const mileage = $("mileage")?.value || "";
-    const fuelLevel = $("fuelLevel")?.value || "";
-    const damageNotes = $("damageNotes")?.value || "";
     const year = $("year")?.value || "";
     const model = $("model")?.value || "";
+    const returnDestination =
+      String($("returnDestination")?.value || "At Wash").trim() === "Available"
+        ? "Available"
+        : "At Wash";
 
     returnSaveInProgress = true;
     updateSaveReturnButton();
@@ -562,9 +672,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         receivedByName,
         receivedByEmail,
         receivedByUid,
-        mileage,
-        fuelLevel,
-        damageNotes,
+        mileage: String(mileageValue),
+        checkoutMileage:
+          checkoutMileage == null ? "" : String(checkoutMileage),
+        fuelLevel: fuelValue,
+        damageNotes: damageRecord,
         assignedRo,
         createdAt: serverTimestamp(),
       });
@@ -572,15 +684,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       await setDoc(
         fleetRef,
         {
-          status: "At Wash",
+          status: returnDestination,
           assignedRo: "",
           lastReturnedAt: returnedAtText,
           lastReceivedByName: receivedByName,
           lastReceivedByEmail: receivedByEmail,
           lastReceivedByUid: receivedByUid,
-          lastMileage: mileage,
-          lastFuelLevel: fuelLevel,
-          lastDamageNotes: damageNotes,
+          lastMileage: String(mileageValue),
+          lastFuelLevel: fuelValue,
+          lastDamageNotes: damageRecord,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -590,7 +702,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         await clearLoanerFromRo(assignedRo, vin);
       }
 
-            $("returnMsg").textContent = "Saved and moved to At Wash";
+      $("returnMsg").textContent =
+        returnDestination === "Available"
+          ? "Saved and marked Available"
+          : "Saved and moved to At Wash";
 
       clearReturnForm();
     } catch (err) {

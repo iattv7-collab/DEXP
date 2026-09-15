@@ -62,16 +62,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const currentVin = normalizeVin($("vin")?.value);
 
+    const mileageValue = Number($("mileage")?.value);
+    const hasMileage =
+      String($("mileage")?.value || "").trim() !== "" &&
+      Number.isFinite(mileageValue) &&
+      mileageValue >= 1;
+
     button.disabled =
       fleetSaveInProgress ||
       !validatedFleetVin ||
-      currentVin !== validatedFleetVin;
+      currentVin !== validatedFleetVin ||
+      !hasMileage;
 
     button.textContent = fleetSaveInProgress ? "Saving..." : "Save";
   }
 
   function clearAddLoanerForm() {
-    ["vin", "year", "make", "model", "unitNumber", "plate"].forEach((id) => {
+    ["vin", "year", "make", "model", "unitNumber", "plate", "mileage"].forEach((id) => {
       if ($(id)) {
         $(id).value = "";
       }
@@ -281,7 +288,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updateSaveFleetButton();
   });
-
+  $("mileage")?.addEventListener("input", updateSaveFleetButton);
   updateSaveFleetButton();
 
   $("saveFleetBtn").onclick = async () => {
@@ -298,6 +305,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!currentDealerId) {
       $("fleetMsg").textContent = "Dealer session not ready.";
+      return;
+    }
+
+    const mileageValue = Number($("mileage")?.value);
+
+    if (!Number.isFinite(mileageValue) || mileageValue < 1) {
+      $("fleetMsg").textContent = "Mileage must be 1 or more.";
       return;
     }
 
@@ -339,7 +353,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         lastReceivedByName: "",
         lastReceivedByEmail: "",
         lastReceivedByUid: "",
-        lastMileage: "",
+        lastMileage: String(mileageValue),
         lastFuelLevel: "",
         lastDamageNotes: "",
 

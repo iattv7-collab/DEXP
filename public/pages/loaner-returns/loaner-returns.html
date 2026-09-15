@@ -199,23 +199,42 @@
             type="number"
             inputmode="numeric"
             min="0"
-            placeholder="Mileage"
+            placeholder="Return mileage"
           />
 
-          <input
-            id="fuelLevel"
-            placeholder="Fuel Level"
-          />
+          <select id="fuelLevel">
+            <option value="">Fuel level</option>
+            <option value="Full">Full</option>
+            <option value="3/4">3/4</option>
+            <option value="Half">Half</option>
+            <option value="1/4">1/4</option>
+            <option value="Empty">Empty</option>
+          </select>
+
+          <select id="damageYesNo">
+            <option value="">Damage?</option>
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
         </div>
 
         <div class="form-row">
           <textarea
             id="damageNotes"
-            placeholder="Damage Notes"
+            placeholder="Damage notes (required if Yes)"
           ></textarea>
         </div>
 
         <div class="form-row">
+          <select id="returnDestination">
+            <option value="At Wash" selected>
+              Send to Wash
+            </option>
+            <option value="Available">
+              Available (no wash)
+            </option>
+          </select>
+
           <button
             id="saveReturnBtn"
             type="button"
@@ -243,7 +262,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=8"
+      src="/js/modules/loaners/loaner-returns-page.js?v=10"
     ></script>
   </body>
 </html>
