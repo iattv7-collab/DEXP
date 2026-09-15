@@ -31,6 +31,7 @@ export const MODULES = {
   DETAILS: "details",
   SHOP: "shop",
   OPERATIONS: "operations",
+  APPOINTMENTS: "appointments",
 };
 
 export const MODULE_CONFIG = {
@@ -222,6 +223,13 @@ export const MODULE_CONFIG = {
     icon: "monitoring",
     permission: PERMISSIONS.OPERATIONS_VIEW,
   },
+
+  [MODULES.APPOINTMENTS]: {
+    label: "Appointments",
+    route: "/pages/operations/operations.html#appointments",
+    icon: "event",
+    permission: PERMISSIONS.APPOINTMENTS_VIEW,
+  },
 };
 
 export const CORE_REQUIRED_MODULES = [
@@ -305,5 +313,11 @@ export const SELLABLE_MODULE_GROUPS = [
     id: "notifications",
     label: "Notifications",
     modules: [MODULES.OPERATIONS],
+  },
+
+  {
+    id: "appointments",
+    label: "Appointments",
+    modules: [MODULES.APPOINTMENTS],
   },
 ];

@@ -1,0 +1,21 @@
+/* public/css/modules/appointments-ops.css */
+
+.appointments-card .appointments-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#appointmentsCounts span {
+  display: inline-block;
+  margin-right: 12px;
+  font-size: 13px;
+}
+
+#appointmentsPasteInput {
+  width: 100%;
+  font-family: inherit;
+}
+
+.appointments-card td .small-button {
+  margin: 0 4px 4px 0;
+}

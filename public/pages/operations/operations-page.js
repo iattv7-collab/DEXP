@@ -15,9 +15,14 @@ import {
   watchDealerROs,
   updateRO,
 } from "/js/services/firestore/ros-service.js";
+import {
+  initAppointmentsTab,
+  syncAppointmentsTabContext,
+  hasAppointmentsAccess,
+} from "/js/modules/appointments/appointments-tab.js";
 
 protectRoute({
-  allowedModules: [MODULES.OPERATIONS],
+  allowedModules: [MODULES.OPERATIONS, MODULES.APPOINTMENTS],
 });
 
 const liveOperationsTabButton = document.getElementById(
@@ -34,6 +39,10 @@ const operationsReadyTabButton = document.getElementById(
 
 const operationsStatusTabButton = document.getElementById(
   "operationsStatusTabButton",
+);
+
+const operationsAppointmentsTabButton = document.getElementById(
+  "operationsAppointmentsTabButton",
 );
 
 const operationsGroupFilterRow = document.getElementById(
@@ -54,6 +63,10 @@ const operationsReadySection = document.getElementById(
 
 const operationsStatusSection = document.getElementById(
   "operationsStatusSection",
+);
+
+const operationsAppointmentsSection = document.getElementById(
+  "operationsAppointmentsSection",
 );
 
 const liveOperationsTableBody = document.getElementById(
@@ -121,6 +134,16 @@ async function initializeOperationsPage() {
     dealerROs = Array.isArray(rows) ? rows : [];
     renderOperations();
   });
+
+  initAppointmentsTab({
+    getDealerROs: () => dealerROs,
+    getNotificationGroups: () => notificationGroups,
+  });
+
+  if (window.location.hash === "#appointments" || onlyAppointmentsModule()) {
+    currentTab = "appointments";
+    renderTabs();
+  }
 }
 
 function wireTabs() {
@@ -141,6 +164,11 @@ function wireTabs() {
 
   operationsStatusTabButton.addEventListener("click", () => {
     currentTab = "status";
+    renderTabs();
+  });
+
+  operationsAppointmentsTabButton?.addEventListener("click", () => {
+    currentTab = "appointments";
     renderTabs();
   });
 
@@ -167,14 +195,34 @@ function renderTabs() {
     currentTab !== "status",
   );
 
+  operationsAppointmentsTabButton?.classList.toggle(
+    "secondary",
+    currentTab !== "appointments",
+  );
+
   liveOperationsSection.classList.toggle("hidden", currentTab !== "live");
   operationsHistorySection.classList.toggle("hidden", currentTab !== "history");
   operationsReadySection.classList.toggle("hidden", currentTab !== "ready");
   operationsStatusSection.classList.toggle("hidden", currentTab !== "status");
+  operationsAppointmentsSection?.classList.toggle(
+    "hidden",
+    currentTab !== "appointments",
+  );
 
   if (operationsGroupFilterRow) {
     operationsGroupFilterRow.style.display =
-      currentTab === "ready" || currentTab === "status" ? "none" : "";
+      currentTab === "ready" ||
+      currentTab === "status" ||
+      currentTab === "appointments"
+        ? "none"
+        : "";
+  }
+
+  if (onlyAppointmentsModule()) {
+    liveOperationsTabButton?.classList.add("hidden");
+    operationsHistoryTabButton?.classList.add("hidden");
+    operationsReadyTabButton?.classList.add("hidden");
+    operationsStatusTabButton?.classList.add("hidden");
   }
 
   renderOperations();
@@ -253,6 +301,10 @@ function renderOperations() {
   renderHistoryOperations();
   renderReadyOperations();
   renderStatusOperations();
+  syncAppointmentsTabContext({
+    ros: dealerROs,
+    groups: notificationGroups,
+  });
 }
 
 function renderLiveOperations() {
@@ -734,4 +786,16 @@ function escapeHtml(value = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function onlyAppointmentsModule() {
+  const session = getSession();
+  const modules = Array.isArray(session?.modules) ? session.modules : [];
+  return (
+    hasAppointmentsAccess() &&
+    modules.includes(MODULES.APPOINTMENTS) &&
+    !modules.includes(MODULES.OPERATIONS) &&
+    session?.role !== "admin" &&
+    session?.role !== "platform-admin"
+  );
 }
