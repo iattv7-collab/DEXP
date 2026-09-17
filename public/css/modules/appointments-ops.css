@@ -16,6 +16,124 @@
   font-family: inherit;
 }
 
-.appointments-card td .small-button {
-  margin: 0 4px 4px 0;
+.appointments-card .table-wrap {
+  background: #fff;
+  border: 1px solid #c9c9c9;
+  border-radius: 10px;
+  overflow: auto;
 }
+
+.appointments-card .data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: "Times New Roman", Times, serif;
+  background: #fff;
+}
+
+.appointments-card .data-table th {
+  background: #4066e2;
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1.1;
+  padding: 8px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.appointments-card .data-table td {
+  padding: 10px 6px;
+  border-right: 1px solid #c9c9c9;
+  border-bottom: 1px solid #c9c9c9;
+  white-space: nowrap;
+  font-size: 16px;
+  height: auto;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.appointments-card .data-table td:last-child,
+.appointments-card .data-table th:last-child {
+  border-right: 0;
+}
+
+.appointments-card .data-table tbody tr:hover td {
+  border-top: 3px solid #0b3d91;
+  border-bottom: 3px solid #0b3d91;
+}
+
+.appointments-card .data-table td:last-child {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.appointments-card td .small-button {
+  margin: 0 4px 0 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.appointments-card .data-table tbody tr.row-today td {
+  background: #ffff9a;
+}
+
+.appointments-card .data-table tbody tr.row-waiter td {
+  background: #fff36a;
+}
+
+.appointments-card .data-table tbody tr.row-ready td {
+  background: #4ff64f;
+}
+
+.appointments-card .data-table tbody tr.row-picked td {
+  background: #4a9fd4;
+}
+
+.appointments-card .data-table tbody tr.row-past td {
+  background: #cf3d3d;
+  color: #fff;
+}
+
+.appointments-card .data-table tbody tr.row-cancelled td {
+  background: #eceff3;
+  color: #667085;
+}
+
+.appointments-card .data-table tbody tr.appointment-row-selected td,
+.appointments-card .data-table tbody tr.appointment-row-selected:hover td {
+  border-top: 3px solid #0b3d91;
+  border-bottom: 3px solid #0b3d91;
+}
+
+.appointments-card #appointmentsPreviewBody input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 2px 4px;
+  border: 1px solid #c9c9c9;
+  background: #fff;
+}
+
+.appointments-card #appointmentsPreviewWrap .data-table {
+  table-layout: fixed;
+}
+
+
+.appointments-card #appointmentsPreviewWrap th:nth-child(1),
+.appointments-card #appointmentsPreviewWrap td:nth-child(1) { width: 86px; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(2),
+.appointments-card #appointmentsPreviewWrap td:nth-child(2) { width: 76px; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(3),
+.appointments-card #appointmentsPreviewWrap td:nth-child(3) { width: 52px; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(4),
+.appointments-card #appointmentsPreviewWrap td:nth-child(4) { width: 18%; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(5),
+.appointments-card #appointmentsPreviewWrap td:nth-child(5) { width: 16%; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(6),
+.appointments-card #appointmentsPreviewWrap td:nth-child(6) { width: 16%; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(7),
+.appointments-card #appointmentsPreviewWrap td:nth-child(7) { width: 130px; }
+.appointments-card #appointmentsPreviewWrap th:nth-child(8),
+.appointments-card #appointmentsPreviewWrap td:nth-child(8) { width: 18%; }

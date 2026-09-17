@@ -19,6 +19,7 @@ import {
 import {
   parseAppointmentSheetText,
   recognizeAppointmentImage,
+  enrichVehiclesFromVin,
 } from "/js/modules/appointments/appointment-sheet-parse.js";
 
 const LOANER_WAIT_REQUEST_TYPE = "waiting_for_loaner";
@@ -66,6 +67,39 @@ export function syncAppointmentsTabContext({ ros = [], groups = [] } = {}) {
   renderBoard();
 }
 
+
+function syncDateInput() {
+  const input = document.getElementById("appointmentsDateInput");
+  if (input) input.value = toDateInputValue(selectedDate);
+  syncDayButtons();
+}
+
+function syncDayButtons() {
+  const today = formatAppointmentDate(new Date());
+  const tomorrow = shiftAppointmentDate(today, 1);
+  document.querySelectorAll(".js-day").forEach((button) => {
+    const day = button.dataset.day;
+    let active = false;
+    if (day === "today") active = selectedDate === today;
+    if (day === "tomorrow") active = selectedDate === tomorrow;
+    if (day === "prev") active = selectedDate !== today && selectedDate !== tomorrow;
+    button.classList.toggle("secondary", !active);
+  });
+}
+
+function toDateInputValue(dateStr) {
+  const [month, day, year] = String(dateStr || "").split("/");
+  if (!month || !day || !year) return "";
+  const fullYear = String(year).length === 2 ? `20${year}` : year;
+  return `${fullYear}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function fromDateInputValue(value) {
+  const [year, month, day] = String(value || "").split("-");
+  if (!year || !month || !day) return "";
+  return `${month}/${day}/${String(year).slice(-2)}`;
+}
+
 function renderShell() {
   return `
     <div class="dexp-admin-card appointments-card">
@@ -76,9 +110,10 @@ function renderShell() {
       </p>
 
       <div class="action-row appointments-toolbar">
+        <button type="button" class="small-button secondary js-day" data-day="prev">Prev</button>
         <button type="button" class="small-button js-day" data-day="today">Today</button>
         <button type="button" class="small-button secondary js-day" data-day="tomorrow">Tomorrow</button>
-        <input id="appointmentsDateInput" type="text" value="${escapeHtml(selectedDate)}" placeholder="MM/DD/YY" style="max-width:120px" />
+        <input id="appointmentsDateInput" type="date" value="${escapeHtml(toDateInputValue(selectedDate))}" />
         <label class="small-button secondary">
           Photo of sheet
           <input id="appointmentsPhotoInput" type="file" accept="image/*" capture="environment" hidden />
@@ -96,6 +131,7 @@ function renderShell() {
 
       <div id="appointmentsPreviewWrap" class="hidden">
         <h4>Review before save</h4>
+        <button type="button" class="small-button secondary" id="appointmentsAddPreviewRow">Add row</button>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
@@ -148,18 +184,21 @@ function renderShell() {
 function wire(root) {
   root.querySelectorAll(".js-day").forEach((button) => {
     button.addEventListener("click", () => {
-      selectedDate =
-        button.dataset.day === "tomorrow"
-          ? shiftAppointmentDate(formatAppointmentDate(new Date()), 1)
-          : formatAppointmentDate(new Date());
-      const input = document.getElementById("appointmentsDateInput");
-      if (input) input.value = selectedDate;
+      if (button.dataset.day === "tomorrow") {
+        selectedDate = shiftAppointmentDate(formatAppointmentDate(new Date()), 1);
+      } else if (button.dataset.day === "prev") {
+        selectedDate = shiftAppointmentDate(selectedDate || formatAppointmentDate(new Date()), -1);
+      } else {
+        selectedDate = formatAppointmentDate(new Date());
+      }
+      syncDateInput();
       startWatch();
     });
   });
 
   document.getElementById("appointmentsDateInput")?.addEventListener("change", (event) => {
-    selectedDate = String(event.target.value || "").trim();
+    selectedDate = fromDateInputValue(event.target.value) || selectedDate;
+    syncDateInput();
     startWatch();
   });
 
@@ -170,7 +209,10 @@ function wire(root) {
     setMsg("Reading sheet photo…");
     try {
       const text = await recognizeAppointmentImage(file);
-      applyParsed(parseAppointmentSheetText(text));
+      setMsg("Decoding vehicles from VIN…");
+      const parsed = parseAppointmentSheetText(text);
+      parsed.rows = await enrichVehiclesFromVin(parsed.rows);
+      applyParsed(parsed);
     } catch (error) {
       setMsg(error?.message || "Could not read photo.");
     }
@@ -180,12 +222,34 @@ function wire(root) {
     document.getElementById("appointmentsPasteWrap")?.classList.toggle("hidden");
   });
 
-  document.getElementById("appointmentsParsePaste")?.addEventListener("click", () => {
+  document.getElementById("appointmentsParsePaste")?.addEventListener("click", async () => {
     const text = document.getElementById("appointmentsPasteInput")?.value || "";
-    applyParsed(parseAppointmentSheetText(text));
+    setMsg("Decoding vehicles from VIN…");
+    const parsed = parseAppointmentSheetText(text);
+    parsed.rows = await enrichVehiclesFromVin(parsed.rows);
+    applyParsed(parsed);
   });
 
   document.getElementById("appointmentsSavePreview")?.addEventListener("click", savePreview);
+  document.getElementById("appointmentsAddPreviewRow")?.addEventListener("click", () => {
+    previewRows = collectPreviewRows();
+    previewRows.push({
+      appointmentDate: previewDate || selectedDate,
+      appointmentTime: "",
+      transportationType: "none",
+      advisorCode: "",
+      customerName: "",
+      vehicle: "",
+      vin: "",
+      phone: "",
+      concern: "",
+      loanerRequired: false,
+      source: "manual",
+    });
+    renderPreviewBody();
+    const saveBtn = document.getElementById("appointmentsSavePreview");
+    if (saveBtn) saveBtn.disabled = false;
+  });
 
   root.querySelectorAll(".js-transport").forEach((button) => {
     button.addEventListener("click", () => {
@@ -198,6 +262,14 @@ function wire(root) {
   });
 
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", handleBoardClick);
+  document.getElementById("appointmentsLiveBody")?.addEventListener("click", (event) => {
+    const row = event.target.closest("tr[data-id]");
+    if (!row) return;
+    document.querySelectorAll("#appointmentsLiveBody tr.appointment-row-selected").forEach((item) => {
+      item.classList.remove("appointment-row-selected");
+    });
+    row.classList.add("appointment-row-selected");
+  });
 }
 
 function applyParsed(parsed) {
@@ -206,7 +278,7 @@ function applyParsed(parsed) {
   if (previewDate) {
     selectedDate = previewDate;
     const input = document.getElementById("appointmentsDateInput");
-    if (input) input.value = selectedDate;
+    syncDateInput();
   }
   const wrap = document.getElementById("appointmentsPreviewWrap");
   const body = document.getElementById("appointmentsPreviewBody");
@@ -219,23 +291,42 @@ function applyParsed(parsed) {
   }
   wrap?.classList.remove("hidden");
   if (saveBtn) saveBtn.disabled = false;
-  if (body) {
-    body.innerHTML = previewRows
-      .map((row) => {
-        return `<tr>
-          <td>${escapeHtml(row.appointmentTime)}</td>
-          <td>${escapeHtml(row.transportationType)}</td>
-          <td>${escapeHtml(row.advisorCode)}</td>
-          <td>${escapeHtml(row.customerName)}</td>
-          <td>${escapeHtml(row.vehicle)}</td>
-          <td>${escapeHtml(row.vin)}</td>
-          <td>${escapeHtml(row.phone)}</td>
-          <td>${escapeHtml(row.concern)}</td>
-        </tr>`;
-      })
-      .join("");
-  }
-  setMsg(`Parsed ${previewRows.length} rows for ${previewDate || selectedDate}. Review, then save.`);
+  renderPreviewBody();
+  setMsg(`Parsed ${previewRows.length} rows for ${previewDate || selectedDate}. Fix cells if needed, then save.`);
+}
+
+function renderPreviewBody() {
+  const body = document.getElementById("appointmentsPreviewBody");
+  if (!body) return;
+  body.innerHTML = previewRows
+    .map((row, index) => {
+      return `<tr data-preview-index="${index}">
+        <td><input data-field="appointmentTime" value="${escapeHtml(row.appointmentTime || "")}" /></td>
+        <td><input data-field="transportationType" value="${escapeHtml(row.transportationType || "")}" /></td>
+        <td><input data-field="advisorCode" value="${escapeHtml(row.advisorCode || "")}" /></td>
+        <td><input data-field="customerName" value="${escapeHtml(row.customerName || "")}" /></td>
+        <td><input data-field="vehicle" value="${escapeHtml(row.vehicle || "")}" /></td>
+        <td><input data-field="vin" value="${escapeHtml(row.vin || "")}" /></td>
+        <td><input data-field="phone" value="${escapeHtml(row.phone || "")}" /></td>
+        <td><input data-field="concern" value="${escapeHtml(row.concern || "")}" /></td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function collectPreviewRows() {
+  const body = document.getElementById("appointmentsPreviewBody");
+  if (!body) return previewRows;
+  return [...body.querySelectorAll("tr")].map((tr, index) => {
+    const current = { ...(previewRows[index] || {}) };
+    tr.querySelectorAll("input[data-field]").forEach((input) => {
+      current[input.dataset.field] = String(input.value || "").trim();
+    });
+    current.transportationType = String(current.transportationType || "none").toLowerCase();
+    current.loanerRequired = current.transportationType === "loaner";
+    current.appointmentDate = previewDate || selectedDate;
+    return current;
+  });
 }
 
 async function savePreview() {
@@ -243,6 +334,8 @@ async function savePreview() {
   if (saveBtn) saveBtn.disabled = true;
   setMsg("Saving…");
   try {
+    previewRows = collectPreviewRows();
+    previewRows = await enrichVehiclesFromVin(previewRows);
     const result = await upsertAppointmentsForDate(previewDate || selectedDate, previewRows);
     setMsg(
       `Saved ${result.saved}. Kept ${result.skippedProtected} already arrived/linked rows.`,
@@ -267,6 +360,7 @@ function startWatch() {
 }
 
 function renderBoard() {
+  syncDayButtons();
   const body = document.getElementById("appointmentsLiveBody");
   const counts = document.getElementById("appointmentsCounts");
   if (!body) return;
@@ -298,6 +392,17 @@ function renderBoard() {
   body.innerHTML = rows.map(renderLiveRow).join("");
 }
 
+
+function appointmentRowClass(row = {}) {
+  const status = String(row.status || "scheduled");
+  if (status === APPOINTMENT_STATUS.NO_SHOW) return "appointment-row row-past";
+  if (status === APPOINTMENT_STATUS.CANCELLED) return "appointment-row row-cancelled";
+  if (row.roNumber || row.roId) return "appointment-row row-picked";
+  if (status === APPOINTMENT_STATUS.ARRIVED) return "appointment-row row-ready";
+  if (row.advisorWaiter === true) return "appointment-row row-waiter";
+  return "appointment-row row-today";
+}
+
 function renderLiveRow(row) {
   const matched = findMatchingRO(row);
   const roLabel = row.roNumber || matched?.roNumber || "";
@@ -307,7 +412,7 @@ function renderLiveRow(row) {
     row.status === APPOINTMENT_STATUS.ARRIVED &&
     !row.waitingForLoaner;
 
-  return `<tr data-id="${escapeHtml(row.id)}">
+  return `<tr class="${appointmentRowClass(row)}" data-id="${escapeHtml(row.id)}">
     <td>${escapeHtml(row.appointmentTime || "")}</td>
     <td>${escapeHtml(row.transportationType || "")}</td>
     <td>${escapeHtml(row.advisorCode || "")}</td>
