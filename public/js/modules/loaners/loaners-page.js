@@ -188,15 +188,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  async function lookupTypedVin() {
+    await fill($("vin")?.value);
+  }
+
   $("vin")?.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      await fill($("vin").value);
+      await lookupTypedVin();
     }
   });
 
-  $("lookupVinBtn")?.addEventListener("click", async () => {
-    await fill($("vin").value);
+  $("lookupVinBtn")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await lookupTypedVin();
+  });
+
+  $("vin")?.addEventListener("change", lookupTypedVin);
+
+  let vinLookupTimer = null;
+  $("vin")?.addEventListener("input", () => {
+    const currentVin = normalizeVin($("vin").value);
+    if (validatedFleetVin && currentVin !== validatedFleetVin) {
+      validatedFleetVin = "";
+      updateSaveFleetButton();
+    }
+    window.clearTimeout(vinLookupTimer);
+    if (currentVin.length === 17) {
+      vinLookupTimer = window.setTimeout(lookupTypedVin, 250);
+    }
   });
 
   $("fleetSearch")?.addEventListener("input", renderFleetTable);
@@ -211,10 +232,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("make").value = "";
     $("model").value = "";
 
+    if (!vin) {
+      $("fleetMsg").textContent = "Type or scan a VIN, then tap Lookup.";
+      return;
+    }
+
     if (!isValidVin(vin) || !passesVinChecksum(vin)) {
-      $("vin").value = "";
       $("fleetMsg").textContent =
-        "VIN rejected — not a valid VIN. Try again.";
+        "VIN rejected — not a valid VIN. Check the characters and tap Lookup.";
       return;
     }
 
@@ -253,9 +278,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       const model = String(decoded?.model || "").trim();
 
       if (!year && !make) {
-        $("vin").value = "";
         $("fleetMsg").textContent =
-          "VIN rejected — not a valid VIN. Try again.";
+          "VIN did not decode. Check the VIN and tap Lookup again.";
         validatedFleetVin = "";
         updateSaveFleetButton();
         return;

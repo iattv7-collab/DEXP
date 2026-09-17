@@ -42,14 +42,16 @@ async function applyLowLightConstraints(videoTrack) {
   }
 
   if (typeof capabilities.exposureCompensation === "object") {
-    const maxExposure = capabilities.exposureCompensation.max;
-    if (typeof maxExposure === "number") {
-      advanced.exposureCompensation = maxExposure;
+    const min = capabilities.exposureCompensation.min;
+    const max = capabilities.exposureCompensation.max;
+    if (typeof min === "number" && typeof max === "number") {
+      const target = 0;
+      advanced.exposureCompensation = Math.min(max, Math.max(min, target));
     }
   }
 
   if (capabilities.torch) {
-    advanced.torch = true;
+    advanced.torch = false;
   }
 
   if (Object.keys(advanced).length === 0) return;

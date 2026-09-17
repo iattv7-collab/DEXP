@@ -21,6 +21,7 @@ import {
   recognizeAppointmentImage,
   enrichVehiclesFromVin,
 } from "/js/modules/appointments/appointment-sheet-parse.js";
+import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 
 const LOANER_WAIT_REQUEST_TYPE = "waiting_for_loaner";
 
@@ -100,6 +101,29 @@ function fromDateInputValue(value) {
   return `${month}/${day}/${String(year).slice(-2)}`;
 }
 
+function toTimeInputValue(value) {
+  const text = String(value || "").trim().toUpperCase();
+  const match = text.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  const minute = match[2];
+  const mer = match[3] || "";
+  if (mer === "PM" && hour < 12) hour += 12;
+  if (mer === "AM" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minute}`;
+}
+
+function fromTimeInputValue(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return text;
+  let hour = Number(match[1]);
+  const minute = match[2];
+  const mer = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${minute} ${mer}`;
+}
+
 function renderShell() {
   return `
     <div class="dexp-admin-card appointments-card">
@@ -120,6 +144,7 @@ function renderShell() {
         </label>
         <button type="button" class="small-button secondary" id="appointmentsPasteToggle">Paste text</button>
         <button type="button" class="small-button" id="appointmentsSavePreview" disabled>Save preview</button>
+        <button type="button" class="small-button secondary" id="appointmentsAddLive">Add appointment</button>
       </div>
 
       <div id="appointmentsPasteWrap" class="hidden" style="margin:8px 0">
@@ -230,7 +255,58 @@ function wire(root) {
     applyParsed(parsed);
   });
 
+  document.getElementById("appointmentsPreviewWrap")?.addEventListener("click", async (event) => {
+    const input = event.target.closest(".js-appt-time-pick");
+    if (!input) return;
+    const pickedMs = await pickDateTimeMs(
+      "Select date/time",
+      Date.now(),
+      30,
+      {
+        schedule: {
+          monFri: { start: "07:30", end: "18:00" },
+        },
+        anchorEl: input,
+      },
+    );
+    if (!pickedMs) return;
+    const date = new Date(pickedMs);
+    let hour = date.getHours();
+    const mer = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    const minute = String(date.getMinutes()).padStart(2, "0");
+    input.value = `${hour}:${minute} ${mer}`;
+    previewDate = formatAppointmentDate(date);
+    selectedDate = previewDate;
+    syncDateInput();
+  });
+
   document.getElementById("appointmentsSavePreview")?.addEventListener("click", savePreview);
+  function startBlankPreview() {
+    previewDate = selectedDate;
+    previewRows = [{
+      appointmentDate: selectedDate,
+      appointmentTime: "",
+      transportationType: "none",
+      advisorCode: "",
+      customerName: "",
+      vehicle: "",
+      vin: "",
+      phone: "",
+      concern: "",
+      loanerRequired: false,
+      source: "manual",
+    }];
+    const wrap = document.getElementById("appointmentsPreviewWrap");
+    const saveBtn = document.getElementById("appointmentsSavePreview");
+    wrap?.classList.remove("hidden");
+    if (saveBtn) saveBtn.disabled = false;
+    renderPreviewBody();
+    setMsg("Add the missing appointment, then save.");
+  }
+
+  document.getElementById("appointmentsAddLive")?.addEventListener("click", startBlankPreview);
+
   document.getElementById("appointmentsAddPreviewRow")?.addEventListener("click", () => {
     previewRows = collectPreviewRows();
     previewRows.push({
@@ -301,7 +377,7 @@ function renderPreviewBody() {
   body.innerHTML = previewRows
     .map((row, index) => {
       return `<tr data-preview-index="${index}">
-        <td><input data-field="appointmentTime" value="${escapeHtml(row.appointmentTime || "")}" /></td>
+        <td><input data-field="appointmentTime" class="js-appt-time-pick" readonly value="${escapeHtml(row.appointmentTime || "")}" placeholder="Pick time" /></td>
         <td><input data-field="transportationType" value="${escapeHtml(row.transportationType || "")}" /></td>
         <td><input data-field="advisorCode" value="${escapeHtml(row.advisorCode || "")}" /></td>
         <td><input data-field="customerName" value="${escapeHtml(row.customerName || "")}" /></td>
@@ -320,7 +396,11 @@ function collectPreviewRows() {
   return [...body.querySelectorAll("tr")].map((tr, index) => {
     const current = { ...(previewRows[index] || {}) };
     tr.querySelectorAll("input[data-field]").forEach((input) => {
-      current[input.dataset.field] = String(input.value || "").trim();
+      let value = String(input.value || "").trim();
+      if (input.dataset.field === "appointmentTime") {
+        value = fromTimeInputValue(value);
+      }
+      current[input.dataset.field] = value;
     });
     current.transportationType = String(current.transportationType || "none").toLowerCase();
     current.loanerRequired = current.transportationType === "loaner";
