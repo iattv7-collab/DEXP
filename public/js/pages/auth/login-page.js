@@ -35,9 +35,16 @@ const passwordInput = document.getElementById("passwordInput");
 const dealerLoginName = document.getElementById("dealerLoginName");
 const togglePasswordButton = document.getElementById("togglePasswordButton");
 
-const dealerIdFromEntry = getDealerIdFromEntryPoint();
+const STORED_DEALER_KEY = "dexp_last_dealer_id";
+
+let dealerIdFromEntry = getDealerIdFromEntryPoint();
 
 let currentDealer = null;
+
+const dealerCodeWrap = document.getElementById("dealerCodeWrap");
+const dealerCodeInput = document.getElementById("dealerCodeInput");
+const dealerCodeButton = document.getElementById("btn-dealer-code");
+const changeDealerButton = document.getElementById("btn-change-dealer");
 
 initializeDealerEntry();
 
@@ -57,6 +64,8 @@ emailLoginButton?.addEventListener("click", async () => {
 
   try {
     await loginWithEmail(email, password);
+
+    rememberDealerId(dealerIdFromEntry);
 
     window.location.href = `/pages/dashboard/index.html?dealerId=${encodeURIComponent(
       dealerIdFromEntry,
@@ -183,6 +192,30 @@ passwordInput?.addEventListener("keydown", (event) => {
   }
 });
 
+dealerCodeButton?.addEventListener("click", async () => {
+  const code = normalizeDealerCode(dealerCodeInput?.value);
+  if (!code) {
+    alert("Enter the dealer code from your invite.");
+    return;
+  }
+  dealerIdFromEntry = code;
+  await initializeDealerEntry();
+});
+
+dealerCodeInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    dealerCodeButton?.click();
+  }
+});
+
+changeDealerButton?.addEventListener("click", () => {
+  clearRememberedDealer();
+  dealerIdFromEntry = "";
+  currentDealer = null;
+  if (dealerCodeInput) dealerCodeInput.value = "";
+  initializeDealerEntry();
+});
+
 async function initializeDealerEntry() {
   if (!dealerLoginName) {
     return;
@@ -191,12 +224,16 @@ async function initializeDealerEntry() {
   disableDealerLogin();
 
   if (!dealerIdFromEntry) {
-    dealerLoginName.textContent = "Invalid Dealer Entry";
+    dealerIdFromEntry = getRememberedDealerId();
+  }
 
-    alert("This is not a valid dealer entry link.");
-
+  if (!dealerIdFromEntry) {
+    dealerLoginName.textContent = "Enter your dealer code";
+    dealerCodeWrap?.classList.remove("hidden");
     return;
   }
+
+  dealerCodeWrap?.classList.add("hidden");
 
   try {
     const dealer = await getDealer(dealerIdFromEntry);
@@ -218,6 +255,7 @@ async function initializeDealerEntry() {
     }
 
     currentDealer = dealer;
+    rememberDealerId(dealerIdFromEntry);
 
     dealerLoginName.textContent = `Signing in to ${dealer.name}`;
 
@@ -553,12 +591,46 @@ async function handleRegisterSubmit(modal) {
   }
 }
 
+function normalizeDealerCode(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+function getRememberedDealerId() {
+  try {
+    return normalizeDealerCode(localStorage.getItem(STORED_DEALER_KEY) || "");
+  } catch (error) {
+    return "";
+  }
+}
+
+function rememberDealerId(dealerId) {
+  const value = normalizeDealerCode(dealerId);
+  if (!value) return;
+  try {
+    localStorage.setItem(STORED_DEALER_KEY, value);
+  } catch (error) {
+    /* ignore */
+  }
+}
+
+function clearRememberedDealer() {
+  try {
+    localStorage.removeItem(STORED_DEALER_KEY);
+  } catch (error) {
+    /* ignore */
+  }
+}
+
 function getDealerIdFromEntryPoint() {
   const params = new URLSearchParams(window.location.search);
 
-  const queryDealerId = String(params.get("dealerId") || "").trim();
+  const queryDealerId = normalizeDealerCode(params.get("dealerId") || "");
 
   if (queryDealerId) {
+    rememberDealerId(queryDealerId);
     return queryDealerId;
   }
 

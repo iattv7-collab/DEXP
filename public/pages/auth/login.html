@@ -53,6 +53,20 @@
           Dealer Login
         </p>
 
+        <div id="dealerCodeWrap" class="hidden" style="margin-top: 16px">
+          <input
+            id="dealerCodeInput"
+            type="text"
+            autocomplete="off"
+            autocapitalize="none"
+            placeholder="Dealer code from your invite"
+            style="width: 100%; padding: 10px"
+          />
+          <button id="btn-dealer-code" type="button" style="margin-top: 10px; width: 100%">
+            Continue
+          </button>
+        </div>
+
         <div
           style="
             display: flex;
@@ -120,10 +134,14 @@
           <button id="btn-reset-password" type="button" class="secondary">
             Forgot Password
           </button>
+
+          <button id="btn-change-dealer" type="button" class="secondary">
+            Change dealership
+          </button>
         </div>
       </section>
     </main>
 
-    <script type="module" src="/js/pages/auth/login-page.js?v=12"></script>
+    <script type="module" src="/js/pages/auth/login-page.js?v=13"></script>
   </body>
 </html>

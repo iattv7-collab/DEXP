@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DEXP Privacy Policy</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: #1a1a1a;
+      background: #f6f4ef;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+      background: #fff;
+      min-height: 100vh;
+      box-shadow: 0 0 0 1px #e6e2d8;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    .meta { color: #666; font-size: 14px; margin-bottom: 32px; }
+    h2 { font-size: 18px; margin: 28px 0 8px; }
+    p, li { line-height: 1.55; font-size: 16px; }
+    ul { padding-left: 22px; }
+    a { color: #1a4f8b; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DEXP Privacy Policy</h1>
+    <p class="meta">Effective date: September 17, 2026<br />
+      Product: DEXP (package <code>com.dexp.shop</code>)<br />
+      Operator: DEXP / Marlon Vargas · <a href="mailto:iattv7@gmail.com">iattv7@gmail.com</a></p>
+
+    <p>
+      DEXP is a dealer shop operations app. It is used by dealership staff
+      (advisors, technicians, wash, valet, foreman, and similar roles) to run
+      repair-order work, wash, loaners, appointments, and shop requests.
+      It is not a consumer social app and is not directed at children.
+    </p>
+
+    <h2>Who this policy covers</h2>
+    <p>
+      This policy applies to the DEXP website and the DEXP Android app when
+      a user signs in to a dealership that uses DEXP. Access is limited to
+      people the dealership has authorized. Play Store install does not by
+      itself grant access to shop data.
+    </p>
+
+    <h2>Information we collect</h2>
+    <p>Depending on how the shop uses DEXP, we may collect:</p>
+    <ul>
+      <li><strong>Account information</strong> — email, display name, role, assigned modules, and the dealership the user belongs to.</li>
+      <li><strong>Authentication data</strong> — sign-in credentials handled by Firebase Authentication (email and password). We do not receive or store card numbers for Play billing in the app.</li>
+      <li><strong>Shop operations data</strong> — repair-order fields, vehicle identifiers (including VIN), customer name as entered by the shop, appointment rows, wash and loaner status, notes, and similar work records the dealer chooses to enter.</li>
+      <li><strong>Photos and camera</strong> — images the user captures or uploads for VIN scan, appointment sheets, loaner condition, or similar shop tasks. These stay with that dealership’s DEXP data.</li>
+      <li><strong>Device notifications</strong> — a push token so the app can send lock-screen alerts for shop requests (Android channel <code>dexp_alerts</code>).</li>
+      <li><strong>Technical logs</strong> — basic app and hosting logs needed to keep the service running (for example, signed-in user id and error traces).</li>
+    </ul>
+    <p>
+      DEXP does not sell personal information. DEXP does not show third-party ads
+      and does not use shop data for advertising.
+    </p>
+
+    <h2>How we use the information</h2>
+    <ul>
+      <li>To sign the user into the correct dealership and enforce role / module access.</li>
+      <li>To display and update live shop boards (tracker, operations, wash, loaners, appointments, tech, and related modules).</li>
+      <li>To send the user notifications they are assigned to receive.</li>
+      <li>To decode a VIN the user entered or scanned so the vehicle description can be filled.</li>
+      <li>To maintain, secure, and debug the service.</li>
+    </ul>
+
+    <h2>Where the data lives</h2>
+    <p>
+      DEXP uses Google Firebase (project <code>dexp-5056c</code>), including
+      Authentication, Cloud Firestore, Cloud Functions, Cloud Messaging, and
+      Firebase Hosting. Data is transmitted over HTTPS. Dealership records
+      are stored per dealer and are not a public directory.
+    </p>
+
+    <h2>Sharing</h2>
+    <p>We share data only:</p>
+    <ul>
+      <li>With staff of that same dealership who have been given DEXP access.</li>
+      <li>With infrastructure providers that host DEXP (Google Firebase / Google Cloud), under their terms.</li>
+      <li>If required by law.</li>
+    </ul>
+    <p>We do not sell data to brokers or advertisers.</p>
+
+    <h2>Retention and deletion</h2>
+    <p>
+      Shop records stay for as long as the dealership uses DEXP or until the
+      dealership asks that an account or record be removed. A user may request
+      deletion of their login by asking their dealer administrator or by
+      emailing <a href="mailto:iattv7@gmail.com">iattv7@gmail.com</a>.
+      We will delete or disable the account and associated login data.
+      Operational repair-order history may be retained by the dealership as
+      its business record.
+    </p>
+
+    <h2>Children</h2>
+    <p>
+      DEXP is intended for adults working in a dealership. It is not directed
+      at children under 13, and we do not knowingly collect data from children.
+    </p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>You can change dealership on the login screen if you are invited to more than one roof.</li>
+      <li>You can disable notifications in Android system settings.</li>
+      <li>You can request account deletion as described above.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>
+      Privacy questions: <a href="mailto:iattv7@gmail.com">iattv7@gmail.com</a><br />
+      App: DEXP · <a href="https://dexp-5056c.web.app">https://dexp-5056c.web.app</a>
+    </p>
+
+    <h2>Changes</h2>
+    <p>
+      If this policy changes, we will update this page and the effective date.
+    </p>
+  </main>
+</body>
+</html>
