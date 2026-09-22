@@ -8,11 +8,20 @@ import {
   dismissNotificationRequest,
   openNotificationRequest,
   releaseStaleOpenedNotificationRequest,
+  resolveNotificationRequest,
 } from "../../services/firestore/notification-requests-service.js";
+
+import { acknowledgeAppointmentArrived } from "../../services/firestore/appointments-service.js";
 
 import { getNotificationGroups } from "../../services/firestore/notification-groups-service.js";
 
 import { getCurrentDeviceNotificationPreferences } from "../../services/firebase/messaging-service.js";
+import { app } from "../../services/firebase/firebase-app.js";
+import {
+  getMessaging,
+  isSupported,
+  onMessage,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging.js";
 
 import {
   NOTIFICATION_CONFIG,
@@ -22,6 +31,7 @@ import {
 } from "../../config/notification-config.js";
 
 let unsubscribeNotifications = null;
+let unsubscribeForegroundPush = null;
 let userGroupIds = [];
 let notificationPreferences = {
   notificationsEnabled: true,
@@ -44,6 +54,10 @@ let notificationAlertTimer = null;
 const ringingNotificationIds = new Set();
 
 const silencedNotificationIds = new Set();
+
+const popupNotificationIds = new Set();
+
+const openSystemNotifications = new Map();
 
 const NOTIFICATION_ALERT_REPEAT_MS = NOTIFICATION_CONFIG.repeatDelayMs;
 
@@ -98,6 +112,8 @@ export async function startNotificationEngine() {
     )
     .map((group) => group.id);
 
+  startForegroundPushListener();
+
   unsubscribeNotifications = listenToActiveNotificationRequests((requests) => {
     releaseStaleOpenedNotifications(requests, session);
 
@@ -105,7 +121,8 @@ export async function startNotificationEngine() {
 
     processNewNotificationAlerts(visibleNotifications);
 
-    renderNotificationTray(
+    renderNotificationTray(visibleNotifications);
+    renderDesktopPopups(
       notificationPreferences.notificationsEnabled ? visibleNotifications : [],
     );
   });
@@ -118,10 +135,17 @@ export function stopNotificationEngine() {
 
   unsubscribeNotifications = null;
 
+  if (typeof unsubscribeForegroundPush === "function") {
+    unsubscribeForegroundPush();
+  }
+  unsubscribeForegroundPush = null;
+
   ringingNotificationIds.clear();
   silencedNotificationIds.clear();
+  popupNotificationIds.clear();
 
   stopRepeatingNotificationAlert();
+  renderDesktopPopups([]);
 }
 
 window.addEventListener("dexp-notification-preferences-changed", (event) => {
@@ -132,10 +156,10 @@ window.addEventListener("dexp-notification-preferences-changed", (event) => {
 
   if (!notificationPreferences.notificationsEnabled) {
     ringingNotificationIds.clear();
+    popupNotificationIds.clear();
 
     stopRepeatingNotificationAlert();
-
-    renderNotificationTray([]);
+    renderDesktopPopups([]);
   }
 });
 
@@ -148,6 +172,25 @@ function processNewNotificationAlerts(notifications = []) {
   ringingNotificationIds.forEach((notificationId) => {
     if (!visibleIds.has(notificationId)) {
       ringingNotificationIds.delete(notificationId);
+    }
+  });
+
+  popupNotificationIds.forEach((notificationId) => {
+    if (!visibleIds.has(notificationId)) {
+      popupNotificationIds.delete(notificationId);
+      closeSystemNotification(notificationId);
+    }
+  });
+
+  alertedNotificationIds.forEach((notificationId) => {
+    if (!visibleIds.has(notificationId)) {
+      alertedNotificationIds.delete(notificationId);
+    }
+  });
+
+  silencedNotificationIds.forEach((notificationId) => {
+    if (!visibleIds.has(notificationId)) {
+      silencedNotificationIds.delete(notificationId);
     }
   });
 
@@ -173,6 +216,8 @@ function processNewNotificationAlerts(notifications = []) {
       !silencedNotificationIds.has(notification.id)
     ) {
       ringingNotificationIds.add(notification.id);
+      popupNotificationIds.add(notification.id);
+      showSystemNotification(notification);
     }
 
     alertedNotificationIds.add(notification.id);
@@ -238,6 +283,89 @@ function stopRepeatingNotificationAlert() {
   }
 }
 
+function pageIsInForeground() {
+  return document.visibilityState === "visible" && document.hasFocus();
+}
+
+async function startForegroundPushListener() {
+  if (typeof unsubscribeForegroundPush === "function") {
+    unsubscribeForegroundPush();
+    unsubscribeForegroundPush = null;
+  }
+
+  try {
+    const supported = await isSupported();
+    if (!supported) return;
+
+    const messaging = getMessaging(app);
+    unsubscribeForegroundPush = onMessage(messaging, (payload) => {
+      const data = payload?.data || {};
+      showSystemNotification(
+        {
+          id: data.notificationId || data.id || "dexp-notification",
+          title: data.title || payload?.notification?.title || "DEXP Notification",
+          message: data.body || payload?.notification?.body || "",
+        },
+        { force: true },
+      );
+    });
+  } catch (error) {
+    console.warn("Could not listen for desktop push messages.", error);
+  }
+}
+
+function showSystemNotification(notification = {}, options = {}) {
+  if (!("Notification" in window)) {
+    return;
+  }
+
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  if (!options.force && pageIsInForeground()) {
+    return;
+  }
+
+  try {
+    const systemNotification = new Notification(
+      String(notification.title || "DEXP Notification"),
+      {
+        body: String(notification.message || ""),
+        icon: "/assets/logo-v2.png",
+        badge: "/assets/logo-v2.png",
+        tag: String(notification.id || `dexp-${Date.now()}`),
+        renotify: true,
+        requireInteraction: true,
+        silent: notificationPreferences.soundEnabled === false,
+      },
+    );
+
+    systemNotification.onclick = () => {
+      window.focus();
+      systemNotification.close();
+    };
+  } catch (error) {
+    console.warn("Could not show desktop system notification.", error);
+  }
+}
+
+function closeSystemNotification(notificationId = "") {
+  const tag = String(notificationId || "").trim();
+  if (!tag || !navigator.serviceWorker?.ready) {
+    return;
+  }
+
+  navigator.serviceWorker.ready
+    .then((registration) => registration.getNotifications({ tag }))
+    .then((notifications) => {
+      notifications.forEach((notification) => notification.close());
+    })
+    .catch((error) => {
+      console.warn("Could not close desktop notification.", error);
+    });
+}
+
 function silenceNotificationAlert(notificationId) {
   const safeNotificationId = String(notificationId || "").trim();
 
@@ -247,6 +375,8 @@ function silenceNotificationAlert(notificationId) {
 
   silencedNotificationIds.add(safeNotificationId);
   ringingNotificationIds.delete(safeNotificationId);
+  popupNotificationIds.delete(safeNotificationId);
+  closeSystemNotification(safeNotificationId);
 
   if (!ringingNotificationIds.size) {
     stopRepeatingNotificationAlert();
@@ -476,8 +606,11 @@ function renderNotificationTray(notifications = []) {
   tray.querySelectorAll("[data-dismiss-notification-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.dismissNotificationId;
+      const notification = notifications.find(
+        (item) => item.id === notificationId,
+      );
       silenceNotificationAlert(notificationId);
-      await dismissNotificationRequest(notificationId);
+      await handleDismissNotification(notification || { id: notificationId });
     });
   });
 
@@ -487,6 +620,102 @@ function renderNotificationTray(notifications = []) {
       silenceNotificationAlert(notificationId);
       button.textContent = "Silenced";
       button.disabled = true;
+    });
+  });
+}
+
+async function handleDismissNotification(notification = {}) {
+  const eventType = String(notification.eventType || "").trim();
+  const notificationId = String(notification.id || "").trim();
+
+  if (eventType === "appointment_arrived") {
+    const appointmentId = String(
+      notification.relatedAppointmentId ||
+        notification.sourceId ||
+        notificationId.replace(/^appt-arrived-/, ""),
+    ).trim();
+
+    if (appointmentId) {
+      try {
+        await acknowledgeAppointmentArrived(appointmentId);
+        return;
+      } catch (error) {
+        console.warn("Could not acknowledge arrived appointment.", error);
+      }
+    }
+
+    if (notificationId) {
+      await resolveNotificationRequest(notificationId);
+    }
+    return;
+  }
+
+  await dismissNotificationRequest(notificationId);
+}
+
+function renderDesktopPopups(notifications = []) {
+  let host = document.getElementById("dexpDesktopPopupHost");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "dexpDesktopPopupHost";
+    document.body.appendChild(host);
+    ensureCompactTrayStyles();
+  }
+
+  const popups = [...popupNotificationIds]
+    .map((id) => notifications.find((item) => item.id === id))
+    .filter(Boolean);
+
+  if (!popups.length) {
+    host.innerHTML = "";
+    host.style.display = "none";
+    return;
+  }
+
+  host.style.display = "flex";
+  host.innerHTML = popups
+    .map(
+      (item) => `
+      <div class="dexp-desktop-popup" data-popup-id="${escapeHtml(item.id)}">
+        <div class="dexp-desktop-popup-kicker">New alert</div>
+        <div class="dexp-notification-title">${escapeHtml(item.title)}</div>
+        <div class="dexp-notification-message">${escapeHtml(item.message)}</div>
+        <div class="dexp-notification-actions">
+          ${
+            item.route
+              ? `<button type="button" class="dexp-notification-open" data-popup-open-id="${escapeHtml(item.id)}">Open</button>`
+              : ""
+          }
+          <button type="button" class="dexp-notification-dismiss" data-popup-dismiss-id="${escapeHtml(item.id)}">Dismiss</button>
+        </div>
+      </div>
+    `,
+    )
+    .join("");
+
+  host.querySelectorAll("[data-popup-open-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const notificationId = button.dataset.popupOpenId;
+      const notification = popups.find((item) => item.id === notificationId);
+      if (!notification?.route) return;
+      silenceNotificationAlert(notificationId);
+      renderDesktopPopups(
+        currentVisibleNotifications.filter((item) => popupNotificationIds.has(item.id)),
+      );
+      await openNotificationRequest(notificationId);
+      window.location.href = buildNotificationRoute(notification);
+    });
+  });
+
+  host.querySelectorAll("[data-popup-dismiss-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const notificationId = button.dataset.popupDismissId;
+      const notification = popups.find((item) => item.id === notificationId);
+      silenceNotificationAlert(notificationId);
+      renderDesktopPopups(
+        currentVisibleNotifications.filter((item) => popupNotificationIds.has(item.id)),
+      );
+      await handleDismissNotification(notification || { id: notificationId });
     });
   });
 }
@@ -534,6 +763,37 @@ function ensureCompactTrayStyles() {
     .dexp-notification-card {
       margin: 0 0 8px 0;
     }
+
+    #dexpDesktopPopupHost {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      width: min(420px, 92vw);
+      pointer-events: none;
+    }
+
+    .dexp-desktop-popup {
+      pointer-events: auto;
+      background: #fff;
+      border: 2px solid #c62828;
+      border-radius: 10px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.28);
+      padding: 14px 16px;
+    }
+
+    .dexp-desktop-popup-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #c62828;
+      margin-bottom: 4px;
+    }
   `;
 
   document.head.appendChild(style);
@@ -552,11 +812,15 @@ function renderNotificationCard(item) {
     !isOpened &&
     hasRoute &&
     (item.module === "requests" ||
-      ["followup_due", "developer_test"].includes(eventType));
+      ["followup_due", "developer_test", "appointment_arrived"].includes(
+        eventType,
+      ));
 
   const showDismiss =
     !isOpened &&
-    ["waiter_alert", "followup_due", "developer_test"].includes(eventType);
+    ["waiter_alert", "followup_due", "developer_test", "appointment_arrived"].includes(
+      eventType,
+    );
 
   return `
     <div class="dexp-notification-card ${isOpened ? "dexp-notification-card-opened" : ""}">

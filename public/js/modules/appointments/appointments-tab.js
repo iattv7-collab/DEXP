@@ -12,6 +12,7 @@ import {
   markAppointmentCancelled,
   markAppointmentNoShow,
   shiftAppointmentDate,
+  undoAppointmentArrived,
   updateAppointment,
   upsertAppointmentsForDate,
   watchAppointmentsForDate,
@@ -487,6 +488,8 @@ function renderLiveRow(row) {
   const matched = findMatchingRO(row);
   const roLabel = row.roNumber || matched?.roNumber || "";
   const canLink = !row.roId && matched;
+  const canUndoArrived =
+    row.status === APPOINTMENT_STATUS.ARRIVED && !row.roId && !row.roNumber;
   const showLoanerWait =
     row.loanerRequired &&
     row.status === APPOINTMENT_STATUS.ARRIVED &&
@@ -509,6 +512,11 @@ function renderLiveRow(row) {
           ? `<button type="button" class="small-button js-appt-arrived" data-id="${escapeHtml(row.id)}">Arrived</button>
              <button type="button" class="small-button secondary js-appt-noshow" data-id="${escapeHtml(row.id)}">No show</button>
              <button type="button" class="small-button secondary js-appt-cancel" data-id="${escapeHtml(row.id)}">Cancel</button>`
+          : ""
+      }
+      ${
+        canUndoArrived
+          ? `<button type="button" class="small-button secondary js-appt-undo-arrived" data-id="${escapeHtml(row.id)}">Undo arrived</button>`
           : ""
       }
       ${
@@ -537,6 +545,7 @@ function findMatchingRO(appointment) {
 
 async function handleBoardClick(event) {
   const arrived = event.target.closest(".js-appt-arrived");
+  const undoArrived = event.target.closest(".js-appt-undo-arrived");
   const noShow = event.target.closest(".js-appt-noshow");
   const cancel = event.target.closest(".js-appt-cancel");
   const link = event.target.closest(".js-appt-link");
@@ -545,6 +554,11 @@ async function handleBoardClick(event) {
   try {
     if (arrived) {
       await markAppointmentArrived(arrived.dataset.id);
+      return;
+    }
+    if (undoArrived) {
+      await undoAppointmentArrived(undoArrived.dataset.id);
+      setMsg("Arrived undone. Advisor alert removed.");
       return;
     }
     if (noShow) {
