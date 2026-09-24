@@ -137,3 +137,16 @@
 .appointments-card #appointmentsPreviewWrap td:nth-child(7) { width: 130px; }
 .appointments-card #appointmentsPreviewWrap th:nth-child(8),
 .appointments-card #appointmentsPreviewWrap td:nth-child(8) { width: 18%; }
+
+.appointments-card #appointmentsPreviewBody tr.vin-issue td {
+  background: #ffd6d6;
+}
+
+.appointments-card #appointmentsPreviewBody tr.vin-issue input {
+  background: #fff1f1;
+}
+
+.appointments-card #appointmentsPreviewBody tr.vin-issue input[data-field="vin"] {
+  background: #ffd0d0;
+  border-color: #d45b5b;
+}

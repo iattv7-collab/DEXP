@@ -2,7 +2,6 @@
 
 import { getSession } from "/js/core/session.js";
 import { MODULES } from "/js/config/modules.js";
-import { createRequest } from "/js/services/firestore/requests-service.js";
 import {
   APPOINTMENT_STATUS,
   TRANSPORT_TYPE,
@@ -13,18 +12,18 @@ import {
   markAppointmentNoShow,
   shiftAppointmentDate,
   undoAppointmentArrived,
-  updateAppointment,
   upsertAppointmentsForDate,
   watchAppointmentsForDate,
 } from "/js/services/firestore/appointments-service.js";
 import {
   parseAppointmentSheetText,
-  recognizeAppointmentImage,
+  recognizeAppointmentSheet,
   enrichVehiclesFromVin,
+  isValidVin,
+  vinNeedsReview,
+  lookupVehicleFromVin,
 } from "/js/modules/appointments/appointment-sheet-parse.js";
 import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
-
-const LOANER_WAIT_REQUEST_TYPE = "waiting_for_loaner";
 
 let selectedDate = formatAppointmentDate(new Date());
 let transportFilter = "all";
@@ -34,6 +33,7 @@ let previewDate = "";
 let unwatch = null;
 let dealerROs = [];
 let notificationGroups = [];
+let previewVinTimer = 0;
 
 export function hasAppointmentsAccess() {
   const session = getSession();
@@ -133,7 +133,6 @@ function renderShell() {
         No Reynolds live feed. Upload tonight or tomorrow morning's printed sheet.
         Review the grid, then save. Arrived cars stay if you upload again.
       </p>
-
       <div class="action-row appointments-toolbar">
         <button type="button" class="small-button secondary js-day" data-day="prev">Prev</button>
         <button type="button" class="small-button js-day" data-day="today">Today</button>
@@ -147,14 +146,11 @@ function renderShell() {
         <button type="button" class="small-button" id="appointmentsSavePreview" disabled>Save preview</button>
         <button type="button" class="small-button secondary" id="appointmentsAddLive">Add appointment</button>
       </div>
-
       <div id="appointmentsPasteWrap" class="hidden" style="margin:8px 0">
         <textarea id="appointmentsPasteInput" rows="6" placeholder="Paste OCR or exported sheet text"></textarea>
         <button type="button" class="small-button" id="appointmentsParsePaste">Parse paste</button>
       </div>
-
       <p id="appointmentsStatusMsg" class="tool-help"></p>
-
       <div id="appointmentsPreviewWrap" class="hidden">
         <h4>Review before save</h4>
         <button type="button" class="small-button secondary" id="appointmentsAddPreviewRow">Add row</button>
@@ -170,9 +166,7 @@ function renderShell() {
           </table>
         </div>
       </div>
-
       <div class="action-row" id="appointmentsCounts"></div>
-
       <div class="action-row">
         <button type="button" class="small-button js-transport" data-transport="all">All</button>
         <button type="button" class="small-button secondary js-transport" data-transport="loaner">Loaner</button>
@@ -180,7 +174,6 @@ function renderShell() {
         <button type="button" class="small-button secondary js-transport" data-transport="valet">Valet</button>
         <button type="button" class="small-button secondary js-transport" data-transport="none">None</button>
       </div>
-
       <div class="table-wrap">
         <table class="data-table">
           <thead>
@@ -234,9 +227,9 @@ function wire(root) {
     if (!file) return;
     setMsg("Reading sheet photo…");
     try {
-      const text = await recognizeAppointmentImage(file);
+      const ocr = await recognizeAppointmentSheet(file);
       setMsg("Decoding vehicles from VIN…");
-      const parsed = parseAppointmentSheetText(text);
+      const parsed = parseAppointmentSheetText(ocr);
       parsed.rows = await enrichVehiclesFromVin(parsed.rows);
       applyParsed(parsed);
     } catch (error) {
@@ -308,6 +301,12 @@ function wire(root) {
 
   document.getElementById("appointmentsAddLive")?.addEventListener("click", startBlankPreview);
 
+  document.getElementById("appointmentsPreviewBody")?.addEventListener("input", (event) => {
+    const input = event.target.closest("input[data-field='vin']");
+    if (!input) return;
+    handlePreviewVinChange(input);
+  });
+
   document.getElementById("appointmentsAddPreviewRow")?.addEventListener("click", () => {
     previewRows = collectPreviewRows();
     previewRows.push({
@@ -369,7 +368,38 @@ function applyParsed(parsed) {
   wrap?.classList.remove("hidden");
   if (saveBtn) saveBtn.disabled = false;
   renderPreviewBody();
-  setMsg(`Parsed ${previewRows.length} rows for ${previewDate || selectedDate}. Fix cells if needed, then save.`);
+  const issueCount = previewRows.filter((row) => vinNeedsReview(row.vin)).length;
+  setMsg(
+    issueCount
+      ? `Parsed ${previewRows.length} rows for ${previewDate || selectedDate}. ${issueCount} VIN${issueCount === 1 ? "" : "s"} need a look (pink). Fix those, then save.`
+      : `Parsed ${previewRows.length} rows for ${previewDate || selectedDate}. VINs look good. Save when ready.`,
+  );
+}
+
+function handlePreviewVinChange(input) {
+  const row = input.closest("tr");
+  if (!row) return;
+  const vehicleInput = row.querySelector("input[data-field='vehicle']");
+  const needsReview = vinNeedsReview(input.value);
+  row.classList.toggle("vin-issue", needsReview);
+  if (needsReview) {
+    if (vehicleInput) vehicleInput.value = "";
+    return;
+  }
+
+  window.clearTimeout(previewVinTimer);
+  previewVinTimer = window.setTimeout(async () => {
+    if (vinNeedsReview(input.value)) return;
+    const vehicle = await lookupVehicleFromVin(input.value);
+    if (!vehicleInput) return;
+    vehicleInput.value = vehicle;
+    row.classList.toggle("vin-issue", !vehicle);
+    if (vehicle) {
+      setMsg("VIN accepted. Year / make / model filled from decode.");
+    } else {
+      setMsg("VIN checksum is good, but decode did not return a vehicle.");
+    }
+  }, 400);
 }
 
 function renderPreviewBody() {
@@ -377,13 +407,14 @@ function renderPreviewBody() {
   if (!body) return;
   body.innerHTML = previewRows
     .map((row, index) => {
-      return `<tr data-preview-index="${index}">
+      const badVin = vinNeedsReview(row.vin);
+      return `<tr data-preview-index="${index}" class="${badVin ? "vin-issue" : ""}">
         <td><input data-field="appointmentTime" class="js-appt-time-pick" readonly value="${escapeHtml(row.appointmentTime || "")}" placeholder="Pick time" /></td>
         <td><input data-field="transportationType" value="${escapeHtml(row.transportationType || "")}" /></td>
         <td><input data-field="advisorCode" value="${escapeHtml(row.advisorCode || "")}" /></td>
         <td><input data-field="customerName" value="${escapeHtml(row.customerName || "")}" /></td>
-        <td><input data-field="vehicle" value="${escapeHtml(row.vehicle || "")}" /></td>
-        <td><input data-field="vin" value="${escapeHtml(row.vin || "")}" /></td>
+        <td><input data-field="vehicle" value="${escapeHtml(row.vehicle || "")}" placeholder="Year make model from VIN" /></td>
+        <td><input data-field="vin" value="${escapeHtml(row.vin || "")}" placeholder="${badVin ? "Check VIN" : ""}" /></td>
         <td><input data-field="phone" value="${escapeHtml(row.phone || "")}" /></td>
         <td><input data-field="concern" value="${escapeHtml(row.concern || "")}" /></td>
       </tr>`;
@@ -417,6 +448,10 @@ async function savePreview() {
   try {
     previewRows = collectPreviewRows();
     previewRows = await enrichVehiclesFromVin(previewRows);
+    previewRows = previewRows.map((row) => ({
+      ...row,
+      vin: isValidVin(row.vin) ? String(row.vin || "").toUpperCase() : "",
+    }));
     const result = await upsertAppointmentsForDate(previewDate || selectedDate, previewRows);
     setMsg(
       `Saved ${result.saved}. Kept ${result.skippedProtected} already arrived/linked rows.`,
@@ -446,17 +481,13 @@ function renderBoard() {
   const counts = document.getElementById("appointmentsCounts");
   if (!body) return;
 
-  const loanerCount = liveRows.filter((row) => row.loanerRequired).length;
   const arrivedCount = liveRows.filter((row) => row.status === APPOINTMENT_STATUS.ARRIVED).length;
-  const waitingCount = liveRows.filter((row) => row.waitingForLoaner).length;
 
   if (counts) {
     counts.innerHTML = `
       <span>Total ${liveRows.length}</span>
-      <span>Loaner ${loanerCount}</span>
       <span>Arrived ${arrivedCount}</span>
       <span>Not arrived ${liveRows.length - arrivedCount}</span>
-      <span>Waiting loaner ${waitingCount}</span>
     `;
   }
 
@@ -490,10 +521,6 @@ function renderLiveRow(row) {
   const canLink = !row.roId && matched;
   const canUndoArrived =
     row.status === APPOINTMENT_STATUS.ARRIVED && !row.roId && !row.roNumber;
-  const showLoanerWait =
-    row.loanerRequired &&
-    row.status === APPOINTMENT_STATUS.ARRIVED &&
-    !row.waitingForLoaner;
 
   return `<tr class="${appointmentRowClass(row)}" data-id="${escapeHtml(row.id)}">
     <td>${escapeHtml(row.appointmentTime || "")}</td>
@@ -504,7 +531,7 @@ function renderLiveRow(row) {
     <td>${escapeHtml(row.vin || "")}</td>
     <td>${escapeHtml(row.phone || "")}</td>
     <td>${escapeHtml(row.concern || "")}</td>
-    <td>${escapeHtml(row.status || "")}${row.waitingForLoaner ? " / loaner wait" : ""}</td>
+    <td>${escapeHtml(row.status || "")}</td>
     <td>${escapeHtml(roLabel)}</td>
     <td>
       ${
@@ -522,11 +549,6 @@ function renderLiveRow(row) {
       ${
         canLink
           ? `<button type="button" class="small-button secondary js-appt-link" data-id="${escapeHtml(row.id)}" data-ro-id="${escapeHtml(matched.id || matched.roNumber || "")}">Link RO</button>`
-          : ""
-      }
-      ${
-        showLoanerWait
-          ? `<button type="button" class="small-button secondary js-appt-loaner-wait" data-id="${escapeHtml(row.id)}">Waiting for loaner</button>`
           : ""
       }
     </td>
@@ -549,7 +571,6 @@ async function handleBoardClick(event) {
   const noShow = event.target.closest(".js-appt-noshow");
   const cancel = event.target.closest(".js-appt-cancel");
   const link = event.target.closest(".js-appt-link");
-  const wait = event.target.closest(".js-appt-loaner-wait");
 
   try {
     if (arrived) {
@@ -577,46 +598,9 @@ async function handleBoardClick(event) {
       await linkAppointmentToRO(link.dataset.id, ro);
       return;
     }
-    if (wait) {
-      await sendToLoanerWait(wait.dataset.id);
-    }
   } catch (error) {
     alert(error?.message || "Could not update appointment.");
   }
-}
-
-async function sendToLoanerWait(appointmentId) {
-  const row = liveRows.find((item) => item.id === appointmentId);
-  if (!row) return;
-
-  const group =
-    notificationGroups.find((item) => /loaner/i.test(item.name || "")) ||
-    notificationGroups[0];
-
-  if (group) {
-    try {
-      await createRequest({
-        roId: row.roId || "",
-        roNumber: row.roNumber || "",
-        vinLast8: String(row.vin || "").slice(-8),
-        requestType: LOANER_WAIT_REQUEST_TYPE,
-        sourceModule: "appointments",
-        targetGroupId: group.id,
-        targetGroupName: group.name || "Loaner",
-        title: `Waiting for loaner — ${row.customerName || row.vin || "customer"}`,
-        message: `${row.customerName || ""} ${row.vehicle || ""} VIN ${row.vin || ""}`.trim(),
-        route: "/pages/operations/operations.html",
-        routeParams: { tab: "appointments" },
-      });
-    } catch (error) {
-      console.warn("Loaner wait request not created", error);
-    }
-  }
-
-  await updateAppointment(appointmentId, {
-    waitingForLoaner: true,
-    waitingForLoanerAtMs: Date.now(),
-  });
 }
 
 function setMsg(text) {
