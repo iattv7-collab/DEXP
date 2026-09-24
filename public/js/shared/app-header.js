@@ -90,6 +90,14 @@ export function renderAppHeader(options = {}) {
       : ""
     }
 
+      <button
+        id="refreshAppButton"
+        type="button"
+        title="Reload this page and pull the latest files"
+      >
+        Refresh
+      </button>
+
       ${showFollowUpCounter
       ? `
             <button
@@ -177,6 +185,10 @@ export function renderAppHeader(options = {}) {
       window.location.href = "/pages/dashboard/index.html";
     });
   }
+
+  document.getElementById("refreshAppButton")?.addEventListener("click", () => {
+    hardRefreshApp();
+  });
 
   const roReminderCounterButton = document.getElementById(
     "roReminderCounterButton",
@@ -464,6 +476,26 @@ function positionNotificationSettingsPanel(panel, anchorButton) {
     12,
     Math.round(window.innerWidth - buttonRect.right),
   )}px`;
+}
+
+async function hardRefreshApp() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((item) => item.unregister()));
+    }
+
+    if ("caches" in window) {
+      const keys = await window.caches.keys();
+      await Promise.all(keys.map((key) => window.caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn("Could not clear cached files before refresh.", error);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("_r", String(Date.now()));
+  window.location.replace(url.toString());
 }
 
 function ensureNotificationSettingsStyles() {

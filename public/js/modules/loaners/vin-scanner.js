@@ -14,11 +14,16 @@ const CAMERA_SETTLE_MS = 400;
 const BETWEEN_ATTEMPTS_MS = 400;
 const REQUEST_TIMEOUT_MS = 4000;
 
+function isAndroidWebView() {
+  return /Android/i.test(navigator.userAgent || "");
+}
+
 async function applyLowLightConstraints(videoTrack) {
   if (!videoTrack?.getCapabilities) return;
 
   const capabilities = videoTrack.getCapabilities();
   const advanced = {};
+  const android = isAndroidWebView();
 
   if (
     Array.isArray(capabilities.focusMode) &&
@@ -45,22 +50,29 @@ async function applyLowLightConstraints(videoTrack) {
     const min = capabilities.exposureCompensation.min;
     const max = capabilities.exposureCompensation.max;
     if (typeof min === "number" && typeof max === "number") {
-      const target = 0;
+      // iPhone keeps mid. Android S24 blows out at mid — pull toward darker.
+      const mid = 0;
+      const target = android ? min + (Math.min(max, mid) - min) * 0.3 : mid;
       advanced.exposureCompensation = Math.min(max, Math.max(min, target));
     }
   }
 
-  if (capabilities.torch) {
-    advanced.torch = false;
+  if (Object.keys(advanced).length) {
+    await videoTrack
+      .applyConstraints({
+        advanced: [advanced],
+      })
+      .catch(() => {});
   }
 
-  if (Object.keys(advanced).length === 0) return;
-
-  await videoTrack
-    .applyConstraints({
-      advanced: [advanced],
-    })
-    .catch(() => { });
+  // Separate call so a rejected bundle does not leave the torch on.
+  if (capabilities.torch) {
+    await videoTrack
+      .applyConstraints({
+        advanced: [{ torch: false }],
+      })
+      .catch(() => {});
+  }
 }
 
 function isCapacitorNative() {

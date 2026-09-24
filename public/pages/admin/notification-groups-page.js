@@ -10,7 +10,35 @@ import {
   createNotificationGroup,
   deleteNotificationGroup,
   getNotificationGroups,
+  updateNotificationGroup,
 } from "../../js/services/firestore/notification-groups-service.js";
+
+const GROUP_TYPES = [
+  "custom",
+  "advisor",
+  "valet",
+  "technician",
+  "foreman",
+  "wash",
+  "qc",
+  "booker",
+];
+
+function groupTypeOptions(selected = "custom") {
+  const current = String(selected || "custom");
+  return GROUP_TYPES.map((type) => {
+    const chosen = type === current ? " selected" : "";
+    return `<option value="${type}"${chosen}>${type}</option>`;
+  }).join("");
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
 
 let currentAdminUsers = [];
 let currentNotificationGroups = [];
@@ -86,12 +114,46 @@ function renderNotificationGroups(groups = []) {
             : "0 members";
 
           return `
-            <tr>
-              <td>${group.name || ""}</td>
-              <td>${group.groupType || ""}</td>
+            <tr data-group-id="${group.id}">
+              <td>
+                <input
+                  class="js-group-name"
+                  value="${escapeHtml(group.name || "")}"
+                  data-original="${escapeHtml(group.name || "")}"
+                  disabled
+                />
+              </td>
+              <td>
+                <select class="js-group-type" data-original="${escapeHtml(group.groupType || "custom")}" disabled>
+                  ${groupTypeOptions(group.groupType || "custom")}
+                </select>
+              </td>
               <td>${membersCell}</td>
 
               <td>
+                <button
+                  class="notification-group-edit-btn"
+                  type="button"
+                  data-group-id="${group.id}"
+                >
+                  Edit
+                </button>
+                <button
+                  class="notification-group-save-btn"
+                  type="button"
+                  data-group-id="${group.id}"
+                  disabled
+                >
+                  Save
+                </button>
+                <button
+                  class="notification-group-cancel-btn"
+                  type="button"
+                  data-group-id="${group.id}"
+                  disabled
+                >
+                  Cancel
+                </button>
                 <button
                   class="notification-group-members-btn"
                   data-group-id="${group.id}"
@@ -183,6 +245,68 @@ function attachNotificationGroupEvents() {
 
       await loadNotificationGroups();
     });
+
+  document.querySelectorAll(".notification-group-edit-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const row = button.closest("tr");
+      if (!row) return;
+      const nameInput = row.querySelector(".js-group-name");
+      const typeInput = row.querySelector(".js-group-type");
+      const saveButton = row.querySelector(".notification-group-save-btn");
+      const cancelButton = row.querySelector(".notification-group-cancel-btn");
+      if (nameInput) nameInput.disabled = false;
+      if (typeInput) typeInput.disabled = false;
+      if (saveButton) saveButton.disabled = false;
+      if (cancelButton) cancelButton.disabled = false;
+      nameInput?.focus();
+    });
+  });
+
+  document.querySelectorAll(".notification-group-cancel-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const row = button.closest("tr");
+      if (!row) return;
+      const nameInput = row.querySelector(".js-group-name");
+      const typeInput = row.querySelector(".js-group-type");
+      const saveButton = row.querySelector(".notification-group-save-btn");
+      if (nameInput) {
+        nameInput.value = nameInput.dataset.original || "";
+        nameInput.disabled = true;
+      }
+      if (typeInput) {
+        typeInput.value = typeInput.dataset.original || "custom";
+        typeInput.disabled = true;
+      }
+      if (saveButton) saveButton.disabled = true;
+      button.disabled = true;
+    });
+  });
+
+  document.querySelectorAll(".notification-group-save-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const row = button.closest("tr");
+      if (!row) return;
+      const nameInput = row.querySelector(".js-group-name");
+      const typeInput = row.querySelector(".js-group-type");
+      const name = String(nameInput?.value || "").trim();
+      const groupType = String(typeInput?.value || "custom").trim();
+      if (!name) {
+        alert("Enter a group name.");
+        return;
+      }
+      button.disabled = true;
+      try {
+        await updateNotificationGroup(button.dataset.groupId, {
+          name,
+          groupType,
+        });
+        await loadNotificationGroups();
+      } catch (error) {
+        button.disabled = false;
+        alert(error?.message || "Could not update group.");
+      }
+    });
+  });
 
     document
     .querySelectorAll(".notification-group-members-btn")

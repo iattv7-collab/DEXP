@@ -89,6 +89,43 @@ export async function createNotificationGroup(data = {}) {
   return groupData;
 }
 
+export async function updateNotificationGroup(groupId, data = {}) {
+  const session = getSession();
+
+  if (!session?.dealerId) {
+    throw new Error("Missing dealer session.");
+  }
+
+  if (!groupId) {
+    throw new Error("Missing group ID.");
+  }
+
+  const name = String(data.name || "").trim();
+  const groupType = String(data.groupType || "custom").trim() || "custom";
+
+  if (!name) {
+    throw new Error("Group name is required.");
+  }
+
+  const groupRef = doc(db, NOTIFICATION_GROUPS_COLLECTION, groupId);
+  const snapshot = await getDoc(groupRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Notification group not found.");
+  }
+
+  if (snapshot.data().dealerId !== session.dealerId) {
+    throw new Error("Cannot edit group from another dealer.");
+  }
+
+  await updateDoc(groupRef, {
+    name,
+    groupType,
+    updatedAt: serverTimestamp(),
+    updatedBy: session.uid || "",
+  });
+}
+
 export async function updateNotificationGroupMembers(groupId, memberUids = []) {
   const session = getSession();
 
