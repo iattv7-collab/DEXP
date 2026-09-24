@@ -88,15 +88,53 @@ async function handleCreateArea() {
 }
 
 async function loadAreas() {
-  try {
-    const areas = await getAreas();
+  let areas = [];
+  let locations = [];
 
-    renderAreas(areas);
-    populateAreaDropdown(areas);
+  try {
+    areas = await getAreas();
   } catch (error) {
     console.error(error);
-    showMessage("Could not load areas.");
+    showMessage("Could not load saved areas.");
   }
+
+  try {
+    locations = await getAllLocations();
+  } catch (error) {
+    console.error(error);
+  }
+
+  const merged = mergeAreasFromLocations(areas, locations);
+  renderAreas(merged);
+  populateAreaDropdown(merged);
+}
+
+function mergeAreasFromLocations(areas = [], locations = []) {
+  const byKey = new Map();
+
+  areas.forEach((area) => {
+    const key = String(area.value || area.label || "")
+      .trim()
+      .toLowerCase();
+    if (!key) return;
+    byKey.set(key, area);
+  });
+
+  locations.forEach((location) => {
+    const label = String(location.area || "").trim();
+    if (!label || label.toLowerCase() === "default") return;
+    const key = label.toLowerCase();
+    if (byKey.has(key)) return;
+    byKey.set(key, {
+      id: `${location.dealerId || "area"}_${key.replace(/\s+/g, "-")}`,
+      label,
+      value: label,
+    });
+  });
+
+  return [...byKey.values()].sort((a, b) =>
+    String(a.label || "").localeCompare(String(b.label || "")),
+  );
 }
 
 function renderAreas(areas = []) {

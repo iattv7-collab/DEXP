@@ -4,6 +4,8 @@ import {
   collection,
   doc,
   getDocs,
+  query,
+  where,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -32,14 +34,19 @@ export async function getAreas() {
     return [];
   }
 
-  const snapshot = await getDocs(collection(db, COLLECTION_NAME));
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTION_NAME),
+      where("dealerId", "==", dealerId),
+    ),
+  );
 
   return snapshot.docs
     .map((docItem) => ({
       id: docItem.id,
       ...docItem.data(),
     }))
-    .filter((area) => area.dealerId === dealerId);
+    .sort((a, b) => String(a.label || "").localeCompare(String(b.label || "")));
 }
 
 export async function createArea(label) {
@@ -71,7 +78,7 @@ export async function createArea(label) {
 export async function updateArea(areaId, updates = {}) {
   await updateDoc(doc(db, COLLECTION_NAME, areaId), {
     ...updates,
-    updatedAt: serverTimestamp()
+    updatedAt: serverTimestamp(),
   });
 
   return true;
