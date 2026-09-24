@@ -41,9 +41,19 @@ const operationsStatusTabButton = document.getElementById(
   "operationsStatusTabButton",
 );
 
+const operationsWashTabButton = document.getElementById(
+  "operationsWashTabButton",
+);
+
 const operationsAppointmentsTabButton = document.getElementById(
   "operationsAppointmentsTabButton",
 );
+
+const operationsMoreButton = document.getElementById("operationsMoreButton");
+const operationsMoreMenu = document.getElementById("operationsMoreMenu");
+const operationsMoreWrap = document.getElementById("operationsMoreWrap");
+
+const HIDDEN_LIVE_REQUEST_TYPES = new Set(["waiting_for_loaner"]);
 
 const operationsGroupFilterRow = document.getElementById(
   "operationsGroupFilterRow",
@@ -65,6 +75,10 @@ const operationsStatusSection = document.getElementById(
   "operationsStatusSection",
 );
 
+const operationsWashSection = document.getElementById(
+  "operationsWashSection",
+);
+
 const operationsAppointmentsSection = document.getElementById(
   "operationsAppointmentsSection",
 );
@@ -84,6 +98,16 @@ const operationsReadyTableBody = document.getElementById(
 const operationsStatusTableBody = document.getElementById(
   "operationsStatusTableBody",
 );
+
+const operationsWashTableBody = document.getElementById(
+  "operationsWashTableBody",
+);
+
+const ACTIVE_WASH_STATUSES = new Set([
+  "pending",
+  "washing",
+  "rewash_requested",
+]);
 
 const LIVE_COMPLETED_WINDOW_MS = 2 * 60 * 60 * 1000;
 
@@ -149,27 +173,57 @@ async function initializeOperationsPage() {
 function wireTabs() {
   liveOperationsTabButton.addEventListener("click", () => {
     currentTab = "live";
+    closeMoreMenu();
     renderTabs();
   });
 
   operationsHistoryTabButton.addEventListener("click", () => {
     currentTab = "history";
+    closeMoreMenu();
     renderTabs();
   });
 
   operationsReadyTabButton.addEventListener("click", () => {
     currentTab = "ready";
+    closeMoreMenu();
     renderTabs();
   });
 
   operationsStatusTabButton.addEventListener("click", () => {
     currentTab = "status";
+    closeMoreMenu();
+    renderTabs();
+  });
+
+  operationsWashTabButton?.addEventListener("click", () => {
+    currentTab = "wash";
+    closeMoreMenu();
     renderTabs();
   });
 
   operationsAppointmentsTabButton?.addEventListener("click", () => {
     currentTab = "appointments";
+    closeMoreMenu();
     renderTabs();
+  });
+
+  operationsMoreButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    operationsMoreMenu?.classList.toggle("hidden");
+    operationsMoreButton.classList.toggle(
+      "secondary",
+      operationsMoreMenu?.classList.contains("hidden") &&
+        currentTab !== "history" &&
+        currentTab !== "ready" &&
+        currentTab !== "status" &&
+        currentTab !== "wash",
+    );
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!operationsMoreWrap?.contains(event.target)) {
+      closeMoreMenu();
+    }
   });
 
   operationsReadyTableBody?.addEventListener("change", handleReadyPickupChange);
@@ -195,15 +249,28 @@ function renderTabs() {
     currentTab !== "status",
   );
 
+  operationsWashTabButton?.classList.toggle(
+    "secondary",
+    currentTab !== "wash",
+  );
+
   operationsAppointmentsTabButton?.classList.toggle(
     "secondary",
     currentTab !== "appointments",
   );
 
+  const moreOpen =
+    currentTab === "history" ||
+    currentTab === "ready" ||
+    currentTab === "status" ||
+    currentTab === "wash";
+  operationsMoreButton?.classList.toggle("secondary", !moreOpen);
+
   liveOperationsSection.classList.toggle("hidden", currentTab !== "live");
   operationsHistorySection.classList.toggle("hidden", currentTab !== "history");
   operationsReadySection.classList.toggle("hidden", currentTab !== "ready");
   operationsStatusSection.classList.toggle("hidden", currentTab !== "status");
+  operationsWashSection?.classList.toggle("hidden", currentTab !== "wash");
   operationsAppointmentsSection?.classList.toggle(
     "hidden",
     currentTab !== "appointments",
@@ -213,6 +280,7 @@ function renderTabs() {
     operationsGroupFilterRow.style.display =
       currentTab === "ready" ||
       currentTab === "status" ||
+      currentTab === "wash" ||
       currentTab === "appointments"
         ? "none"
         : "";
@@ -223,6 +291,8 @@ function renderTabs() {
     operationsHistoryTabButton?.classList.add("hidden");
     operationsReadyTabButton?.classList.add("hidden");
     operationsStatusTabButton?.classList.add("hidden");
+    operationsWashTabButton?.classList.add("hidden");
+    operationsMoreWrap?.classList.add("hidden");
   }
 
   renderOperations();
@@ -301,6 +371,7 @@ function renderOperations() {
   renderHistoryOperations();
   renderReadyOperations();
   renderStatusOperations();
+  renderWashQueue();
   syncAppointmentsTabContext({
     ros: dealerROs,
     groups: notificationGroups,
@@ -309,6 +380,10 @@ function renderOperations() {
 
 function renderLiveOperations() {
   const rows = getFilteredRequests().filter((request) => {
+    if (!isLiveValetRequest(request)) {
+      return false;
+    }
+
     if (request.status !== REQUEST_STATUS.COMPLETED) {
       return request.status !== REQUEST_STATUS.CANCELLED;
     }
@@ -487,6 +562,68 @@ function formatWashStatus(ro = {}) {
   return ro.washStatus || "";
 }
 
+function renderWashQueue() {
+  if (!operationsWashTableBody) return;
+
+  const rows = getWashQueueRows();
+
+  if (!rows.length) {
+    operationsWashTableBody.innerHTML = `
+      <tr>
+        <td colspan="9">No cars in wash.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  operationsWashTableBody.innerHTML = rows.map(renderWashQueueRow).join("");
+}
+
+function getWashQueueRows() {
+  let rows = dealerROs.filter((ro) => {
+    const status = String(ro.washStatus || "").trim().toLowerCase();
+    if (!ACTIVE_WASH_STATUSES.has(status)) return false;
+    if (ro.pickedUpAtMs) return false;
+    return true;
+  });
+
+  if (searchText) {
+    rows = rows.filter((ro) => matchesROSearch(ro));
+  }
+
+  return rows.sort((a, b) => {
+    const aNeed = Number(a.needByAtMs || 0);
+    const bNeed = Number(b.needByAtMs || 0);
+    if (aNeed && bNeed && aNeed !== bNeed) return aNeed - bNeed;
+    if (aNeed && !bNeed) return -1;
+    if (!aNeed && bNeed) return 1;
+    return String(a.roNumber || "").localeCompare(String(b.roNumber || ""));
+  });
+}
+
+function renderWashQueueRow(ro = {}) {
+  const courtesy = String(ro.sourceType || "").toLowerCase() === "courtesy";
+  const waiter = Boolean(ro.advisorWaiter || ro.customerWaiting || ro.isWaiter);
+  const needBy = Number(ro.needByAtMs || 0);
+  const projected = Number(ro.projectedFinishAtMs || 0);
+  const late = Boolean(needBy && projected && projected > needBy);
+  const vehicle = [ro.year, ro.make, ro.model].filter(Boolean).join(" ") || ro.model || "";
+
+  return `
+    <tr class="${late ? "ops-wash-late" : ""}">
+      <td>${escapeHtml(ro.roNumber || "")}</td>
+      <td>${escapeHtml(ro.tagNumber || ro.tag || "")}</td>
+      <td>${escapeHtml(vehicle)}</td>
+      <td>${escapeHtml(ro.advisorName || "")}</td>
+      <td>${courtesy ? "Courtesy" : "RO"}</td>
+      <td>${escapeHtml(formatWashStatus(ro))}</td>
+      <td>${waiter ? "Waiter" : ""}</td>
+      <td>${escapeHtml(needBy ? formatDateTime(needBy) : "")}</td>
+      <td>${escapeHtml(projected ? formatDateTime(projected) : "")}</td>
+    </tr>
+  `;
+}
+
 function matchesROSearch(ro = {}) {
   if (!searchText) {
     return false;
@@ -540,6 +677,18 @@ async function handleReadyPickupChange(event) {
   } finally {
     checkbox.disabled = false;
   }
+}
+
+function closeMoreMenu() {
+  operationsMoreMenu?.classList.add("hidden");
+}
+
+function isLiveValetRequest(request = {}) {
+  const type = String(request.requestType || "").toLowerCase();
+  const title = String(request.title || "").toLowerCase();
+  if (HIDDEN_LIVE_REQUEST_TYPES.has(type)) return false;
+  if (title.startsWith("waiting for loaner")) return false;
+  return true;
 }
 
 function getFilteredRequests() {

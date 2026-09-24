@@ -98,7 +98,7 @@ function populateRequestTypeSelect() {
     <option value="">Select request type...</option>
   `;
 
-  requestTypes.forEach((requestType) => {
+  requestTypes.filter(isValetFacingRequestType).forEach((requestType) => {
     const option = document.createElement("option");
 
     option.value = requestType.id;
@@ -485,10 +485,22 @@ function listenToRequests() {
   });
 }
 
+function isLoanerWaitRequest(request = {}) {
+  const type = String(request.requestType || "").toLowerCase();
+  const title = String(request.title || "").toLowerCase();
+  return type === "waiting_for_loaner" || title.startsWith("waiting for loaner");
+}
+
+function isValetFacingRequestType(requestType = {}) {
+  const key = String(requestType.requestType || requestType.id || requestType.name || "").toLowerCase();
+  const name = String(requestType.name || "").toLowerCase();
+  return key !== "waiting_for_loaner" && !name.startsWith("waiting for loaner");
+}
+
 function getVisibleRequests() {
   const session = getSession();
 
-  let rows = [...dealerRequests];
+  let rows = dealerRequests.filter((request) => !isLoanerWaitRequest(request));
 
   if (requestViewMode === "my") {
     rows = rows.filter((request) => {

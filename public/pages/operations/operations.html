@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/css/core/base.css" />
     <link
       rel="stylesheet"
-      href="/css/modules/operations.css?v=2"
+      href="/css/modules/operations.css?v=4"
     />
     <link
       rel="stylesheet"
@@ -54,36 +54,52 @@
           </button>
 
           <button
-            id="operationsHistoryTabButton"
-            type="button"
-            class="small-button secondary"
-          >
-            History
-          </button>
-
-          <button
-            id="operationsReadyTabButton"
-            type="button"
-            class="small-button secondary"
-          >
-            Ready
-          </button>
-
-          <button
-            id="operationsStatusTabButton"
-            type="button"
-            class="small-button secondary"
-          >
-            Status
-          </button>
-
-          <button
             id="operationsAppointmentsTabButton"
             type="button"
             class="small-button secondary"
           >
             Appointments
           </button>
+
+          <div id="operationsMoreWrap" class="ops-more">
+            <button
+              id="operationsMoreButton"
+              type="button"
+              class="small-button secondary"
+            >
+              More
+            </button>
+            <div id="operationsMoreMenu" class="ops-more-menu hidden">
+              <button
+                id="operationsHistoryTabButton"
+                type="button"
+                class="small-button secondary"
+              >
+                History
+              </button>
+              <button
+                id="operationsReadyTabButton"
+                type="button"
+                class="small-button secondary"
+              >
+                Ready
+              </button>
+              <button
+                id="operationsStatusTabButton"
+                type="button"
+                class="small-button secondary"
+              >
+                Status
+              </button>
+              <button
+                id="operationsWashTabButton"
+                type="button"
+                class="small-button secondary"
+              >
+                Wash
+              </button>
+            </div>
+          </div>
         </div>
 
         <div
@@ -241,6 +257,45 @@
       </section>
 
       <section
+        id="operationsWashSection"
+        class="page-section hidden"
+      >
+        <div class="dexp-admin-card">
+          <h3>Wash queue</h3>
+
+          <p class="tool-help">
+            View only. Main and courtesy cars in wash. No actions here.
+          </p>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>RO</th>
+                  <th>Tag</th>
+                  <th>Vehicle</th>
+                  <th>Advisor</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Waiter</th>
+                  <th>Need By</th>
+                  <th>Projected</th>
+                </tr>
+              </thead>
+
+              <tbody id="operationsWashTableBody">
+                <tr>
+                  <td colspan="9">
+                    No cars in wash.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section
         id="operationsAppointmentsSection"
         class="page-section hidden"
       ></section>
@@ -253,7 +308,7 @@
 
     <script
       type="module"
-      src="/pages/operations/operations-page.js?v=8"
+      src="/pages/operations/operations-page.js?v=10"
     ></script>
   </body>
 </html>
