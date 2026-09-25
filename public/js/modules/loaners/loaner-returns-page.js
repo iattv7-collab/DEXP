@@ -70,6 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let savedReturnSnapshot = "";
   let returnSaveInProgress = false;
   let checkoutMileage = null;
+  let fuelEntryMode = localStorage.getItem("dexp_return_fuel_mode") || "range";
 
   function getReturnFormSnapshot() {
     return JSON.stringify(
@@ -78,6 +79,32 @@ document.addEventListener("DOMContentLoaded", async () => {
         return values;
       }, {}),
     );
+  }
+
+
+  function applyFuelEntryMode() {
+    const wrap = $("fuelEntryWrap");
+    const fuelBtn = $("fuelModeFuelBtn");
+    const rangeBtn = $("fuelModeRangeBtn");
+    const isRange = fuelEntryMode === "range";
+    if (wrap) wrap.dataset.mode = isRange ? "range" : "fuel";
+    fuelBtn?.classList.toggle("is-on", !isRange);
+    rangeBtn?.classList.toggle("is-on", isRange);
+  }
+
+  function getFuelEntryValue() {
+    if (fuelEntryMode === "range") {
+      return String($("fuelLevel")?.value || "").trim();
+    }
+    return String($("fuelTankSelect")?.value || "").trim();
+  }
+
+  function isFuelEntryOk() {
+    const value = getFuelEntryValue();
+    if (!value) return false;
+    if (fuelEntryMode !== "range") return true;
+    const rangeValue = Number(value);
+    return Number.isFinite(rangeValue) && rangeValue >= 0;
   }
 
   function updateSaveReturnButton() {
@@ -97,7 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       hasMileage &&
       (checkoutMileage == null || mileageValue > checkoutMileage);
 
-    const fuelOk = Boolean(String($("fuelLevel")?.value || "").trim());
+    const fuelOk = isFuelEntryOk();
     const damageChoice = String($("damageYesNo")?.value || "").trim();
     const damageOk = damageChoice === "Yes" || damageChoice === "No";
     const notesOk =
@@ -489,6 +516,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function setFuelEntryMode(mode) {
+    fuelEntryMode = mode === "fuel" ? "fuel" : "range";
+    localStorage.setItem("dexp_return_fuel_mode", fuelEntryMode);
+    applyFuelEntryMode();
+    updateSaveReturnButton();
+  }
+
+  $("fuelModeFuelBtn")?.addEventListener("click", () => {
+    setFuelEntryMode("fuel");
+  });
+  $("fuelModeRangeBtn")?.addEventListener("click", () => {
+    setFuelEntryMode("range");
+  });
+  $("fuelTankSelect")?.addEventListener("change", updateSaveReturnButton);
+  applyFuelEntryMode();
+
   RETURN_FORM_FIELD_IDS.forEach((id) => {
     $(id)?.addEventListener("input", () => {
       if (id === "vin") {
@@ -609,7 +652,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const mileageValue = Number($("mileage")?.value);
-    const fuelValue = String($("fuelLevel")?.value || "").trim();
+    const fuelValue = getFuelEntryValue();
     const damageChoice = String($("damageYesNo")?.value || "").trim();
     const notesValue = String($("damageNotes")?.value || "").trim();
 
@@ -623,8 +666,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    if (!fuelValue) {
-      $("returnMsg").textContent = "Fuel level is required.";
+    const rangeNumber = Number(fuelValue);
+    if (fuelValue === "" || !Number.isFinite(rangeNumber) || rangeNumber < 0) {
+      $("returnMsg").textContent = "Cluster range (miles) is required.";
       return;
     }
 
@@ -895,7 +939,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <th>Returned At</th>
                 <th>Received By</th>
                 <th>Mileage</th>
-                <th>Fuel</th>
+                <th>Range</th>
                 <th>Damage</th>
               </tr>
             </thead>

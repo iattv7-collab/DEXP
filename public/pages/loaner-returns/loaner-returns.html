@@ -24,7 +24,25 @@
       rel="stylesheet"
       href="/css/modules/loaner-returns.css?v=3"
     />
-  </head>
+  <style>
+#fuelEntryWrap[data-mode="range"] #fuelTankSelect { display: none !important; }
+#fuelEntryWrap[data-mode="fuel"] #fuelLevel { display: none !important; }
+.fuel-mode-toggle button {
+  background: #fff !important;
+  color: #123a73 !important;
+  border: 1px solid #123a73 !important;
+}
+.fuel-mode-toggle button.is-on {
+  background: #123a73 !important;
+  color: #fff !important;
+}
+#fuelLevel::-webkit-outer-spin-button,
+#fuelLevel::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+</style>
+</head>
 
   <body>
     <div id="appHeader"></div>
@@ -206,7 +224,19 @@
             placeholder="Return mileage"
           />
 
-          <select id="fuelLevel">
+          <select id="damageYesNo">
+            <option value="">Damage?</option>
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+
+        <div class="form-row" id="fuelEntryWrap" data-mode="range">
+          <div class="fuel-mode-toggle">
+            <button id="fuelModeFuelBtn" type="button">Fuel</button>
+            <button id="fuelModeRangeBtn" type="button" >Range</button>
+          </div>
+          <select id="fuelTankSelect">
             <option value="">Fuel level</option>
             <option value="Full">Full</option>
             <option value="3/4">3/4</option>
@@ -214,12 +244,15 @@
             <option value="1/4">1/4</option>
             <option value="Empty">Empty</option>
           </select>
-
-          <select id="damageYesNo">
-            <option value="">Damage?</option>
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
+          <input
+            id="fuelLevel"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            enterkeyhint="done"
+            autocomplete="off"
+            placeholder="Range (mi)"
+          />
         </div>
 
         <div class="form-row">
@@ -270,7 +303,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=11"
+      src="/js/modules/loaners/loaner-returns-page.js?v=16"
     ></script>
   </body>
 </html>
