@@ -41,6 +41,10 @@
             Fleet
           </a>
 
+          <a href="/pages/loaner-fleet/loaner-manage.html">
+            Manage Fleet
+          </a>
+
           <a
             href="/pages/loaner-returns/loaner-returns.html"
             class="active"
@@ -225,6 +229,10 @@
           ></textarea>
         </div>
 
+        <p id="retireReturnBanner" class="tool-help" style="display:none">
+          This unit is flagged Retire on return. Check-in will not send it to wash.
+        </p>
+
         <div class="form-row">
           <select id="returnDestination">
             <option value="At Wash" selected>
@@ -262,7 +270,7 @@
 
     <script
       type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=10"
+      src="/js/modules/loaners/loaner-returns-page.js?v=11"
     ></script>
   </body>
 </html>

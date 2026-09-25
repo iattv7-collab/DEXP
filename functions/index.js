@@ -53,6 +53,7 @@ const ALLOWED_ROLES = [
   "valet",
   "qc",
   "booker",
+  "loaner",
   "staff",
   "pending",
 ];

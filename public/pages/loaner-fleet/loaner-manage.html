@@ -1,0 +1,117 @@
+<!-- public/pages/loaner-fleet/loaner-manage.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Fleet</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
+    <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=8" />
+  </head>
+  <body>
+    <div id="appHeader"></div>
+    <main class="loaner-fleet-shell">
+      <section class="page-section">
+        <h1>Manage Fleet</h1>
+        <div class="subtabs">
+          <a href="/pages/loaner-fleet/loaner-fleet.html">Fleet</a>
+          <a href="/pages/loaner-fleet/loaner-manage.html" class="active">Manage Fleet</a>
+          <a href="/pages/loaner-returns/loaner-returns.html">Returns</a>
+          <a href="/pages/loaner-wash/loaner-wash.html">Wash Queue</a>
+        </div>
+        <p class="tool-help">
+          Add or retire units here. Toggle Retire on return while a car is still out.
+          At check-in it skips wash and goes to Retired.
+        </p>
+      </section>
+
+      <section class="page-section">
+        <div class="dexp-admin-card">
+          <h2>Add loaner</h2>
+          <div class="form-row">
+            <button id="scanFleetBtn" type="button">Scan VIN</button>
+            <input id="vin" placeholder="VIN — scan or type 17 digits" />
+            <button id="lookupVinBtn" type="button">Lookup</button>
+          </div>
+          <video id="scannerVideo" autoplay playsinline muted style="display:none"></video>
+          <div id="scannerStatus" class="small-muted"></div>
+          <div class="form-row" style="margin-top:10px">
+            <input id="year" placeholder="Year" />
+            <input id="make" placeholder="Make" />
+            <input id="model" placeholder="Model" />
+            <input id="unitNumber" placeholder="Unit # optional" />
+            <input id="plate" placeholder="Plate optional" />
+            <input id="mileage" type="number" min="1" placeholder="Mileage required" />
+          </div>
+          <div class="form-row">
+            <button id="saveFleetBtn" type="button" disabled>Save</button>
+            <div id="fleetMsg" class="small-muted"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <div class="dexp-admin-card">
+          <h2>Import VIN list</h2>
+          <p class="tool-help">Porsche FleetExport CSV. Reads VIN and Current Odometer only. Year / make / model come from the VIN decoder.</p>
+          <div class="form-row">
+            <input id="fleetImportFile" type="file" accept=".csv,.txt,.xlsx,.xls" />
+            <button id="fleetImportBtn" type="button">Compare</button>
+          </div>
+          <div id="importMsg" class="small-muted"></div>
+          <div id="importPreview" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h2>Active fleet</h2>
+        <div class="form-row">
+          <input id="manageFleetSearch" placeholder="Search VIN, last 8, unit or vehicle" />
+        </div>
+        <div class="table-wrap">
+          <table class="loaner-fleet-table">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Last 8</th>
+                <th>Vehicle</th>
+                <th>Status</th>
+                <th>Retire on return</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="activeFleetBody">
+              <tr><td colspan="6">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="page-section">
+        <h2>Retired</h2>
+        <p class="tool-help">Returned off the program. Not wash, not available.</p>
+        <div class="table-wrap">
+          <table class="loaner-fleet-table">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Last 8</th>
+                <th>Vehicle</th>
+                <th>Retired</th>
+                <th>Mileage</th>
+              </tr>
+            </thead>
+            <tbody id="retiredFleetBody">
+              <tr><td colspan="5">No retired units.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/js/modules/loaners/loaner-manage-page.js?v=4"></script>
+  </body>
+</html>

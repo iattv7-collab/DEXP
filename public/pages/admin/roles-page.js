@@ -58,6 +58,7 @@ function renderRolePermissions() {
     ROLES.VALET,
     ROLES.QC,
     ROLES.BOOKER,
+    ROLES.LOANER,
     ROLES.STAFF,
   ];
 

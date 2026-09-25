@@ -11,6 +11,7 @@ export const ROLES = {
   VALET: "valet",
   QC: "qc",
   BOOKER: "booker",
+  LOANER: "loaner",
   STAFF: "staff",
   PENDING: "pending"
 };

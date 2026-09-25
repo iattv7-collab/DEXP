@@ -39,6 +39,8 @@ export function renderAppHeader(options = {}) {
     valet: "Valet",
     qc: "QC",
     booker: "Booker",
+    loaner: "Loaner",
+    staff: "Staff",
     pending: "Pending",
   };
 

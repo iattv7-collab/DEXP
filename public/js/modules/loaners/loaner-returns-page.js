@@ -123,6 +123,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  function applyRetireBanner(fleetData = {}) {
+    const banner = $("retireReturnBanner");
+    const destination = $("returnDestination");
+    const flagged = fleetData?.retireOnReturn === true;
+    if (banner) banner.style.display = flagged ? "" : "none";
+    if (destination) destination.style.display = flagged ? "none" : "";
+  }
+
   function applyCheckoutMileage(fleetData) {
     const rawCheckout = Number(fleetData?.lastMileage);
     checkoutMileage = Number.isFinite(rawCheckout) ? rawCheckout : null;
@@ -145,6 +153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if ($("returnDestination")) {
       $("returnDestination").value = "At Wash";
     }
+    applyRetireBanner({});
 
     if ($("mileage")) {
       $("mileage").placeholder = "Return mileage";
@@ -444,6 +453,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     applyCheckoutMileage(validation.fleetData);
+    applyRetireBanner(validation.fleetData);
 
     $("scannerStatus").textContent = "Decoding VIN...";
 
@@ -654,8 +664,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const receivedByUid = currentSession?.uid || auth.currentUser?.uid || "";
     const year = $("year")?.value || "";
     const model = $("model")?.value || "";
-    const returnDestination =
-      String($("returnDestination")?.value || "At Wash").trim() === "Available"
+    const retireOnReturn = validation.fleetData?.retireOnReturn === true;
+    const returnDestination = retireOnReturn
+      ? "Retired"
+      : String($("returnDestination")?.value || "At Wash").trim() === "Available"
         ? "Available"
         : "At Wash";
 
@@ -685,6 +697,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         fleetRef,
         {
           status: returnDestination,
+          location: retireOnReturn ? "Retired" : fleetData.location || "",
           assignedRo: "",
           lastReturnedAt: returnedAtText,
           lastReceivedByName: receivedByName,
@@ -693,6 +706,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           lastMileage: String(mileageValue),
           lastFuelLevel: fuelValue,
           lastDamageNotes: damageRecord,
+          retireOnReturn: false,
+          ...(retireOnReturn
+            ? {
+                retiredAtMs: Date.now(),
+                retiredAtText: returnedAtText,
+                retiredByName: receivedByName,
+              }
+            : {}),
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -702,8 +723,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         await clearLoanerFromRo(assignedRo, vin);
       }
 
-      $("returnMsg").textContent =
-        returnDestination === "Available"
+      $("returnMsg").textContent = retireOnReturn
+        ? "Saved. Unit retired — not sent to wash."
+        : returnDestination === "Available"
           ? "Saved and marked Available"
           : "Saved and moved to At Wash";
 
@@ -803,7 +825,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             .trim()
             .toUpperCase();
 
-          if (status === "REMOVED") {
+          if (status === "REMOVED" || status === "RETIRED") {
             return;
           }
 

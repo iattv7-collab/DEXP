@@ -164,7 +164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("vin")?.focus();
   });
 
-  $("scanFleetBtn").onclick = async () => {
+  if ($("scanFleetBtn")) $("scanFleetBtn").onclick = async () => {
     try {
       status.textContent = "Scanning VIN...";
       openScannerFullscreen();
@@ -315,7 +315,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("mileage")?.addEventListener("input", updateSaveFleetButton);
   updateSaveFleetButton();
 
-  $("saveFleetBtn").onclick = async () => {
+  if ($("saveFleetBtn")) $("saveFleetBtn").onclick = async () => {
     if (fleetSaveInProgress) return;
 
     const vin = normalizeVin($("vin").value);
@@ -560,6 +560,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               type="button"
               data-vin="${escapeAttr(vin)}"
               class="remove-row-btn loaner-small-action-button"
+              style="display:none"
             >
               Remove
             </button>
@@ -842,7 +843,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         snap.forEach((d) => {
           const row = d.data();
 
-          if ((row.status || "") === "Removed") return;
+          const statusKey = String(row.status || "").trim();
+          if (statusKey === "Removed" || statusKey.toUpperCase() === "RETIRED") return;
 
           fleetRows.push(row);
         });
