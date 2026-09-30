@@ -16,6 +16,10 @@ const {
   followUpDuePush,
 } = require("./notifications/followup-due-push");
 
+const {
+  finishMoveNag,
+} = require("./notifications/finish-move-nag");
+
 const { setGlobalOptions } = require("firebase-functions");
 
 const {
@@ -598,3 +602,5 @@ exports.releaseStaleNotifications =
   releaseStaleNotifications;
 
 exports.followUpDuePush = followUpDuePush;
+
+exports.finishMoveNag = finishMoveNag;

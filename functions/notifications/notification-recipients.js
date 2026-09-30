@@ -25,9 +25,41 @@ async function getNotificationTargetUids({ admin, notification = {} }) {
     }
   }
 
-  return Array.from(
+  targetUids = Array.from(
     new Set(targetUids.map((uid) => String(uid || "").trim()).filter(Boolean)),
   );
+
+  if (
+    String(notification.eventType || "") !== "finish_move_nag" &&
+    targetUids.length
+  ) {
+    const route = String(notification.route || "").toLowerCase();
+    const isMovePing =
+      route.includes("move-locate") ||
+      String(notification.module || "") === "move-locate";
+
+    if (isMovePing) {
+      const movingSnap = await admin
+        .firestore()
+        .collection("ros")
+        .where("moveStatus", "==", "moving")
+        .limit(200)
+        .get();
+
+      const busyUids = new Set();
+
+      movingSnap.forEach((docSnap) => {
+        const uid = String(docSnap.data()?.moveStartedByUid || "").trim();
+        if (uid) {
+          busyUids.add(uid);
+        }
+      });
+
+      targetUids = targetUids.filter((uid) => !busyUids.has(String(uid)));
+    }
+  }
+
+  return targetUids;
 }
 
 async function getNotificationTargetDevices({

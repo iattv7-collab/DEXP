@@ -14,7 +14,6 @@ import {
   deleteUserDevice,
   getUserDevice,
   saveUserDevice,
-  deactivateOtherUserDevices,
 } from "../firestore/user-devices-service.js";
 
 const DEVICE_ID_KEY = "dexp_device_id";
@@ -23,6 +22,23 @@ const DEFAULT_NOTIFICATION_PREFERENCES = {
   notificationsEnabled: true,
   soundEnabled: true,
   vibrationEnabled: true,
+};
+
+const SAVE_MESSAGES = {
+  granted: "Saved for this device.",
+  "in-app":
+    "In-app and sound saved. Lock-screen push is not available on this browser.",
+  denied:
+    "Browser blocked lock-screen alerts. In-app and sound are still on.",
+  "missing-vapid-key":
+    "In-app and sound saved. Push key is missing.",
+  unsupported:
+    "In-app and sound saved. Lock-screen push is not supported here.",
+  "no-token":
+    "In-app and sound saved. Lock-screen token was not issued.",
+  error:
+    "Could not register lock-screen push. In-app settings were saved.",
+  disabled: "Alerts off on this device.",
 };
 
 export function getCurrentDeviceId() {
@@ -78,101 +94,6 @@ function getCapacitorPushPlugin() {
   }
 }
 
-async function registerNativePushToken(preferenceOverrides = {}) {
-  const PushNotifications = getCapacitorPushPlugin();
-
-  if (!PushNotifications) {
-    console.warn("Capacitor PushNotifications plugin not available.");
-    return "unsupported";
-  }
-
-  const permission = await PushNotifications.requestPermissions();
-
-  if (permission?.receive !== "granted") {
-    await saveNotificationsDisabledDevice();
-    return "denied";
-  }
-
-  const token = await new Promise(async (resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error("Native push registration timed out."));
-    }, 15000);
-
-    const registrationListener = await PushNotifications.addListener(
-      "registration",
-      (tokenResult) => {
-        clearTimeout(timeoutId);
-        registrationListener.remove();
-        resolve(String(tokenResult?.value || "").trim());
-      },
-    );
-
-    const errorListener = await PushNotifications.addListener(
-      "registrationError",
-      (error) => {
-        clearTimeout(timeoutId);
-        errorListener.remove();
-        reject(error);
-      },
-    );
-
-    try {
-      await PushNotifications.createChannel({
-        id: "dexp_alerts",
-        name: "DEXP Alerts",
-        description: "Shop floor request alerts",
-        importance: 5,
-        visibility: 1,
-        sound: "default",
-        vibration: true,
-      });
-    } catch (channelError) {
-      console.warn("Could not create DEXP alert channel.", channelError);
-    }
-
-    try {
-      await PushNotifications.register();
-    } catch (error) {
-      clearTimeout(timeoutId);
-      reject(error);
-    }
-  });
-
-  if (!token) {
-    console.warn("Native push did not return an FCM token.");
-    await saveNotificationsDisabledDevice();
-    return "no-token";
-  }
-
-  const existingDevice = await getCurrentDeviceRecord();
-  const currentPreferences = normalizePreferences(existingDevice);
-
-  const soundEnabled =
-    typeof preferenceOverrides.soundEnabled === "boolean"
-      ? preferenceOverrides.soundEnabled
-      : currentPreferences.soundEnabled;
-
-  const vibrationEnabled =
-    typeof preferenceOverrides.vibrationEnabled === "boolean"
-      ? preferenceOverrides.vibrationEnabled
-      : currentPreferences.vibrationEnabled;
-
-  await saveUserDevice({
-    deviceId: getCurrentDeviceId(),
-    fcmToken: token,
-    browser: "DEXP Android",
-    platform: "android-native",
-    userAgent: navigator.userAgent || "",
-    notificationsEnabled: true,
-    soundEnabled,
-    vibrationEnabled,
-    recordLogin: true,
-  });
-
-  console.log("Native FCM token saved for this device.");
-  return "granted";
-}
-
 function normalizePreferences(device = null) {
   return {
     notificationsEnabled:
@@ -192,6 +113,10 @@ function normalizePreferences(device = null) {
   };
 }
 
+function messageForStatus(status = "") {
+  return SAVE_MESSAGES[status] || SAVE_MESSAGES.error;
+}
+
 async function getCurrentDeviceRecord() {
   try {
     return await getUserDevice(getCurrentDeviceId());
@@ -201,47 +126,168 @@ async function getCurrentDeviceRecord() {
   }
 }
 
-async function saveNotificationsDisabledDevice() {
+async function persistThisDevice({
+  fcmToken,
+  notificationsEnabled,
+  soundEnabled,
+  vibrationEnabled,
+  recordLogin = false,
+} = {}) {
   const existingDevice = await getCurrentDeviceRecord();
   const preferences = normalizePreferences(existingDevice);
 
+  const nextToken =
+    fcmToken === undefined
+      ? String(existingDevice?.fcmToken || "").trim()
+      : String(fcmToken || "").trim();
+
   await saveUserDevice({
     deviceId: getCurrentDeviceId(),
-    fcmToken: "",
-    browser: getBrowserName(),
-    platform: navigator.platform || "",
+    fcmToken: nextToken,
+    browser: isCapacitorNative() ? "DEXP Android" : getBrowserName(),
+    platform: isCapacitorNative()
+      ? "android-native"
+      : navigator.platform || "",
     userAgent: navigator.userAgent || "",
 
-    notificationsEnabled: false,
-    soundEnabled: preferences.soundEnabled,
-    vibrationEnabled: preferences.vibrationEnabled,
+    notificationsEnabled:
+      typeof notificationsEnabled === "boolean"
+        ? notificationsEnabled
+        : preferences.notificationsEnabled,
+
+    soundEnabled:
+      typeof soundEnabled === "boolean"
+        ? soundEnabled
+        : preferences.soundEnabled,
+
+    vibrationEnabled:
+      typeof vibrationEnabled === "boolean"
+        ? vibrationEnabled
+        : preferences.vibrationEnabled,
+
+    recordLogin,
   });
 }
 
-function showNotificationsBlockedMessage() {
-  alert(
-    "Notifications are blocked on this device.\n\nTo receive DEXP alerts, enable notifications for this site in your browser settings, then refresh DEXP or sign out and sign back in.",
-  );
+async function registerNativePushToken(preferenceOverrides = {}) {
+  const existingDevice = await getCurrentDeviceRecord();
+  const currentPreferences = normalizePreferences(existingDevice);
+
+  const soundEnabled =
+    typeof preferenceOverrides.soundEnabled === "boolean"
+      ? preferenceOverrides.soundEnabled
+      : currentPreferences.soundEnabled;
+
+  const vibrationEnabled =
+    typeof preferenceOverrides.vibrationEnabled === "boolean"
+      ? preferenceOverrides.vibrationEnabled
+      : currentPreferences.vibrationEnabled;
+
+  const PushNotifications = getCapacitorPushPlugin();
+
+  if (!PushNotifications) {
+    console.warn("Capacitor PushNotifications plugin not available.");
+
+    await persistThisDevice({
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "unsupported";
+  }
+
+  const permission = await PushNotifications.requestPermissions();
+
+  if (permission?.receive !== "granted") {
+    await persistThisDevice({
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "denied";
+  }
+
+  let token = "";
+
+  try {
+    token = await new Promise(async (resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Native push registration timed out."));
+      }, 15000);
+
+      const registrationListener = await PushNotifications.addListener(
+        "registration",
+        (tokenResult) => {
+          clearTimeout(timeoutId);
+          registrationListener.remove();
+          resolve(String(tokenResult?.value || "").trim());
+        },
+      );
+
+      const errorListener = await PushNotifications.addListener(
+        "registrationError",
+        (error) => {
+          clearTimeout(timeoutId);
+          errorListener.remove();
+          reject(error);
+        },
+      );
+
+      try {
+        await PushNotifications.createChannel({
+          id: "dexp_alerts",
+          name: "DEXP Alerts",
+          description: "Shop floor request alerts",
+          importance: 5,
+          visibility: 1,
+          sound: "default",
+          vibration: true,
+        });
+      } catch (channelError) {
+        console.warn("Could not create DEXP alert channel.", channelError);
+      }
+
+      try {
+        await PushNotifications.register();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    });
+  } catch (error) {
+    console.warn("Native push registration did not return a token.", error);
+  }
+
+  if (!token) {
+    await persistThisDevice({
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "no-token";
+  }
+
+  await persistThisDevice({
+    fcmToken: token,
+    notificationsEnabled: true,
+    soundEnabled,
+    vibrationEnabled,
+    recordLogin: true,
+  });
+
+  console.log("Native FCM token saved for this device.");
+  return "granted";
 }
 
 export async function getCurrentDeviceNotificationPreferences() {
   const device = await getCurrentDeviceRecord();
-  const preferences = normalizePreferences(device);
-  const hasToken = !!(device && String(device.fcmToken || "").trim());
-
-  if (isCapacitorNative() && !hasToken) {
-    preferences.notificationsEnabled = false;
-  }
-
-  if (
-    !isCapacitorNative() &&
-    "Notification" in window &&
-    Notification.permission === "denied"
-  ) {
-    preferences.notificationsEnabled = false;
-  }
-
-  return preferences;
+  return normalizePreferences(device);
 }
 
 export async function updateCurrentDeviceNotificationPreferences(
@@ -268,21 +314,22 @@ export async function updateCurrentDeviceNotificationPreferences(
 
   if (preferences.notificationsEnabled) {
     const result = await registerCurrentDeviceForNotifications({
+      notificationsEnabled: true,
       soundEnabled: preferences.soundEnabled,
       vibrationEnabled: preferences.vibrationEnabled,
     });
 
-    if (result !== "granted") {
-      preferences.notificationsEnabled = false;
-    }
+    preferences.delivery = result;
+    preferences.saveMessage = messageForStatus(result);
   } else {
-    await saveUserDevice({
-      deviceId: getCurrentDeviceId(),
-
+    await persistThisDevice({
       notificationsEnabled: false,
       soundEnabled: preferences.soundEnabled,
       vibrationEnabled: preferences.vibrationEnabled,
     });
+
+    preferences.delivery = "disabled";
+    preferences.saveMessage = messageForStatus("disabled");
   }
 
   window.dispatchEvent(
@@ -295,19 +342,19 @@ export async function updateCurrentDeviceNotificationPreferences(
 }
 
 export async function getCurrentNotificationStatus() {
+  const preferences = await getCurrentDeviceNotificationPreferences();
+  const device = await getCurrentDeviceRecord();
+  const hasToken = !!(device && String(device.fcmToken || "").trim());
+
+  if (!preferences.notificationsEnabled) {
+    return {
+      status: "disabled",
+      label: "🔕 Notifications",
+      title: "DEXP notifications are disabled on this device.",
+    };
+  }
+
   if (isCapacitorNative()) {
-    const preferences = await getCurrentDeviceNotificationPreferences();
-    const device = await getCurrentDeviceRecord();
-    const hasToken = !!(device && String(device.fcmToken || "").trim());
-
-    if (!preferences.notificationsEnabled) {
-      return {
-        status: "disabled",
-        label: "🔕 Notifications",
-        title: "DEXP notifications are disabled on this device.",
-      };
-    }
-
     if (hasToken) {
       return {
         status: "granted",
@@ -317,45 +364,37 @@ export async function getCurrentNotificationStatus() {
     }
 
     return {
-      status: "default",
-      label: "🔔 Enable",
-      title: "Enable native notifications on this device.",
+      status: "in-app",
+      label: "✅ Notifications",
+      title:
+        "In-app alerts are on. Lock-screen token is not on this device yet.",
     };
   }
 
-  const supported = await isSupported();
-
-  if (!supported || !("Notification" in window)) {
+  if (!("Notification" in window)) {
     return {
-      status: "unsupported",
-      label: "❌ Notifications",
-      title: "Notifications are not supported on this device.",
+      status: "in-app",
+      label: "✅ Notifications",
+      title: "In-app alerts are on. Lock-screen push is not available here.",
     };
   }
-
-  const preferences = await getCurrentDeviceNotificationPreferences();
 
   if (Notification.permission === "granted") {
-    if (!preferences.notificationsEnabled) {
-      return {
-        status: "disabled",
-        label: "🔕 Notifications",
-        title: "DEXP notifications are disabled on this device.",
-      };
-    }
-
     return {
-      status: "granted",
+      status: hasToken ? "granted" : "in-app",
       label: "✅ Notifications",
-      title: "Notifications are enabled on this device.",
+      title: hasToken
+        ? "Notifications are enabled on this device."
+        : "In-app alerts are on. Lock-screen token was not issued.",
     };
   }
 
   if (Notification.permission === "denied") {
     return {
-      status: "denied",
-      label: "⚠️ Notifications",
-      title: "Notifications are blocked on this device.",
+      status: "in-app",
+      label: "✅ Notifications",
+      title:
+        "In-app alerts are on. Lock-screen push is blocked in this browser.",
     };
   }
 
@@ -369,74 +408,13 @@ export async function getCurrentNotificationStatus() {
 export async function registerCurrentDeviceForNotifications(
   preferenceOverrides = {},
 ) {
-
-  if (isCapacitorNative()) {
-    try {
-      return await registerNativePushToken(preferenceOverrides);
-    } catch (error) {
-      console.error("Native push registration failed.", error);
-      return "error";
-    }
-  }
-
-  const supported = await isSupported();
-
-  if (!supported) {
-    console.warn("Firebase Messaging is not supported in this browser.");
-    return "unsupported";
-  }
-
-  if (!("Notification" in window)) {
-    console.warn("Browser notifications are not available.");
-    return "unsupported";
-  }
-
-  if (!firebaseVapidKey || firebaseVapidKey.includes("PASTE_")) {
-    console.warn("Missing Firebase Web Push public VAPID key.");
-    return "missing-vapid-key";
-  }
-
-  if (Notification.permission === "denied") {
-    await saveNotificationsDisabledDevice();
-    showNotificationsBlockedMessage();
-    return "denied";
-  }
-
-  let permission = Notification.permission;
-
-  if (permission === "default") {
-    permission = await Notification.requestPermission();
-  }
-
-  if (permission !== "granted") {
-    await saveNotificationsDisabledDevice();
-
-    if (permission === "denied") {
-      showNotificationsBlockedMessage();
-    }
-
-    return permission;
-  }
-
-  const registration = await navigator.serviceWorker.register(
-    "/firebase-messaging-sw.js",
-  );
-
-  const messaging = getMessaging(app);
-
-  const token = await getToken(messaging, {
-    vapidKey: firebaseVapidKey,
-    serviceWorkerRegistration: registration,
-  });
-
-  if (!token) {
-    console.warn("Firebase did not return an FCM token.");
-    await saveNotificationsDisabledDevice();
-    return "no-token";
-  }
-
   const existingDevice = await getCurrentDeviceRecord();
   const currentPreferences = normalizePreferences(existingDevice);
+
+  const wantNotifications =
+    typeof preferenceOverrides.notificationsEnabled === "boolean"
+      ? preferenceOverrides.notificationsEnabled
+      : currentPreferences.notificationsEnabled;
 
   const soundEnabled =
     typeof preferenceOverrides.soundEnabled === "boolean"
@@ -448,35 +426,128 @@ export async function registerCurrentDeviceForNotifications(
       ? preferenceOverrides.vibrationEnabled
       : currentPreferences.vibrationEnabled;
 
-  const currentDeviceId = getCurrentDeviceId();
+  if (!wantNotifications) {
+    await persistThisDevice({
+      notificationsEnabled: false,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
 
-  await saveUserDevice({
-    deviceId: currentDeviceId,
-    fcmToken: token,
-    browser: getBrowserName(),
-    platform: navigator.platform || "",
-    userAgent: navigator.userAgent || "",
-
-    notificationsEnabled: true,
-    soundEnabled,
-    vibrationEnabled,
-
-    recordLogin: true,
-  });
-
-  try {
-    const deactivatedCount = await deactivateOtherUserDevices(currentDeviceId);
-
-    if (deactivatedCount > 0) {
-      console.log(
-        `Deactivated ${deactivatedCount} older device(s) for this user.`,
-      );
-    }
-  } catch (error) {
-    console.warn("Could not deactivate older devices.", error);
+    return "disabled";
   }
 
-  return "granted";
+  if (isCapacitorNative()) {
+    try {
+      return await registerNativePushToken({
+        soundEnabled,
+        vibrationEnabled,
+      });
+    } catch (error) {
+      console.error("Native push registration failed.", error);
+
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "error";
+    }
+  }
+
+  try {
+    const supported = await isSupported();
+
+    if (!supported || !("Notification" in window)) {
+      console.warn("Firebase Messaging is not supported in this browser.");
+
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "unsupported";
+    }
+
+    if (!firebaseVapidKey || firebaseVapidKey.includes("PASTE_")) {
+      console.warn("Missing Firebase Web Push public VAPID key.");
+
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "missing-vapid-key";
+    }
+
+    let permission = Notification.permission;
+
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+
+    if (permission !== "granted") {
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return permission === "denied" ? "denied" : "in-app";
+    }
+
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+    );
+
+    const messaging = getMessaging(app);
+
+    const token = await getToken(messaging, {
+      vapidKey: firebaseVapidKey,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (!token) {
+      console.warn("Firebase did not return an FCM token.");
+
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "no-token";
+    }
+
+    await persistThisDevice({
+      fcmToken: token,
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "granted";
+  } catch (error) {
+    console.error("Web push registration failed.", error);
+
+    await persistThisDevice({
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "error";
+  }
 }
 
 export async function unregisterCurrentDeviceForNotifications() {

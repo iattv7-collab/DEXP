@@ -42,6 +42,12 @@ import {
 
 import { renderParkingAvailability as renderParkingAvailabilityView } from "./move-locate-parking.js";
 
+import {
+  renderMyMovesList,
+  findBlockingOwnedMove,
+  wireLeaveMoveNag,
+} from "./move-locate-my-moves.js";
+
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
 });
@@ -103,6 +109,7 @@ const saveGroupLocationsButton = document.getElementById(
 const parkingAvailabilityList = document.getElementById(
   "parkingAvailabilityList",
 );
+const myMovesList = document.getElementById("myMovesList");
 
 let currentRO = null;
 let currentMoveGroup = [];
@@ -195,6 +202,10 @@ function initializeMoveLocate() {
   loadDealerROs();
 
   loadNotificationRouteParams();
+
+  wireLeaveMoveNag({
+    getROs: () => lastROs,
+  });
 }
 
 async function openNotificationFromRoute() {
@@ -343,10 +354,7 @@ function getSessionUserName() {
 function isMoveOwner(ro) {
   const session = getSession();
 
-  return (
-    ro?.moveStartedByUid === session?.uid &&
-    ro?.moveStartedDeviceId === getDeviceId()
-  );
+  return ro?.moveStartedByUid === session?.uid;
 }
 
 function isMoving(ro) {
@@ -371,6 +379,20 @@ function toggleSearchMode() {
 function loadDealerROs() {
   watchDealerROs((ros) => {
     lastROs = ros;
+
+    renderMyMovesList({
+      listEl: myMovesList,
+      ros: lastROs,
+      getROArea,
+      getROLot,
+      getROTag,
+      onResume: (tag) => {
+        searchMode = "tag";
+        searchModeToggleButton.textContent = "By Tag";
+        vehicleSearchInput.value = tag;
+        findVehicle();
+      },
+    });
 
     renderParkingAvailabilityView({
       parkingAvailabilityList,
@@ -563,6 +585,17 @@ async function startMove() {
   if (!freshCurrentRO) {
     moveLocateMessage.classList.remove("dexp-loading");
     showMessage("Vehicle not found.");
+    return;
+  }
+
+  const blockingOwned = findBlockingOwnedMove(lastROs, freshCurrentRO);
+
+  if (blockingOwned) {
+    showMessage(
+      `Finish tag ${getROTag(blockingOwned) || blockingOwned.tagNumber} before starting another move.`,
+    );
+    vehicleSearchInput.value = getROTag(blockingOwned) || "";
+    await findVehicle();
     return;
   }
 
@@ -1030,6 +1063,9 @@ async function saveOneMovedVehicle({ ro, finalArea, finalLot, blockingTag }) {
       moveGroupTargetId: "",
       moveGroupTargetTag: "",
       moveGroupOrder: null,
+
+      finishMoveLeftAtMs: null,
+      finishMoveNagAtMs: null,
     },
     {
       eventType: "location_updated",
@@ -1113,6 +1149,9 @@ async function cancelMove() {
           moveGroupTargetId: "",
           moveGroupTargetTag: "",
           moveGroupOrder: null,
+
+          finishMoveLeftAtMs: null,
+          finishMoveNagAtMs: null,
         },
         {
           eventType:
@@ -1211,6 +1250,9 @@ async function overrideCancelMove() {
           moveGroupTargetId: "",
           moveGroupTargetTag: "",
           moveGroupOrder: null,
+
+          finishMoveLeftAtMs: null,
+          finishMoveNagAtMs: null,
         },
         {
           eventType: "vehicle_move_override_cancelled",

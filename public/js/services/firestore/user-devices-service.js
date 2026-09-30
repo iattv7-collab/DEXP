@@ -9,13 +9,16 @@ import {
   getDocs,
   serverTimestamp,
   setDoc,
-  updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { db } from "../firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 
 const USER_DEVICES_COLLECTION = "devices";
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
 
 export async function getUserDevice(deviceId = "") {
   const session = getSession();
@@ -72,48 +75,6 @@ export async function listUserDevices() {
   }));
 }
 
-export async function deactivateOtherUserDevices(currentDeviceId = "") {
-  const session = getSession();
-
-  if (!session?.uid) {
-    throw new Error("Missing user session.");
-  }
-
-  const safeCurrentDeviceId = String(currentDeviceId || "").trim();
-  const devices = await listUserDevices();
-
-  const updates = devices
-    .filter((device) => {
-      const id = String(device.id || device.deviceId || "").trim();
-      return id && id !== safeCurrentDeviceId && device.active !== false;
-    })
-    .map((device) => {
-      const id = String(device.id || device.deviceId || "").trim();
-
-      const deviceRef = doc(
-        db,
-        "users",
-        session.uid,
-        USER_DEVICES_COLLECTION,
-        id,
-      );
-
-      return updateDoc(deviceRef, {
-        active: false,
-        notificationsEnabled: false,
-        updatedAt: serverTimestamp(),
-        updatedAtMs: Date.now(),
-        deactivatedAt: serverTimestamp(),
-        deactivatedAtMs: Date.now(),
-        deactivatedReason: "replaced-by-newer-device",
-      });
-    });
-
-  await Promise.allSettled(updates);
-
-  return updates.length;
-}
-
 export async function deleteUserDevice(deviceId = "") {
   const session = getSession();
 
@@ -163,50 +124,49 @@ export async function saveUserDevice(deviceData = {}) {
     deviceId,
   );
 
-  await setDoc(
-    deviceRef,
-    {
-      uid: session.uid,
-      dealerId: session.dealerId,
+  const payload = {
+    uid: session.uid,
+    dealerId: session.dealerId,
+    deviceId,
+    active: true,
+    lastSeenAt: serverTimestamp(),
+    lastSeenAtMs: Date.now(),
+    updatedAt: serverTimestamp(),
+    updatedAtMs: Date.now(),
+  };
 
-      deviceId,
+  if (hasOwn(deviceData, "fcmToken")) {
+    payload.fcmToken = String(deviceData.fcmToken || "").trim();
+  }
 
-      fcmToken: String(deviceData.fcmToken || "").trim(),
+  if (hasOwn(deviceData, "browser")) {
+    payload.browser = String(deviceData.browser || "").trim();
+  }
 
-      browser: String(deviceData.browser || "").trim(),
-      platform: String(deviceData.platform || "").trim(),
-      userAgent: String(deviceData.userAgent || "").trim(),
+  if (hasOwn(deviceData, "platform")) {
+    payload.platform = String(deviceData.platform || "").trim();
+  }
 
-      active: true,
+  if (hasOwn(deviceData, "userAgent")) {
+    payload.userAgent = String(deviceData.userAgent || "").trim();
+  }
 
-      notificationsEnabled:
-        typeof deviceData.notificationsEnabled === "boolean"
-          ? deviceData.notificationsEnabled
-          : true,
+  if (typeof deviceData.notificationsEnabled === "boolean") {
+    payload.notificationsEnabled = deviceData.notificationsEnabled;
+  }
 
-      soundEnabled:
-        typeof deviceData.soundEnabled === "boolean"
-          ? deviceData.soundEnabled
-          : true,
+  if (typeof deviceData.soundEnabled === "boolean") {
+    payload.soundEnabled = deviceData.soundEnabled;
+  }
 
-      vibrationEnabled:
-        typeof deviceData.vibrationEnabled === "boolean"
-          ? deviceData.vibrationEnabled
-          : true,
+  if (typeof deviceData.vibrationEnabled === "boolean") {
+    payload.vibrationEnabled = deviceData.vibrationEnabled;
+  }
 
-      ...(deviceData.recordLogin
-        ? {
-            lastLoginAt: serverTimestamp(),
-            lastLoginAtMs: Date.now(),
-          }
-        : {}),
+  if (deviceData.recordLogin) {
+    payload.lastLoginAt = serverTimestamp();
+    payload.lastLoginAtMs = Date.now();
+  }
 
-      lastSeenAt: serverTimestamp(),
-      lastSeenAtMs: Date.now(),
-
-      updatedAt: serverTimestamp(),
-      updatedAtMs: Date.now(),
-    },
-    { merge: true },
-  );
+  await setDoc(deviceRef, payload, { merge: true });
 }
