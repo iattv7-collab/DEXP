@@ -1,7 +1,15 @@
 // public/pages/move-locate/move-locate-my-moves.js
 // My open moves list + leave-screen nag stamp.
-// Does not replace move-locate.js.
 
+import {
+  collection,
+  limit,
+  onSnapshot,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
 import { ROS_FIELDS } from "/js/config/ros-fields.js";
 import { updateRO } from "/js/services/firestore/ros-service.js";
@@ -71,7 +79,7 @@ export function renderMyMovesList({
   mine.forEach((ro) => {
     const startedAt = Number(ro.moveStartedAt || 0);
     const stale = startedAt > 0 && Date.now() - startedAt >= STALE_MOVE_MS;
-    const tag = getROTag(ro) || "—";
+    const tag = getROTag(ro) || ro.tagNumber || "—";
     const area = getROArea ? getROArea(ro) : ro.currentLocationArea || "";
     const lot = getROLot ? getROLot(ro) : ro.currentLocation || "";
 
@@ -100,6 +108,55 @@ export function renderMyMovesList({
 
     listEl.appendChild(row);
   });
+}
+
+export function startOwnedMovesWatch({
+  listEl,
+  getROArea,
+  getROLot,
+  getROTag,
+  onResume,
+}) {
+  const session = getSession();
+
+  if (!session?.dealerId || !session?.uid || !listEl) {
+    return () => {};
+  }
+
+  const q = query(
+    collection(db, "ros"),
+    where("dealerId", "==", session.dealerId),
+    where("moveStatus", "==", "moving"),
+    where("moveStartedByUid", "==", session.uid),
+    limit(50),
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const ros = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() || {};
+        return {
+          id: data.id || docSnap.id,
+          ...data,
+        };
+      });
+
+      renderMyMovesList({
+        listEl,
+        ros,
+        getROArea,
+        getROLot,
+        getROTag,
+        onResume,
+      });
+    },
+    (error) => {
+      console.error("My Moves watch failed:", error);
+      listEl.innerHTML =
+        '<p class="tool-help">Could not load My Moves. Check console for a Firestore index link.</p>';
+    },
+  );
 }
 
 export async function stampOwnedMovesLeft(ros = []) {

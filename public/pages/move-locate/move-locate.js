@@ -46,6 +46,7 @@ import {
   renderMyMovesList,
   findBlockingOwnedMove,
   wireLeaveMoveNag,
+  startOwnedMovesWatch,
 } from "./move-locate-my-moves.js";
 
 protectRoute({
@@ -205,6 +206,19 @@ function initializeMoveLocate() {
 
   wireLeaveMoveNag({
     getROs: () => lastROs,
+  });
+
+  startOwnedMovesWatch({
+    listEl: myMovesList,
+    getROArea,
+    getROLot,
+    getROTag,
+    onResume: (tag) => {
+      searchMode = "tag";
+      searchModeToggleButton.textContent = "By Tag";
+      vehicleSearchInput.value = tag;
+      findVehicle();
+    },
   });
 }
 
@@ -380,20 +394,6 @@ function loadDealerROs() {
   watchDealerROs((ros) => {
     lastROs = ros;
 
-    renderMyMovesList({
-      listEl: myMovesList,
-      ros: lastROs,
-      getROArea,
-      getROLot,
-      getROTag,
-      onResume: (tag) => {
-        searchMode = "tag";
-        searchModeToggleButton.textContent = "By Tag";
-        vehicleSearchInput.value = tag;
-        findVehicle();
-      },
-    });
-
     renderParkingAvailabilityView({
       parkingAvailabilityList,
       groupedLocations,
@@ -491,7 +491,7 @@ function renderSelectedVehicle(ro) {
   previewTag.textContent = getROTag(ro) || "—";
   previewRO.textContent = ro[ROS_FIELDS.roNumber] || "—";
   previewLocation.textContent = formatAreaLot(area, lot) || "No location saved";
-  previewStatus.textContent = moveStatus || "Not moving";
+  previewStatus.textContent = moveStatus || "Parked";
   previewBlockedBy.textContent = blockedByChain.join(", ") || "—";
 
   moveChainPanel.classList.add("hidden");
@@ -1506,19 +1506,8 @@ function hasUnsavedOwnedMove() {
   return currentMoveGroup.some((ro) => isMoving(ro) && isMoveOwner(ro));
 }
 
-window.addEventListener("beforeunload", (event) => {
-  if (activeNotificationId && !currentMoveGroup.length) {
-    event.preventDefault();
-    event.returnValue = "";
-    return;
-  }
-
-  if (!hasUnsavedOwnedMove()) {
-    return;
-  }
-
-  event.preventDefault();
-  event.returnValue = "";
+window.addEventListener("beforeunload", () => {
+  // Move is already saved on Start Move. Do not warn.
 });
 
 function resetMoveLocateForm() {

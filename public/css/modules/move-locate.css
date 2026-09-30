@@ -69,37 +69,166 @@
   width: 100%;
 }
 
+#moveLocatePage .group-area-select,
+#moveLocatePage .group-lot-select,
+#moveLocatePage .group-blocking-input {
+  display: block;
+  min-height: 40px;
+  font-size: 16px;
+  padding: 8px 10px;
+}
+
 @media (max-width: 700px) {
+  #moveLocatePage.full-page,
+  #moveLocatePage .page-shell {
+    padding: 6px;
+  }
+
+  #moveLocatePage .tool-card {
+    padding: 8px;
+    margin-bottom: 8px;
+  }
+
+  #moveLocatePage .tool-card h3 {
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+
+  #moveLocatePage .tool-help {
+    display: none;
+  }
+
+  #moveLocatePage .parking-availability-title {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  #moveLocatePage .parking-availability-item {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
   #moveLocatePage .move-card-header {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
   }
 
   #moveLocatePage .move-card-header .tool-message {
-    margin-top: 6px;
-    text-align: left;
+    margin: 0;
+    text-align: right;
+    font-size: 13px;
   }
 
-  /* Keep search row on one line */
   #moveLocatePage .move-search-row {
     grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
+    gap: 6px;
+  }
+
+  #moveLocatePage .move-search-row input {
+    min-height: 42px;
+    font-size: 16px;
+    padding: 8px 10px;
   }
 
   #moveLocatePage .move-search-row button {
-    white-space: nowrap;
+    min-height: 42px;
+    font-size: 15px;
+    padding: 8px 10px;
+    width: auto;
   }
 
   #moveLocatePage .move-preview-main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
   }
 
   #moveLocatePage .move-preview-grid {
     grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    font-size: 14px;
   }
 
   #moveLocatePage .move-action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 118px;
+    width: auto;
+  }
+
+  #moveLocatePage .move-action-stack button,
+  #moveLocatePage .small-button {
+    min-height: 40px;
+    font-size: 14px;
+    padding: 7px 10px;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  #moveLocatePage #groupFinalLocationList .tool-preview {
+    padding: 8px;
+    margin-bottom: 6px !important;
+  }
+
+  #moveLocatePage #groupFinalLocationList .tool-preview > div {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  #moveLocatePage #groupFinalLocationList .tool-preview > div > div:last-child {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr);
+    gap: 8px;
+    flex: 1 1 240px;
     min-width: 0;
+  }
+
+  #moveLocatePage #groupFinalLocationList label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  #moveLocatePage .group-area-select,
+  #moveLocatePage .group-lot-select,
+  #moveLocatePage .group-blocking-input {
+    min-height: 42px;
+    font-size: 16px;
+    width: auto;
+    min-width: 120px;
+    max-width: 100%;
+    padding: 8px 10px;
+  }
+
+  #moveLocatePage #groupSaveLocationRow {
+    position: sticky;
+    bottom: 0;
+    background: #dae8f8;
+    padding: 6px 0 0;
+  }
+
+  #moveLocatePage #groupSaveLocationRow button {
+    width: auto;
+    min-width: 140px;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  #moveLocatePage #myMovesList button {
+    min-height: 44px;
+    font-size: 15px;
+    padding: 8px 10px;
+    width: auto;
+    max-width: 100%;
+  }
+
+  #moveLocatePage:has(#finalLocationPanel:not(.hidden)) .parking-availability-wrap {
+    display: none;
   }
 }
