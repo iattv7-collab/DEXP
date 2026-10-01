@@ -12,6 +12,8 @@ import {
 } from "../../services/firestore/notification-requests-service.js";
 
 import { acknowledgeAppointmentArrived } from "../../services/firestore/appointments-service.js";
+import { isAppointmentArrivedNotification } from "./types/appointment-arrived.js";
+import { isFinishMoveNagNotification } from "./types/finish-move-nag.js";
 
 import { getNotificationGroups } from "../../services/firestore/notification-groups-service.js";
 
@@ -42,6 +44,8 @@ let notificationPreferences = {
 let initialNotificationSnapshotLoaded = false;
 
 const alertedNotificationIds = new Set();
+
+const finishMoveNagPulseAt = new Map();
 
 const notificationAudioCache = new Map();
 
@@ -217,10 +221,26 @@ function processNewNotificationAlerts(notifications = []) {
     ) {
       ringingNotificationIds.add(notification.id);
       popupNotificationIds.add(notification.id);
-      showSystemNotification(notification);
+    } else if (isFinishMoveNagNotification(notification)) {
+      const pulseAt = Number(
+        notification.updatedAtMs || notification.createdAtMs || 0,
+      );
+      const lastPulse = Number(finishMoveNagPulseAt.get(notification.id) || 0);
+      if (pulseAt > lastPulse) {
+        ringingNotificationIds.add(notification.id);
+        finishMoveNagPulseAt.set(notification.id, pulseAt);
+      }
     }
 
     alertedNotificationIds.add(notification.id);
+    if (isFinishMoveNagNotification(notification)) {
+      const pulseAt = Number(
+        notification.updatedAtMs || notification.createdAtMs || 0,
+      );
+      if (!finishMoveNagPulseAt.has(notification.id)) {
+        finishMoveNagPulseAt.set(notification.id, pulseAt);
+      }
+    }
   });
 
   if (ringingNotificationIds.size) {
@@ -631,8 +651,8 @@ async function handleDismissNotification(notification = {}) {
   if (eventType === "appointment_arrived") {
     const appointmentId = String(
       notification.relatedAppointmentId ||
-        notification.sourceId ||
-        notificationId.replace(/^appt-arrived-/, ""),
+      notification.sourceId ||
+      notificationId.replace(/^appt-arrived-/, ""),
     ).trim();
 
     if (appointmentId) {
@@ -681,11 +701,10 @@ function renderDesktopPopups(notifications = []) {
         <div class="dexp-notification-title">${escapeHtml(item.title)}</div>
         <div class="dexp-notification-message">${escapeHtml(item.message)}</div>
         <div class="dexp-notification-actions">
-          ${
-            item.route
-              ? `<button type="button" class="dexp-notification-open" data-popup-open-id="${escapeHtml(item.id)}">Open</button>`
-              : ""
-          }
+          ${item.route && !isAppointmentArrivedNotification(item)
+          ? `<button type="button" class="dexp-notification-open" data-popup-open-id="${escapeHtml(item.id)}">Open</button>`
+          : ""
+        }
           <button type="button" class="dexp-notification-dismiss" data-popup-dismiss-id="${escapeHtml(item.id)}">Dismiss</button>
         </div>
       </div>
@@ -811,8 +830,9 @@ function renderNotificationCard(item) {
   const showOpen =
     !isOpened &&
     hasRoute &&
+    !isAppointmentArrivedNotification(item) &&
     (item.module === "requests" ||
-      ["followup_due", "developer_test", "appointment_arrived"].includes(
+      ["followup_due", "developer_test", "finish_move_nag"].includes(
         eventType,
       ));
 

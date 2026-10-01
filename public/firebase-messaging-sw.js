@@ -85,12 +85,15 @@ messaging.onBackgroundMessage((payload) => {
 
     data,
 
-    actions: [
-      {
-        action: "open",
-        title: "Open",
-      },
-    ],
+    actions:
+      String(data.eventType || "").trim() === "appointment_arrived"
+        ? []
+        : [
+          {
+            action: "open",
+            title: "Open",
+          },
+        ],
   };
 
   // Return the promise so the service worker stays alive until shown
