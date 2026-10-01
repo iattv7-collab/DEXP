@@ -10,7 +10,7 @@ const {
   getNotificationTargetDevices,
 } = require("./notification-recipients");
 
-const NAG_EVERY_MS = 3 * 60 * 1000;
+const NAG_EVERY_MS = 1 * 60 * 1000;
 const STALE_MOVE_MS = 20 * 60 * 1000;
 
 const finishMoveNag = onSchedule(
@@ -42,16 +42,9 @@ const finishMoveNag = onSchedule(
         continue;
       }
 
-      if (!leftAt) {
-        continue;
-      }
-
-      const dueFrom = lastNag || leftAt;
-      if (now - dueFrom < NAG_EVERY_MS && lastNag) {
-        continue;
-      }
-
-      if (!lastNag && now - leftAt < 0) {
+      if (!lastNag) {
+        // first ping on the next 1-min tick after Start Move
+      } else if (now - lastNag < NAG_EVERY_MS) {
         continue;
       }
 
