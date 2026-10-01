@@ -437,6 +437,16 @@ export async function cancelRequest(request = {}) {
     throw new Error("Missing request ID.");
   }
 
+  if (request.roId) {
+    const roSnap = await getDoc(doc(db, "ros", request.roId));
+    const ro = roSnap.exists() ? roSnap.data() || {} : {};
+    if (String(ro.moveStatus || "") === "moving") {
+      throw new Error(
+        `Tag ${ro.tagNumber || request.tagNumber || ""} is already moving. Cancel the move on Move & Locate first.`,
+      );
+    }
+  }
+
   const requestRef = doc(db, REQUESTS_COLLECTION, request.id);
 
   await updateDoc(requestRef, {

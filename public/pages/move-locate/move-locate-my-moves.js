@@ -3,9 +3,13 @@
 
 import {
   collection,
+  doc,
+  getDocs,
   limit,
   onSnapshot,
   query,
+  serverTimestamp,
+  setDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -160,20 +164,70 @@ export function startOwnedMovesWatch({
 }
 
 export async function stampOwnedMovesLeft(ros = []) {
-  const mine = getOwnedMovingROs(ros).filter((ro) => !ro.finishMoveLeftAtMs);
+  const session = getSession();
+  let mine = getOwnedMovingROs(ros);
+
+  if (!mine.length && session?.dealerId && session?.uid) {
+    const snapshot = await getDocs(
+      query(
+        collection(db, "ros"),
+        where("dealerId", "==", session.dealerId),
+        where("moveStatus", "==", "moving"),
+        where("moveStartedByUid", "==", session.uid),
+        limit(50),
+      ),
+    );
+    mine = snapshot.docs.map((docSnap) => ({
+      id: docSnap.data()?.id || docSnap.id,
+      ...docSnap.data(),
+    }));
+  }
+
+  mine = mine.filter((ro) => !ro.finishMoveLeftAtMs);
 
   for (const ro of mine) {
     try {
+      const leftAt = Date.now();
       await updateRO(
         ro.id,
         {
-          finishMoveLeftAtMs: Date.now(),
+          finishMoveLeftAtMs: leftAt,
         },
         {
           eventType: "move_left_unsaved",
           module: "move-locate",
           message: "Left Move & Locate with unsaved move",
         },
+      );
+
+      const tag = String(ro.tagNumber || "").trim();
+      const roNumber = String(ro.roNumber || "").trim();
+      const notificationId = `finish-move-${ro.id}`;
+
+      await setDoc(
+        doc(db, "notificationRequests", notificationId),
+        {
+          id: notificationId,
+          dealerId: session.dealerId,
+          module: "move-locate",
+          eventType: "finish_move_nag",
+          title: `Finish move — tag ${tag || roNumber}`,
+          message: `Save lot or Cancel. Tag ${tag || "—"} · RO ${roNumber || "—"}.`,
+          status: "active",
+          targetType: "user",
+          targetUserId: session.uid,
+          targetUserName: session.displayName || session.email || "",
+          route: "/pages/move-locate/move-locate.html",
+          routeParams: { tagNumber: tag },
+          relatedRoId: ro.id,
+          relatedRoNumber: roNumber,
+          relatedTagNumber: tag,
+          createdAt: serverTimestamp(),
+          createdAtMs: leftAt,
+          updatedAt: serverTimestamp(),
+          updatedAtMs: leftAt,
+        },
+        { merge: true },
       );
     } catch (error) {
       console.error("Could not stamp leave for move nag:", error);

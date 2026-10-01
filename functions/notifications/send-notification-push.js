@@ -19,10 +19,6 @@ const sendPushForNotificationRequest = onDocumentCreated(
       return;
     }
 
-    if (String(notification.eventType || "").trim() === "finish_move_nag") {
-      return;
-    }
-
     const dealerId = notification.dealerId || "";
 
     const title = notification.title || "DEXP Notification";

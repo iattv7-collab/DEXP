@@ -448,7 +448,7 @@ async function findVehicle() {
     return roNumber === searchValue || tagNumber === searchValue;
   });
 
-  if (!match) {
+  if (!match || String(match.status || "").toLowerCase() === "archived") {
     currentRO = null;
     currentMoveGroup = [];
     vehicleResultCard.classList.add("hidden");
@@ -461,7 +461,11 @@ async function findVehicle() {
       takeOverMoveButton.classList.add("hidden");
     }
 
-    showMessage("Vehicle not found.");
+    showMessage(
+      match
+        ? "This RO is archived. Moves are only allowed on active Tracker ROs."
+        : "Vehicle not found.",
+    );
     return;
   }
 

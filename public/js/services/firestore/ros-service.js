@@ -269,7 +269,9 @@ export async function getDealerROs() {
 
   const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((doc) => doc.data());
+  return snapshot.docs
+    .map((doc) => doc.data())
+    .filter((ro) => ro[ROS_FIELDS.status] !== ROS_STATUS.ARCHIVED);
 }
 
 export function watchArchivedROs(callback, advisorId = null) {

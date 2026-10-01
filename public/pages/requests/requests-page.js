@@ -345,36 +345,34 @@ function renderRequestVehicleSummary(ro = {}, openRequest = null) {
       <br />
       
       Status:
-      ${
-        isMoving
-          ? `<span
+      ${isMoving
+      ? `<span
                style="
                  color:#b00020;
                  font-weight:700;
                "
              >
                Currently moving by ${escapeHtml(
-                 ro.moveStartedBy || "another user",
-               )}
+        ro.moveStartedBy || "another user",
+      )}
              </span>`
-          : hasOpenRequest
-            ? `<span
+      : hasOpenRequest
+        ? `<span
            style="
              color:#b00020;
              font-weight:700;
            "
          >
            Request already active: ${escapeHtml(
-             openRequest.title || openRequest.requestType || "Request",
-           )}
+          openRequest.title || openRequest.requestType || "Request",
+        )}
          </span>`
-            : "Available"
-      }
+        : "Available"
+    }
     </div>
 
-    ${
-      isMoving
-        ? `
+    ${isMoving
+      ? `
     <div
       style="
         margin-top:10px;
@@ -389,12 +387,11 @@ function renderRequestVehicleSummary(ro = {}, openRequest = null) {
      Vehicle is currently being moved. Complete the move before creating another request.
    </div>
         `
-        : ""
+      : ""
     }
 
-    ${
-      hasOpenRequest
-        ? `
+    ${hasOpenRequest
+      ? `
           <div 
             style="
               margin-top:10px;
@@ -409,7 +406,7 @@ function renderRequestVehicleSummary(ro = {}, openRequest = null) {
             An active request already exists for this vehicle. Complete or cancel it before creating another request.
           </div>
         `
-        : ""
+      : ""
     }
   `;
 }
@@ -544,7 +541,10 @@ function renderRequestsTable() {
         await cancelRequest(request);
       } catch (error) {
         console.error(error);
-        setFormMessage(error.message || "Could not cancel request.");
+        const message =
+          error.message || "Could not cancel request.";
+        setFormMessage(message);
+        window.alert(message);
       }
     });
   });
@@ -563,28 +563,27 @@ function renderRequestRow(request) {
       <td data-label="Target">${escapeHtml(request.targetGroupName || request.targetGroupId || "")}</td>
       <td data-label="Status">${escapeHtml(formatStatus(request.status))}</td>
       <td data-label="Opened By">${escapeHtml(
-        formatPersonWithTime(
-          notification?.openedByName,
-          notification?.openedAtMs,
-        ),
-      )}</td>
+    formatPersonWithTime(
+      notification?.openedByName,
+      notification?.openedAtMs,
+    ),
+  )}</td>
 
       <td data-label="Started By">${escapeHtml(
-        formatPersonWithTime(request.startedByName, request.startedAtMs),
-      )}</td>
+    formatPersonWithTime(request.startedByName, request.startedAtMs),
+  )}</td>
 
      <td data-label="Completed By">${escapeHtml(
-       formatPersonWithTime(
-         request.completedByName || request.cancelledByName,
-         request.completedAtMs || request.cancelledAtMs,
-       ),
-     )}</td>
+    formatPersonWithTime(
+      request.completedByName || request.cancelledByName,
+      request.completedAtMs || request.cancelledAtMs,
+    ),
+  )}</td>
       <td data-label="Action">
-        ${
-          canCancel
-            ? `<button class="small-button secondary js-cancel-request" type="button" data-id="${request.id}">Cancel</button>`
-            : ""
-        }
+        ${canCancel
+      ? `<button class="small-button secondary js-cancel-request" type="button" data-id="${request.id}">Cancel</button>`
+      : ""
+    }
       </td>
     </tr>
   `;
