@@ -61,6 +61,7 @@ const searchVehicleButton = document.getElementById("searchVehicleButton");
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
 const moveLocateMessage = document.getElementById("moveLocateMessage");
+const moveDestinationLine = document.getElementById("moveDestinationLine");
 
 const previewTag = document.getElementById("previewTag");
 const previewRO = document.getElementById("previewRO");
@@ -461,6 +462,7 @@ async function findVehicle() {
       takeOverMoveButton.classList.add("hidden");
     }
 
+    renderMoveDestination(null);
     showMessage(
       match
         ? "This RO is archived. Moves are only allowed on active Tracker ROs."
@@ -484,6 +486,7 @@ async function findVehicle() {
   searchVehicleButton.disabled = true;
   moveLocateMessage.classList.remove("dexp-loading");
   showMessage("Vehicle found.");
+  renderMoveDestination(match);
 }
 
 function renderSelectedVehicle(ro) {
@@ -564,6 +567,7 @@ function renderSelectedVehicle(ro) {
   }
 
   startMoveButton.classList.remove("hidden");
+  renderMoveDestination(ro);
 }
 
 function toggleDetails() {
@@ -1559,8 +1563,30 @@ function resetMoveLocateForm() {
 
 function showMessage(message) {
   moveLocateMessage.textContent = message;
+  moveLocateMessage.classList.toggle(
+    "move-found-message",
+    message === "Vehicle found.",
+  );
 }
 
 function clearMessage() {
   moveLocateMessage.textContent = "";
+  moveLocateMessage.classList.remove("move-found-message");
+}
+
+function renderMoveDestination(ro) {
+  if (!moveDestinationLine) {
+    return;
+  }
+
+  const title = String(ro?.activeRequestTitle || "").trim();
+
+  if (!title) {
+    moveDestinationLine.textContent = "";
+    moveDestinationLine.classList.add("hidden");
+    return;
+  }
+
+  moveDestinationLine.textContent = `To: ${title}`;
+  moveDestinationLine.classList.remove("hidden");
 }

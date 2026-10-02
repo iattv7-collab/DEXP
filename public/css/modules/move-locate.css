@@ -232,3 +232,18 @@
     display: none;
   }
 }
+
+#moveLocatePage .move-found-message {
+  color: #c2410c;
+  font-weight: 700;
+}
+
+#moveLocatePage .move-destination-line {
+  margin: 0;
+  padding: 6px 10px;
+  background: #fde047;
+  color: #713f12;
+  font-weight: 700;
+  border-radius: 6px;
+  text-align: center;
+}

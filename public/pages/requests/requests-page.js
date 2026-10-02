@@ -433,13 +433,17 @@ async function findMatchingRO({ roNumber, tagNumber }) {
   if (roNumber) {
     const ro = await findActiveROByNumber(roNumber);
 
-    if (ro) {
+    if (ro && String(ro.status || "").toLowerCase() !== "archived") {
       return ro;
     }
   }
 
   if (tagNumber) {
-    return await findActiveROByTag(tagNumber);
+    const ro = await findActiveROByTag(tagNumber);
+
+    if (ro && String(ro.status || "").toLowerCase() !== "archived") {
+      return ro;
+    }
   }
 
   return null;
