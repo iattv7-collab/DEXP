@@ -34,6 +34,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   serverTimestamp,
@@ -745,22 +746,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
 
-    const automatic = Boolean(autoFollowEl?.checked);
-    const crewCan = Boolean(currentWashSettings?.crewCanControlDay);
+    const automatic = Boolean(
+      currentWashSettings?.autoFollowHours || autoFollowEl?.checked,
+    );
+    const crewCan = Boolean(
+      currentWashSettings?.crewCanControlDay || $("crewCanControlDay")?.checked,
+    );
     const crewBox = $("crewDayControl");
+    const adminDay = $("adminDayControl");
 
     if (crewBox) {
-      crewBox.hidden = !crewCan || canEditWashSettings();
+      crewBox.hidden = automatic || !crewCan;
     }
 
-    openBtn.disabled = automatic || washIsOpen;
-    closeBtn.disabled = automatic || !washIsOpen;
+    if (adminDay) {
+      adminDay.hidden = automatic;
+    }
+
+    openBtn.disabled = washIsOpen;
+    closeBtn.disabled = !washIsOpen;
 
     const openCrew = $("openWashBtnCrew");
     const closeCrew = $("closeWashBtnCrew");
 
-    if (openCrew) openCrew.disabled = automatic || washIsOpen;
-    if (closeCrew) closeCrew.disabled = automatic || !washIsOpen;
+    if (openCrew) openCrew.disabled = washIsOpen;
+    if (closeCrew) closeCrew.disabled = !washIsOpen;
 
     renderCombinedQueue();
   }
