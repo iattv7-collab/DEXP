@@ -147,9 +147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
 
     if (!washIsOpen) {
-      sendBtn.disabled = true;
-      setMsg("Wash is currently closed.", false);
-      return { alreadyInWash, canSend: false };
+      setMsg("Wash is closed. This car will wait until the next open day.", true);
     }
 
     if (alreadyInWash) {
@@ -347,8 +345,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const open = await refreshWashOpen();
 
       if (!open) {
-        setMsg("Wash is currently closed.", false);
-        return;
+        setMsg("Wash is closed. This car will wait until the next open day.");
       }
 
       const freshSnap = await getDoc(doc(db, "ros", selectedTicket.id));

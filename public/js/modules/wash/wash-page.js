@@ -729,6 +729,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       const shouldOpen = insideShopHours(currentWashSettings);
 
       if (Boolean(currentWashSettings.isOpen) !== shouldOpen) {
+        if (!shouldOpen) {
+          await clearOvernightWaiters();
+        }
+
         currentWashSettings = await setWashOpen(shouldOpen);
       }
     }
@@ -803,15 +807,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  async function clearOvernightWaiters() {
+    const activeQuery = query(
+      collection(db, "ros"),
+      where("dealerId", "==", currentDealerId),
+      where("washStatus", "in", ["pending", "rewash_requested", "washing"]),
+    );
+
+    const snapshot = await getDocs(activeQuery);
+
+    await Promise.all(
+      snapshot.docs
+        .filter((documentSnapshot) => {
+          const ticket = documentSnapshot.data();
+
+          return ticket.customerWaiting === true || ticket.isWaiter === true;
+        })
+        .map((documentSnapshot) =>
+          updateDoc(documentSnapshot.ref, {
+            customerWaiting: false,
+            isWaiter: false,
+            washWaiterAtMs: null,
+            priorityType: "normal",
+            ...auditPatch(),
+            lastEditedFields: [
+              "customerWaiting",
+              "isWaiter",
+              "washWaiterAtMs",
+              "priorityType",
+            ],
+          }),
+        ),
+    );
+  }
+
   closeBtn.addEventListener("click", async () => {
     try {
+      await clearOvernightWaiters();
+
       const settings = await setWashOpen(false);
 
       currentWashSettings = settings;
 
       updateWashDayControls(settings.isOpen);
 
-      setMsg("Wash day closed.");
+      setMsg("Wash day closed. Waiters left on the board are now normal.");
     } catch (error) {
       console.error(error);
 
