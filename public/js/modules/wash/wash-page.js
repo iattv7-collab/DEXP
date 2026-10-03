@@ -16,7 +16,10 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 import {
   getWashSettings,
   setWashOpen,
+  updateWashSettings,
 } from "/js/services/firestore/wash-settings-service.js";
+
+import { getDayPlan } from "/js/services/firestore/wash-capacity-service.js";
 
 import { projectWashQueue } from "/js/services/firestore/wash-capacity-service.js";
 
@@ -53,6 +56,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const openBtn = $("openWashBtn");
   const closeBtn = $("closeWashBtn");
   const badge = $("isOpenBadge");
+  const autoFollowEl = $("autoFollowHours");
+  const saveHoursBtn = $("saveHoursBtn");
 
   let currentSession = await waitForSession();
   let currentDealerId = currentSession?.dealerId || "";
@@ -153,6 +158,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isWaiterTicket(ticket)) {
       return "WAITER";
+    }
+
+    if (isCourtesyWash(ticket)) {
+      return "COURTESY";
     }
 
     if (typeof ticket.needByAtMs === "number" && ticket.needByAtMs > 0) {
@@ -416,90 +425,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function sortWashRows(rows) {
-    // Only a FUTURE Need By inside this window can jump the line.
-    // Past Need By does not beat waiters (commitment already missed).
-    const NEED_BY_RISK_WINDOW_MS = 45 * 60 * 1000; // 45 minutes
-    const nowMs = Date.now();
-
-    function isFutureAtRiskNeedBy(ticket) {
-      const needBy =
-        typeof ticket.needByAtMs === "number" && ticket.needByAtMs > 0
-          ? ticket.needByAtMs
-          : 0;
-
-      if (!needBy) return false;
-
-      // Must still be in the future, and within the risk window
-      return needBy > nowMs && needBy <= nowMs + NEED_BY_RISK_WINDOW_MS;
+    function sentAt(ticket) {
+      return Number(ticket.washQueuedAtMs || ticket.createdAtMs || 0);
     }
 
-    function waiterTime(ticket) {
-      return Number(
-        ticket.washWaiterAtMs ||
-        ticket.waiterMarkedAtMs ||
-        ticket.washQueuedAtMs ||
-        0,
-      );
+    function hasNeedBy(ticket) {
+      return Number(ticket.needByAtMs || 0) > 0;
     }
 
-    function queueTime(ticket) {
-      return Number(ticket.washQueuedAtMs || 0);
+    // Waiter, courtesy, or a set Need By holds the spot.
+    // A car with none of those can be pushed back.
+    function lane(ticket) {
+      if (isWaiterTicket(ticket) || isCourtesyWash(ticket)) return 0;
+      if (hasNeedBy(ticket)) return 1;
+      return 2;
     }
 
     return [...rows].sort((a, b) => {
       const aStatus = clean(a.washStatus).toLowerCase();
       const bStatus = clean(b.washStatus).toLowerCase();
 
-      // 1) Already washing stays first
-      if (aStatus !== bStatus) {
-        if (aStatus === "washing") return -1;
-        if (bStatus === "washing") return 1;
-      }
+      if (aStatus === "washing" && bStatus !== "washing") return -1;
+      if (bStatus === "washing" && aStatus !== "washing") return 1;
 
-      // 2) Future at-risk Need By only (not past Need By)
-      const aRisk = isFutureAtRiskNeedBy(a);
-      const bRisk = isFutureAtRiskNeedBy(b);
+      const aLane = lane(a);
+      const bLane = lane(b);
 
-      if (aRisk !== bRisk) {
-        return aRisk ? -1 : 1;
-      }
+      if (aLane !== bLane) return aLane - bLane;
 
-      if (aRisk && bRisk) {
-        if (a.needByAtMs !== b.needByAtMs) {
-          return a.needByAtMs - b.needByAtMs; // sooner deadline first
-        }
-      }
-
-      // 3) Waiters next (including over past Need By)
-      const aWaiter = isWaiterTicket(a);
-      const bWaiter = isWaiterTicket(b);
-
-      if (aWaiter !== bWaiter) {
-        return aWaiter ? -1 : 1;
-      }
-
-      if (aWaiter && bWaiter) {
-        // Who was marked / added to wash first
-        return waiterTime(a) - waiterTime(b);
-      }
-
-      // 4) Rewash requested before plain normal
-      const aRewash = aStatus === "rewash_requested";
-      const bRewash = bStatus === "rewash_requested";
-
-      if (aRewash !== bRewash) {
-        return aRewash ? -1 : 1;
-      }
-
-      if (aRewash && bRewash) {
-        return (
-          Number(a.rewashRequestedAtMs || a.washQueuedAtMs || 0) -
-          Number(b.rewashRequestedAtMs || b.washQueuedAtMs || 0)
-        );
-      }
-
-      // 5) Everyone else by arrival (RO + courtesy + past/far Need By)
-      return queueTime(a) - queueTime(b);
+      return sentAt(a) - sentAt(b);
     });
   }
 
@@ -544,6 +498,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             : "";
 
         const doneDisabled = status !== "washing" ? "disabled" : "";
+
+        const removeButton = canEditWashSettings()
+          ? `<button class="removeWashBtn" type="button">Remove</button>`
+          : "";
 
         const tagDisplay = courtesy ? "COURTESY" : tagValue(ticket);
 
@@ -708,8 +666,72 @@ document.addEventListener("DOMContentLoaded", async () => {
   // WASH DAY SETTINGS
   // ====================================================
 
+  const hourFields = ["mfOpen", "mfClose", "satOpen", "satClose", "sunOpen", "sunClose"];
+  let savedHours = null;
+
+  function canEditWashSettings() {
+    const modules = currentSession?.assignedModules || currentSession?.modules || [];
+
+    return (
+      currentSession?.role === "admin" ||
+      modules.includes("wash-settings")
+    );
+  }
+
+  function currentHours() {
+    return {
+      autoFollowHours: Boolean(autoFollowEl.checked),
+      crewCanControlDay: Boolean($("crewCanControlDay").checked),
+      mfOpen: $("mfOpen").value,
+      mfClose: $("mfClose").value,
+      satOpen: $("satOpen").value,
+      satClose: $("satClose").value,
+      sunOpen: $("sunOpen").value,
+      sunClose: $("sunClose").value,
+    };
+  }
+
+  function hoursDirty() {
+    return JSON.stringify(currentHours()) !== JSON.stringify(savedHours);
+  }
+
+  function refreshSaveButton() {
+    saveHoursBtn.disabled = !hoursDirty();
+  }
+
+  function fillHourFields(settings) {
+    autoFollowEl.checked = Boolean(settings?.autoFollowHours);
+    $("crewCanControlDay").checked = Boolean(settings?.crewCanControlDay);
+
+    hourFields.forEach((field) => {
+      const input = $(field);
+
+      if (input) {
+        input.value = settings?.[field] || "";
+      }
+    });
+
+    savedHours = currentHours();
+    refreshSaveButton();
+  }
+
+  function insideShopHours(settings, nowMs = Date.now()) {
+    const plan = getDayPlan(settings, nowMs);
+
+    return Boolean(plan.bays) && nowMs >= plan.openMs && nowMs < plan.closeMs;
+  }
+
   async function loadWashSettings() {
     currentWashSettings = await getWashSettings();
+    fillHourFields(currentWashSettings);
+
+    if (currentWashSettings.autoFollowHours) {
+      const shouldOpen = insideShopHours(currentWashSettings);
+
+      if (Boolean(currentWashSettings.isOpen) !== shouldOpen) {
+        currentWashSettings = await setWashOpen(shouldOpen);
+      }
+    }
 
     updateWashDayControls(currentWashSettings.isOpen);
   }
@@ -719,11 +741,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
 
-    openBtn.disabled = washIsOpen;
-    closeBtn.disabled = !washIsOpen;
+    const automatic = Boolean(autoFollowEl?.checked);
+    const crewCan = Boolean(currentWashSettings?.crewCanControlDay);
+    const crewBox = $("crewDayControl");
+
+    if (crewBox) {
+      crewBox.hidden = !crewCan || canEditWashSettings();
+    }
+
+    openBtn.disabled = automatic || washIsOpen;
+    closeBtn.disabled = automatic || !washIsOpen;
+
+    const openCrew = $("openWashBtnCrew");
+    const closeCrew = $("closeWashBtnCrew");
+
+    if (openCrew) openCrew.disabled = automatic || washIsOpen;
+    if (closeCrew) closeCrew.disabled = automatic || !washIsOpen;
 
     renderCombinedQueue();
   }
+
+  $("openWashBtnCrew")?.addEventListener("click", () => openBtn.click());
+  $("closeWashBtnCrew")?.addEventListener("click", () => closeBtn.click());
 
   openBtn.addEventListener("click", async () => {
     try {
@@ -738,6 +777,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error(error);
 
       setMsg("Could not open the wash day.", false);
+    }
+  });
+
+  saveHoursBtn.addEventListener("click", async () => {
+    try {
+      const settings = await updateWashSettings({
+        autoFollowHours: autoFollowEl.checked,
+        mfOpen: $("mfOpen").value,
+        mfClose: $("mfClose").value,
+        satOpen: $("satOpen").value,
+        satClose: $("satClose").value,
+        sunOpen: $("sunOpen").value,
+        sunClose: $("sunClose").value,
+      });
+
+      currentWashSettings = settings;
+      await loadWashSettings();
+      savedHours = currentHours();
+      refreshSaveButton();
+      setMsg("Shop hours saved.");
+    } catch (error) {
+      console.error(error);
+      setMsg("Could not save shop hours.", false);
     }
   });
 
@@ -805,7 +867,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (button.classList.contains("removeWashBtn")) {
-        const confirmed = confirm("Remove this vehicle from the wash queue?");
+        if (!canEditWashSettings()) {
+          setMsg("Only wash admin can remove a wash ticket.", false);
+          return;
+        }
+
+        const actorName =
+          clean(auth.currentUser?.displayName || auth.currentUser?.email) ||
+          "this user";
+
+        const confirmed = confirm(
+          `This removal is recorded under ${actorName}. Remove this vehicle from the wash queue?`,
+        );
 
         if (!confirmed) {
           return;
@@ -829,6 +902,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ====================================================
   // INITIALIZE
   // ====================================================
+
+  const settingsTab = $("washSettingsTab");
+  const hoursPanel = $("washHoursPanel");
+
+  if (canEditWashSettings()) {
+    settingsTab.hidden = false;
+
+    settingsTab.addEventListener("click", (event) => {
+      event.preventDefault();
+      hoursPanel.hidden = !hoursPanel.hidden;
+    });
+  }
+
+  [autoFollowEl, ...hourFields.map((field) => $(field))].forEach((input) => {
+    input.addEventListener("input", () => {
+      refreshSaveButton();
+      updateWashDayControls(washIsOpen);
+    });
+  });
 
   await loadWashSettings();
 

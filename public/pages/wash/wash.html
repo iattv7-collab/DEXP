@@ -28,6 +28,8 @@
           <a href="/pages/wash/wash.html" class="active"> Active </a>
 
           <a href="/pages/wash-history/wash-history.html"> History </a>
+
+          <a id="washSettingsTab" href="#wash-settings" hidden> Settings </a>
         </div>
       </section>
 
@@ -35,13 +37,45 @@
         <h2>Wash Day Control</h2>
 
         <div class="form-row">
-          <button id="openWashBtn" type="button">Open Wash Day</button>
-
-          <button id="closeWashBtn" type="button">Close Wash Day</button>
-
           <strong>Current:</strong>
 
           <span id="isOpenBadge"> Loading... </span>
+        </div>
+
+        <div id="crewDayControl" class="form-row" hidden>
+          <button id="openWashBtnCrew" type="button">Open Wash Day</button>
+          <button id="closeWashBtnCrew" type="button">Close Wash Day</button>
+        </div>
+
+        <div id="washHoursPanel" hidden>
+          <div class="form-row">
+            <button id="openWashBtn" type="button">Open Wash Day</button>
+            <button id="closeWashBtn" type="button">Close Wash Day</button>
+          </div>
+
+          <div class="form-row">
+            <label>
+              <input id="crewCanControlDay" type="checkbox" />
+              Let wash crew open and close the day
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>
+              <input id="autoFollowHours" type="checkbox" />
+              Open automatically from shop hours
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>Weekday open <input id="mfOpen" type="time" /></label>
+            <label>Weekday close <input id="mfClose" type="time" /></label>
+            <label>Saturday open <input id="satOpen" type="time" /></label>
+            <label>Saturday close <input id="satClose" type="time" /></label>
+            <label>Sunday open <input id="sunOpen" type="time" /></label>
+            <label>Sunday close <input id="sunClose" type="time" /></label>
+            <button id="saveHoursBtn" type="button" disabled>Save shop hours</button>
+          </div>
         </div>
       </section>
 

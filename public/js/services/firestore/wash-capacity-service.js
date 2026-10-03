@@ -122,56 +122,30 @@ export function sameCalendarDay(aMs, bMs) {
   );
 }
 
-export function sortWashTickets(tickets, nowMs = Date.now()) {
+export function sortWashTickets(tickets) {
+  function sentAt(ticket) {
+    return Number(ticket.washQueuedAtMs || ticket.createdAtMs || 0);
+  }
+
+  function lane(ticket) {
+    if (isWaiterTicket(ticket) || ticket?.sourceType === "courtesy") return 0;
+    if (needByMs(ticket) > 0) return 1;
+    return 2;
+  }
+
   return [...(tickets || [])].sort((a, b) => {
     const aStatus = clean(a.washStatus).toLowerCase();
     const bStatus = clean(b.washStatus).toLowerCase();
 
-    if (aStatus !== bStatus) {
-      if (aStatus === "washing") return -1;
-      if (bStatus === "washing") return 1;
-    }
+    if (aStatus === "washing" && bStatus !== "washing") return -1;
+    if (bStatus === "washing" && aStatus !== "washing") return 1;
 
-    const aRisk = isFutureAtRiskNeedBy(a, nowMs);
-    const bRisk = isFutureAtRiskNeedBy(b, nowMs);
+    const aLane = lane(a);
+    const bLane = lane(b);
 
-    if (aRisk !== bRisk) {
-      return aRisk ? -1 : 1;
-    }
+    if (aLane !== bLane) return aLane - bLane;
 
-    if (aRisk && bRisk && a.needByAtMs !== b.needByAtMs) {
-      return a.needByAtMs - b.needByAtMs;
-    }
-
-    const aWaiter = isWaiterTicket(a);
-    const bWaiter = isWaiterTicket(b);
-
-    if (aWaiter !== bWaiter) {
-      return aWaiter ? -1 : 1;
-    }
-
-    if (aWaiter && bWaiter) {
-      return (
-        Number(a.washWaiterAtMs || a.waiterMarkedAtMs || a.washQueuedAtMs || 0) -
-        Number(b.washWaiterAtMs || b.waiterMarkedAtMs || b.washQueuedAtMs || 0)
-      );
-    }
-
-    const aRewash = aStatus === "rewash_requested";
-    const bRewash = bStatus === "rewash_requested";
-
-    if (aRewash !== bRewash) {
-      return aRewash ? -1 : 1;
-    }
-
-    if (aRewash && bRewash) {
-      return (
-        Number(a.rewashRequestedAtMs || a.washQueuedAtMs || 0) -
-        Number(b.rewashRequestedAtMs || b.washQueuedAtMs || 0)
-      );
-    }
-
-    return Number(a.washQueuedAtMs || 0) - Number(b.washQueuedAtMs || 0);
+    return sentAt(a) - sentAt(b);
   });
 }
 
@@ -234,8 +208,8 @@ function projectionWindow(settings, nowMs) {
 export function projectWashQueue(tickets, settings, nowMs = Date.now()) {
   const sorted = sortWashTickets(tickets, nowMs);
   const window = projectionWindow(settings, nowMs);
-  const plan = window.plan;
-  const bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => window.startMs);
+  let plan = window.plan;
+  let bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => window.startMs);
 
   if (!plan.bays) {
     return sorted.map((ticket) => ({
@@ -264,6 +238,14 @@ export function projectWashQueue(tickets, settings, nowMs = Date.now()) {
       finishMs = nowMs;
     } else {
       startMs = Math.min(...bayFreeAt);
+
+      if (startMs >= plan.closeMs) {
+        const next = projectionWindow(settings, plan.closeMs + 60 * 1000);
+        plan = next.plan;
+        startMs = next.startMs;
+        bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => startMs);
+      }
+
       finishMs = startMs + plan.durationMs;
     }
 

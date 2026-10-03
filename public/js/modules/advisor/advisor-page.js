@@ -308,7 +308,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const selectedMs = await pickDateTimeMs(
       "Need By",
       Number(ticket.needByAtMs || 0) || null,
-      30,
+      15,
       {
         schedule,
         anchorEl: anchorButton,
@@ -338,8 +338,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (!check.ok) {
-      setMsg(check.reason || "That wash slot is not available.", false);
+      const reason = check.reason || "That wash slot is not available.";
+
+      setMsg(reason, false);
+      alert(reason);
       return;
+    }
+
+    const preview = projectWashQueue(
+      washRows.map((row) =>
+        row.id === id ? { ...row, needByAtMs: selectedMs } : row,
+      ),
+      settings,
+    );
+
+    const projectedFinish = Number(
+      preview.find((row) => row.id === id)?.projectedFinishAtMs || 0,
+    );
+
+    if (projectedFinish > selectedMs) {
+      const confirmed = confirm(
+        `This Need By cannot be met. Estimated finish is ${fmtTime(projectedFinish)}. Save it anyway?`,
+      );
+
+      if (!confirmed) {
+        return;
+      }
     }
 
     const currentNeedBy = Number(ticket.needByAtMs || 0);

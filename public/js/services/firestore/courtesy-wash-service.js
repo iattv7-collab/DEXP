@@ -9,6 +9,8 @@
 import { auth } from "/js/services/firebase/auth-service.js";
 import { db } from "/js/services/firebase/firestore.js";
 import { getSession } from "/js/core/session.js";
+import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
+import { projectWashQueue } from "/js/services/firestore/wash-capacity-service.js";
 
 import {
   addDoc,
@@ -178,20 +180,50 @@ export async function getCourtesyWashEstimate({
   minutesPerVehicle = DEFAULT_WASH_MINUTES_PER_VEHICLE,
 } = {}) {
   const dealerId = getDealerId();
+  const nowMs = Date.now();
 
-  const [roRows, courtesyRows] = await Promise.all([
+  const [roRows, courtesyRows, settings] = await Promise.all([
     getActiveRoWashRows(dealerId),
     getActiveCourtesyWashRows(dealerId),
+    getWashSettings(),
   ]);
 
-  const vehiclesAhead = roRows.length + courtesyRows.length;
+  function holdsSpot(ticket) {
+    return (
+      ticket?.customerWaiting === true ||
+      ticket?.isWaiter === true ||
+      ticket?.sourceType === "courtesy" ||
+      Number(ticket?.needByAtMs || 0) > 0
+    );
+  }
 
-  const estimatedMinutes = (vehiclesAhead + 1) * minutesPerVehicle;
+  const ahead = [...roRows, ...courtesyRows].filter(holdsSpot);
 
-  const estimatedCompletionAtMs = Date.now() + estimatedMinutes * 60 * 1000;
+  const incoming = {
+    id: "courtesy-estimate",
+    sourceType: "courtesy",
+    washStatus: "pending",
+    washQueuedAtMs: nowMs,
+  };
+
+  const projected = projectWashQueue(
+    [...ahead, incoming],
+    {
+      ...settings,
+      washDurationMin: minutesPerVehicle,
+    },
+    nowMs,
+  );
+
+  const mine = projected.find((ticket) => ticket.id === "courtesy-estimate");
+  const estimatedCompletionAtMs = Number(mine?.projectedFinishAtMs || nowMs);
+  const estimatedMinutes = Math.max(
+    1,
+    Math.round((estimatedCompletionAtMs - nowMs) / 60000),
+  );
 
   return {
-    vehiclesAhead,
+    vehiclesAhead: ahead.length,
     estimatedMinutes,
     estimatedCompletionAtMs,
     minutesPerVehicle,
