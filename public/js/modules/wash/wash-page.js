@@ -756,11 +756,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const adminDay = $("adminDayControl");
 
     if (crewBox) {
-      crewBox.hidden = automatic || !crewCan;
+      crewBox.hidden = automatic;
     }
 
     if (adminDay) {
-      adminDay.hidden = automatic;
+      adminDay.hidden = true;
     }
 
     openBtn.disabled = washIsOpen;

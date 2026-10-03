@@ -67,6 +67,10 @@
   flex-wrap: wrap;
 }
 
+.wash-shell .form-row[hidden] {
+  display: none;
+}
+
 /* TABLE WRAP */
 
 .wash-table-wrap {
