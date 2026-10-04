@@ -45,6 +45,7 @@ function tripDetail(trip) {
       <div>Back ${escapeHtml(back)} · ${escapeHtml(trip.returnMileage || "")} mi</div>
       <div>Range ${escapeHtml(trip.fuelLevel || "")} · Damage ${escapeHtml(trip.damageNotes || "")}</div>
       <div>Received by ${escapeHtml(trip.receivedByName || "")} · Went to ${escapeHtml(trip.destination || "")}</div>
+      ${Array.isArray(trip.photoUrls) && trip.photoUrls.length ? `<button type="button" class="loaner-pictures" data-photos="${escapeHtml(trip.photoUrls.join("|"))}">Pictures</button>` : ""}
     </div>
   `;
 }
@@ -147,6 +148,14 @@ export function startLoanerHistory(dealerId, searchInput, resultEl) {
         </div>
       `;
     }).join("");
+
+    resultEl.querySelectorAll(".loaner-pictures").forEach((button) => {
+      button.addEventListener("click", () => {
+        String(button.dataset.photos || "").split("|").filter(Boolean).forEach((url) => {
+          window.open(url, "_blank");
+        });
+      });
+    });
   }
 
   return unsubscribe;

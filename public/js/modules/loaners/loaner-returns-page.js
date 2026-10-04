@@ -34,6 +34,7 @@ import {
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
 import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
+import { uploadLoanerDamagePhotos } from "/js/modules/loaners/loaner-damage-photos.js";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
 const VIN_REJECT_NOT_IN_FLEET =
@@ -73,6 +74,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let returnSaveInProgress = false;
   let checkoutMileage = null;
   let fuelEntryMode = localStorage.getItem("dexp_return_fuel_mode") || "range";
+  let acceptedDamagePhotos = [];
+  let pendingDamagePhoto = null;
 
   function getReturnFormSnapshot() {
     return JSON.stringify(
@@ -191,6 +194,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     validatedReturnVin = "";
     checkoutMileage = null;
     setVinRejectMessage("");
+    acceptedDamagePhotos = [];
+    pendingDamagePhoto = null;
+    if ($("damagePhotoPreview")) $("damagePhotoPreview").style.display = "none";
+    if ($("damagePhotoCount")) $("damagePhotoCount").textContent = "";
+    if ($("damagePhotoBox")) $("damagePhotoBox").style.display = "none";
     savedReturnSnapshot = getReturnFormSnapshot();
     updateSaveReturnButton();
   }
@@ -532,6 +540,46 @@ document.addEventListener("DOMContentLoaded", async () => {
     setFuelEntryMode("range");
   });
   $("fuelTankSelect")?.addEventListener("change", updateSaveReturnButton);
+
+  function showDamageCamera() {
+    const yes = $("damageYesNo")?.value === "Yes";
+    if ($("damagePhotoBox")) $("damagePhotoBox").style.display = yes ? "" : "none";
+  }
+
+  $("damageYesNo")?.addEventListener("change", showDamageCamera);
+
+  $("damagePhotoBtn")?.addEventListener("click", () => {
+    $("damagePhotoInput")?.click();
+  });
+
+  $("damagePhotoInput")?.addEventListener("change", () => {
+    const file = $("damagePhotoInput").files?.[0];
+    if (!file) return;
+    pendingDamagePhoto = file;
+    $("damagePhotoPreview").src = URL.createObjectURL(file);
+    $("damagePhotoPreview").style.display = "";
+    $("damagePhotoAccept").style.display = "";
+    $("damagePhotoRetake").style.display = "";
+  });
+
+  $("damagePhotoAccept")?.addEventListener("click", () => {
+    if (!pendingDamagePhoto) return;
+    acceptedDamagePhotos.push(pendingDamagePhoto);
+    pendingDamagePhoto = null;
+    $("damagePhotoPreview").style.display = "none";
+    $("damagePhotoAccept").style.display = "none";
+    $("damagePhotoRetake").style.display = "none";
+    $("damagePhotoCount").textContent = `${acceptedDamagePhotos.length} picture accepted`;
+    $("damagePhotoInput").value = "";
+  });
+
+  $("damagePhotoRetake")?.addEventListener("click", () => {
+    pendingDamagePhoto = null;
+    $("damagePhotoPreview").style.display = "none";
+    $("damagePhotoAccept").style.display = "none";
+    $("damagePhotoRetake").style.display = "none";
+    $("damagePhotoInput").click();
+  });
   applyFuelEntryMode();
 
   RETURN_FORM_FIELD_IDS.forEach((id) => {
@@ -739,9 +787,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         createdAt: serverTimestamp(),
       });
 
+      let photoUrls = [];
+
+      if (acceptedDamagePhotos.length) {
+        $("returnMsg").textContent = "Saving picture...";
+        photoUrls = await uploadLoanerDamagePhotos(
+          currentDealerId,
+          vin,
+          acceptedDamagePhotos,
+        );
+      }
+
       await closeLoanerTrip({
         dealerId: currentDealerId,
         vin,
+        photoUrls,
+        photoUrls,
         assignedRo,
         returnedAtMs: Date.now(),
         returnedAtText,

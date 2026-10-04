@@ -93,6 +93,7 @@ export async function closeLoanerTrip(close) {
     damageNotes: close.damageNotes || "",
     receivedByName: close.receivedByName || "",
     destination: close.destination || "",
+    photoUrls: Array.isArray(close.photoUrls) ? close.photoUrls : [],
     assignedRo: close.assignedRo || previous.assignedRo || "",
     customerName: close.customerName || previous.customerName || "",
     status: "closed",
