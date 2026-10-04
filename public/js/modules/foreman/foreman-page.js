@@ -9,6 +9,7 @@ import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { getAdminUserGroups } from "/js/services/firestore/users-service.js";
 import { db } from "/js/services/firebase/firestore.js";
+import { getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
   addDoc,
@@ -20,6 +21,9 @@ import {
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+let shopSettings = defaultShopSettings();
+let savedShopSettings = defaultShopSettings();
 
 let session = null;
 let rows = [];
@@ -36,7 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializeTabs();
   initializeFilters();
   initializeActions();
-  listenToRos();
 
   try {
     await loadTechUsers();
@@ -45,6 +48,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     techUsers = [];
     setMsg("Could not load tech users.");
   }
+
+  listenToRos();
 });
 
 function initializeTabs() {
@@ -93,8 +98,8 @@ function listenToRos() {
 function isPickedUp(ro) {
   return Boolean(
     ro.pickedUp === true ||
-      ro.pickedUpAtMs ||
-      String(ro.pickupStatus || "").toLowerCase() === "picked_up",
+    ro.pickedUpAtMs ||
+    String(ro.pickupStatus || "").toLowerCase() === "picked_up",
   );
 }
 
@@ -128,6 +133,7 @@ function render() {
   };
 
   rows.forEach((ro) => {
+    if (!matchesSeat(ro)) return;
     const status = getForemanStatus(ro);
     if (status !== "completed" && isPickedUp(ro)) return;
     if (counts[status] !== undefined) counts[status] += 1;
@@ -143,6 +149,7 @@ function render() {
   const filtered = rows
     .filter((ro) => getForemanStatus(ro) === activeTab)
     .filter((ro) => activeTab === "completed" || !isPickedUp(ro))
+    .filter(matchesSeat)
     .filter(matchesSearch)
     .filter(matchesExtraFilter)
     .sort(sortRows);
@@ -184,7 +191,7 @@ function renderAction(ro, status) {
 
   const options = [
     `<option value="">Select tech</option>`,
-    ...techUsers.map((tech) => {
+    ...assignableTechs().map((tech) => {
       const id = tech.uid || tech.id;
       const name = tech.displayName || tech.email || id;
       const selected = String(ro.techId || "") === String(id) ? "selected" : "";
@@ -292,8 +299,174 @@ function escapeHtml(value) {
 async function loadTechUsers() {
   const groups = await getAdminUserGroups();
   techUsers = groups.activeUsers.filter(
-    (user) => user.role === "tech" && user.dealerId === session.dealerId,
+    (user) => user.dealerId === session.dealerId,
   );
+}
+
+function isTech(user) {
+  return user.role === "tech" || user.shopLevel === "tech" || hasModule(user, "tech");
+}
+
+function hasModule(user, key) {
+  return Array.isArray(user.assignedModules) && user.assignedModules.includes(key);
+}
+
+function assignableTechs() {
+  return techUsers.filter(isTech);
+}
+
+function matchesSeat(ro) {
+  const seat = currentSeat();
+  if (seat === "manager") return true;
+  if (seat === "foreman") {
+    if (!session.shopId) return true;
+    const advisor = techUsers.find((user) =>
+      user.role === "advisor" && (
+        String(user.uid || user.id) === String(ro.advisorId || "") ||
+        String(user.displayName || "").toLowerCase() === String(ro.advisorName || "").toLowerCase()
+      )
+    );
+    return advisor?.shopId === session.shopId;
+  }
+  if (seat === "team_leader") {
+    if (!ro.techId) return !session.shopId || !ro.shopId || ro.shopId === session.shopId;
+    const tech = techUsers.find((item) => String(item.uid || item.id) === String(ro.techId));
+    return String(tech?.teamId || "") === String(session.teamId || "");
+  }
+  return true;
+}
+
+function currentSeat() {
+  if (session.role === "admin" || session.role === "platform_admin" || session.shopLevel === "manager") return "manager";
+  if (session.shopLevel === "foreman") return "foreman";
+  if (session.shopLevel === "team_leader") return "team_leader";
+  return "manager";
+}
+
+function defaultShopSettings() {
+  return {
+    useServiceManager: true,
+    useShopForeman: true,
+    useTeamLeader: false,
+    shops: [],
+    teams: [],
+    people: [],
+  };
+}
+
+async function loadShopSettings() {
+  const snapshot = await getDoc(doc(db, "dealers", session.dealerId));
+  const saved = snapshot.exists() ? snapshot.data()?.settings?.shop : null;
+  shopSettings = { ...defaultShopSettings(), ...(saved || {}) };
+  savedShopSettings = JSON.parse(JSON.stringify(shopSettings));
+  const setup = document.getElementById("shopSetup");
+  if (setup) setup.hidden = currentSeat() !== "manager";
+}
+
+function initializeShopSetup() {
+  const managerBox = document.getElementById("useServiceManager");
+  const foremanBox = document.getElementById("useShopForeman");
+  const teamBox = document.getElementById("useTeamLeader");
+  if (!managerBox) return;
+  managerBox.checked = shopSettings.useServiceManager !== false;
+  foremanBox.checked = shopSettings.useShopForeman !== false;
+  teamBox.checked = shopSettings.useTeamLeader === true;
+  document.getElementById("teamRow").hidden = !teamBox.checked;
+  [managerBox, foremanBox, teamBox].forEach((box) => {
+    box.addEventListener("change", () => {
+      shopSettings.useServiceManager = managerBox.checked;
+      shopSettings.useShopForeman = foremanBox.checked;
+      shopSettings.useTeamLeader = teamBox.checked;
+      document.getElementById("teamRow").hidden = !teamBox.checked;
+      markSetupDirty();
+    });
+  });
+  document.getElementById("addShopBtn").addEventListener("click", () => {
+    const name = document.getElementById("shopNameInput").value.trim();
+    if (!name) return;
+    shopSettings.shops.push({ id: slug(name), name });
+    document.getElementById("shopNameInput").value = "";
+    renderSetup();
+    markSetupDirty();
+  });
+  document.getElementById("addTeamBtn").addEventListener("click", () => {
+    const name = document.getElementById("teamNameInput").value.trim();
+    const shopId = document.getElementById("teamShopSelect").value;
+    if (!name || !shopId) return;
+    shopSettings.teams.push({ id: slug(name), name, shopId });
+    document.getElementById("teamNameInput").value = "";
+    renderSetup();
+    markSetupDirty();
+  });
+  document.getElementById("saveShopSetupBtn").addEventListener("click", saveShopSetup);
+  renderSetup();
+}
+
+function renderSetup() {
+  document.getElementById("shopList").innerHTML = shopSettings.shops.map((shop) => `<div>${escapeHtml(shop.name)}</div>`).join("");
+  document.getElementById("teamList").innerHTML = shopSettings.teams.map((team) => `<div>${escapeHtml(team.name)}</div>`).join("");
+  const shopSelect = document.getElementById("teamShopSelect");
+  shopSelect.innerHTML = shopSettings.shops.map((shop) => `<option value="${escapeHtml(shop.id)}">${escapeHtml(shop.name)}</option>`).join("");
+  document.getElementById("peopleList").innerHTML = techUsers.map((user) => {
+    const id = user.uid || user.id;
+    const person = (shopSettings.people || []).find((item) => item.uid === id) || {};
+    const shops = [`<option value="">All shops</option>`].concat(shopSettings.shops.map((shop) => `<option value="${escapeHtml(shop.id)}" ${person.shopId === shop.id ? "selected" : ""}>${escapeHtml(shop.name)}</option>`)).join("");
+    const teams = [`<option value="">No team</option>`].concat(shopSettings.teams.map((team) => `<option value="${escapeHtml(team.id)}" ${person.teamId === team.id ? "selected" : ""}>${escapeHtml(team.name)}</option>`)).join("");
+    return `<div class="form-row" data-uid="${escapeHtml(id)}">
+      <span>${escapeHtml(user.displayName || user.email || id)}</span>
+      <select data-field="shopLevel">
+        <option value="tech" ${person.shopLevel === "tech" ? "selected" : ""}>Tech</option>
+        <option value="team_leader" ${person.shopLevel === "team_leader" ? "selected" : ""}>Team leader</option>
+        <option value="foreman" ${person.shopLevel === "foreman" ? "selected" : ""}>Shop foreman</option>
+        <option value="manager" ${person.shopLevel === "manager" ? "selected" : ""}>Service manager</option>
+      </select>
+      <select data-field="shopId">${shops}</select>
+      <select data-field="teamId">${teams}</select>
+    </div>`;
+  }).join("");
+  document.getElementById("peopleList").querySelectorAll("select").forEach((select) => {
+    select.addEventListener("change", () => {
+      readPeople();
+      markSetupDirty();
+    });
+  });
+}
+
+function readPeople() {
+  shopSettings.people = [...document.querySelectorAll("#peopleList [data-uid]")].map((row) => ({
+    uid: row.dataset.uid,
+    shopLevel: row.querySelector("[data-field='shopLevel']").value,
+    shopId: row.querySelector("[data-field='shopId']").value,
+    teamId: row.querySelector("[data-field='teamId']").value,
+  }));
+}
+
+function markSetupDirty() {
+  const button = document.getElementById("saveShopSetupBtn");
+  if (button) button.disabled = JSON.stringify(shopSettings) === JSON.stringify(savedShopSettings);
+}
+
+async function saveShopSetup() {
+  readPeople();
+  await setDoc(doc(db, "dealers", session.dealerId), {
+    settings: { shop: shopSettings },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  for (const person of shopSettings.people) {
+    await updateDoc(doc(db, "users", person.uid), {
+      shopLevel: person.shopLevel || "tech",
+      shopId: person.shopId || "",
+      teamId: person.teamId || "",
+      updatedAt: serverTimestamp(),
+    });
+  }
+  savedShopSettings = JSON.parse(JSON.stringify(shopSettings));
+  markSetupDirty();
+  setMsg("Shop setup saved.");
+}
+
+function slug(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || String(Date.now());
 }
 
 function initializeActions() {
@@ -325,6 +498,8 @@ async function assignTech(roId, techId) {
     techId: tech.uid || tech.id,
     techName: tech.displayName || tech.email || "",
     techStatus: "assigned",
+    shopId: tech.shopId || "",
+    teamId: tech.teamId || "",
     assignedTechAtMs: Date.now(),
     assignedTechBy: session.uid,
     assignedTechByName: session.displayName || session.email || "",

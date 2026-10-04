@@ -17,6 +17,28 @@
         <h1>Shop Foreman</h1>
         <p>Dispatch, assign techs, and watch shop work.</p>
 
+        <div id="shopSetup" class="page-section" hidden>
+          <h2>Shop setup</h2>
+          <p class="small-muted">Tech is always on. Turn on only the seats this dealer uses.</p>
+          <label><input id="useServiceManager" type="checkbox" /> Service manager</label>
+          <label><input id="useShopForeman" type="checkbox" /> Shop foreman</label>
+          <label><input id="useTeamLeader" type="checkbox" /> Team leader</label>
+          <div class="form-row">
+            <input id="shopNameInput" type="text" placeholder="Shop name, like Main" />
+            <button type="button" id="addShopBtn">Add shop</button>
+          </div>
+          <div id="shopList"></div>
+          <div class="form-row" id="teamRow" hidden>
+            <input id="teamNameInput" type="text" placeholder="Team name" />
+            <select id="teamShopSelect"></select>
+            <button type="button" id="addTeamBtn">Add team</button>
+          </div>
+          <div id="teamList"></div>
+          <h3>People</h3>
+          <div id="peopleList"></div>
+          <button type="button" id="saveShopSetupBtn" disabled>Save</button>
+        </div>
+
         <div class="foreman-tabs" id="foremanTabs">
           <button type="button" class="active" data-tab="unassigned">Unassigned (0)</button>
           <button type="button" data-tab="assigned">Assigned (0)</button>
@@ -64,6 +86,6 @@
       </section>
     </main>
 
-    <script type="module" src="/js/modules/foreman/foreman-page.js?v=6"></script>
+    <script type="module" src="/js/modules/foreman/foreman-page.js?v=8"></script>
   </body>
 </html>

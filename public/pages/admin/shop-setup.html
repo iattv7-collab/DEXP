@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shop setup</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/request-types.css" />
+</head>
+
+<body>
+    <div id="appHeader"></div>
+    <main class="page-shell">
+        <section class="page-section">
+            <h2>Shop setup</h2>
+            <p class="tool-help">Tech is always on. Turn on only the seats this dealer uses.</p>
+            <p id="msg" class="tool-message"></p>
+
+            <section class="tool-card">
+                <h3>Seats</h3>
+                <div class="tool-row">
+                    <label><input id="useServiceManager" type="checkbox" /> Service manager</label>
+                    <label><input id="useShopForeman" type="checkbox" /> Shop foreman</label>
+                    <label><input id="useTeamLeader" type="checkbox" /> Team leader</label>
+                </div>
+            </section>
+
+            <section class="tool-card">
+                <h3>Shops</h3>
+                <div class="tool-row">
+                    <label>
+                        Shop name
+                        <input id="shopNameInput" type="text" placeholder="Main" />
+                    </label>
+                    <button type="button" id="addShopBtn">Add shop</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Shop</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shopList"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tool-card" id="teamRow" style="display:none">
+                <h3>Teams</h3>
+                <div class="tool-row">
+                    <label>
+                        Team name
+                        <input id="teamNameInput" type="text" placeholder="Team 1" />
+                    </label>
+                    <label>
+                        Shop
+                        <select id="teamShopSelect"></select>
+                    </label>
+                    <button type="button" id="addTeamBtn">Add team</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Team</th>
+                                <th>Leader</th>
+                                <th>Count</th>
+                                <th>Techs</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamList"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tool-card">
+                <h3>Advisors</h3>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Shop</th>
+                            </tr>
+                        </thead>
+                        <tbody id="advisorList"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tool-card">
+                <h3>People</h3>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Seat</th>
+                                <th>Shop</th>
+                                <th>Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="peopleList"></tbody>
+                    </table>
+                </div>
+                <button type="button" id="saveShopSetupBtn" disabled>Save</button>
+            </section>
+        </section>
+    </main>
+    <script type="module" src="/pages/admin/shop-setup.js?v=4"></script>
+</body>
+
+</html>
