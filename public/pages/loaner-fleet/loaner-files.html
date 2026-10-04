@@ -10,6 +10,26 @@
     <link rel="stylesheet" href="/css/core/base.css" />
     <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=3" />
     <link rel="stylesheet" href="/css/modules/loaner-fleet.css?v=8" />
+    <style>
+      .loaner-file-row {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        margin-top: 12px;
+      }
+      .loaner-file-vin {
+        min-width: 220px;
+        font-weight: 700;
+      }
+      .loaner-file-ros {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .loaner-trip-detail {
+        margin: 6px 0 8px 16px;
+      }
+    </style>
   </head>
   <body>
     <div id="appHeader"></div>
@@ -17,11 +37,11 @@
       <section class="page-section">
         <h1>Loaners</h1>
         <div class="subtabs">
-          <a href="/pages/loaner-fleet/loaner-fleet.html">Fleet</a>
-          <a href="/pages/loaner-fleet/loaner-manage.html">Manage Fleet</a>
-          <a id="loanerFilesTab" href="/pages/loaner-fleet/loaner-files.html" class="active">Files</a>
-          <a href="/pages/loaner-returns/loaner-returns.html">Returns</a>
-          <a href="/pages/loaner-wash/loaner-wash.html">Wash Queue</a>
+          <a id="loanerFleetTab" href="/pages/loaner-fleet/loaner-fleet.html" style="display:none">Fleet</a>
+          <a id="loanerManageTab" href="/pages/loaner-fleet/loaner-manage.html" style="display:none">Manage Fleet</a>
+          <a id="loanerFilesTab" href="/pages/loaner-fleet/loaner-files.html" class="active" style="display:none">Files</a>
+          <a id="loanerReturnsTab" href="/pages/loaner-returns/loaner-returns.html" style="display:none">Returns</a>
+          <a id="loanerWashTab" href="/pages/loaner-wash/loaner-wash.html" style="display:none">Wash Queue</a>
         </div>
       </section>
       <section class="page-section">

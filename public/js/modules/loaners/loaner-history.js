@@ -1,8 +1,7 @@
 // ======================================================
 // FILE: /public/js/modules/loaners/loaner-history.js
 // PURPOSE:
-// VIN file lookup. Click a match to expand its trips.
-// An RO search lists every VIN that was on that RO.
+// VIN file lookup. ROs list to the right. Click one to open it.
 // ======================================================
 
 import {db} from "/js/services/firebase/firestore.js";
@@ -36,18 +35,16 @@ function escapeHtml(value) {
  * @param {object} trip
  * @return {string}
  */
-function tripLine(trip) {
+function tripDetail(trip) {
   const back = trip.returnedAtText || "Still out";
-  const ro = escapeHtml(trip.assignedRo || "");
-  const customer = escapeHtml(trip.customerName || "");
 
   return `
-    <div class="loaner-trip-line">
-      <div>RO ${ro} · ${customer}</div>
+    <div class="loaner-trip-detail">
+      <div>Customer ${escapeHtml(trip.customerName || "")}</div>
       <div>Out ${escapeHtml(trip.outAtText || "")} · ${escapeHtml(trip.outMileage || "")} mi</div>
       <div>Back ${escapeHtml(back)} · ${escapeHtml(trip.returnMileage || "")} mi</div>
-      <div>${escapeHtml(trip.fuelLevel || "")} · ${escapeHtml(trip.damageNotes || "")}</div>
-      <div>${escapeHtml(trip.receivedByName || "")} · ${escapeHtml(trip.destination || "")}</div>
+      <div>Range ${escapeHtml(trip.fuelLevel || "")} · Damage ${escapeHtml(trip.damageNotes || "")}</div>
+      <div>Received by ${escapeHtml(trip.receivedByName || "")} · Went to ${escapeHtml(trip.destination || "")}</div>
     </div>
   `;
 }
@@ -80,7 +77,7 @@ export function startLoanerHistory(dealerId, searchInput, resultEl) {
   searchInput.addEventListener("input", render);
 
   /**
-   * Draw one closed file per matching VIN.
+   * One VIN folder, ROs to the right, click opens that trip.
    */
   function render() {
     const q = searchInput.value.trim().toUpperCase();
@@ -131,12 +128,23 @@ export function startLoanerHistory(dealerId, searchInput, resultEl) {
         head.make,
         head.model,
       ].filter(Boolean).join(" ");
+      const ros = newest.map((trip) => {
+        const ro = String(trip.assignedRo || "");
+        const open = q && ro.toUpperCase().includes(q) ? "open" : "";
+
+        return `
+          <details class="loaner-ro" ${open}>
+            <summary>RO ${escapeHtml(ro || "none")} · ${escapeHtml(trip.outAtText || "")}</summary>
+            ${tripDetail(trip)}
+          </details>
+        `;
+      }).join("");
 
       return `
-        <details class="loaner-file">
-          <summary>${escapeHtml(title || vin)} · ${escapeHtml(vin)}</summary>
-          ${newest.map(tripLine).join("")}
-        </details>
+        <div class="loaner-file-row">
+          <div class="loaner-file-vin">${escapeHtml(title || vin)}<br>${escapeHtml(vin)}</div>
+          <div class="loaner-file-ros">${ros}</div>
+        </div>
       `;
     }).join("");
   }

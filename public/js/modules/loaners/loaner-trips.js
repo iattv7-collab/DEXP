@@ -68,12 +68,15 @@ export async function closeLoanerTrip(close) {
   }
 
   const snap = await getDocs(
-      query(collection(db, "loanerTrips"), where("vin", "==", vin)),
+      query(
+          collection(db, "loanerTrips"),
+          where("dealerId", "==", close.dealerId),
+      ),
   );
   const openTrip = snap.docs.find((tripDoc) => {
     const data = tripDoc.data() || {};
 
-    return data.dealerId === close.dealerId && data.status === "open";
+    return data.vin === vin && data.status === "open";
   });
 
   if (!openTrip) {

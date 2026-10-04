@@ -34,7 +34,7 @@ import {
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
 import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
-import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
 const VIN_REJECT_NOT_IN_FLEET =
   "VIN rejected — not in loaner fleet. Try again.";

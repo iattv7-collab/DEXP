@@ -1,13 +1,26 @@
 // public/js/modules/loaners/loaner-subtabs.js
 
-import { canAccessModule } from "/js/core/session.js";
+import { getSession, hasAssignedModule } from "/js/core/session.js";
 
 export function showLoanerFilesTab() {
-  const tab = document.getElementById("loanerFilesTab");
+  const session = getSession();
+  const role = session?.role || "";
+  const isAdmin = role === "admin" || role === "platform-admin";
 
-  if (!tab) return;
+  const tabs = [
+    ["loanerFleetTab", "loaner-fleet"],
+    ["loanerManageTab", "loaner-fleet"],
+    ["loanerFilesTab", "loaner-files"],
+    ["loanerReturnsTab", "loaner-returns"],
+    ["loanerWashTab", "loaner-wash"],
+  ];
 
-  if (canAccessModule("loaner-files")) {
-    tab.style.display = "";
-  }
+  tabs.forEach(([id, moduleKey]) => {
+    const tab = document.getElementById(id);
+
+    if (!tab) return;
+
+    tab.style.display =
+      isAdmin || hasAssignedModule(moduleKey) ? "" : "none";
+  });
 }

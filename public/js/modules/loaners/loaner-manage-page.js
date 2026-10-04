@@ -21,7 +21,7 @@ import {
   passesVinChecksum,
   scanVinWithCamera,
 } from "/js/modules/loaners/vin-scanner.js";
-import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
 protectRoute({ allowedModules: ["loaner-fleet"] });
 
