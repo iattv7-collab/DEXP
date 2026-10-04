@@ -933,8 +933,79 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  let returnRows = [];
+
+  function returnDayKey(value) {
+    const date = new Date(value);
+
+    if (!Number.isFinite(date.getTime())) return "";
+
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  function renderReturnList() {
+    const selected = $("returnDay")?.value || returnDayKey(Date.now());
+    const rows = returnRows.filter((row) => {
+      return returnDayKey(row.returnedAtText) === selected;
+    });
+    let html = `
+      <p>${rows.length} returned</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>VIN</th>
+            <th>Year</th>
+            <th>Model</th>
+            <th>RO</th>
+            <th>Customer</th>
+            <th>Returned At</th>
+            <th>Received By</th>
+            <th>Mileage</th>
+            <th>Range</th>
+            <th>Damage</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    rows.forEach((x) => {
+      html += `
+        <tr>
+          <td>${escapeHtml(x.vin || "")}</td>
+          <td>${escapeHtml(x.year || "")}</td>
+          <td>${escapeHtml(x.model || "")}</td>
+          <td>${escapeHtml(x.assignedRo || "")}</td>
+          <td>${escapeHtml(x.customerName || "")}</td>
+          <td>${escapeHtml(x.returnedAtText || "")}</td>
+          <td>${escapeHtml(x.receivedByName || "")}</td>
+          <td>${escapeHtml(x.mileage || "")}</td>
+          <td>${escapeHtml(x.fuelLevel || "")}</td>
+          <td>${escapeHtml(x.damageNotes || "")}</td>
+        </tr>
+      `;
+    });
+
+    if (!rows.length) {
+      html += `<tr><td colspan="10">No returns this day.</td></tr>`;
+    }
+
+    html += `</tbody></table>`;
+    $("returnTable").innerHTML = html;
+  }
+
   async function load() {
     if (!currentDealerId || unsubscribeReturns) return;
+
+    const dayInput = $("returnDay");
+
+    if (dayInput && !dayInput.value) {
+      dayInput.value = returnDayKey(Date.now());
+    }
+
+    dayInput?.addEventListener("change", renderReturnList);
 
     const q = query(
       collection(db, "loanerReturns"),
@@ -944,46 +1015,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     unsubscribeReturns = onSnapshot(
       q,
       (snap) => {
-        let html = `
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>VIN</th>
-                <th>Year</th>
-                <th>Model</th>
-                <th>Returned At</th>
-                <th>Received By</th>
-                <th>Mileage</th>
-                <th>Range</th>
-                <th>Damage</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
-
-        snap.forEach((d) => {
-          const x = d.data();
-
-          html += `
-            <tr>
-              <td>${escapeHtml(x.vin || "")}</td>
-              <td>${escapeHtml(x.year || "")}</td>
-              <td>${escapeHtml(x.model || "")}</td>
-              <td>${escapeHtml(x.returnedAtText || "")}</td>
-              <td>${escapeHtml(x.receivedByName || "")}</td>
-              <td>${escapeHtml(x.mileage || "")}</td>
-              <td>${escapeHtml(x.fuelLevel || "")}</td>
-              <td>${escapeHtml(x.damageNotes || "")}</td>
-            </tr>
-          `;
-        });
-
-        html += `
-            </tbody>
-          </table>
-        `;
-
-        $("returnTable").innerHTML = html;
+        returnRows = snap.docs.map((d) => d.data() || {});
+        renderReturnList();
       },
       (err) => {
         console.error("Returns listener failed:", err);
