@@ -21,6 +21,7 @@ import {
   passesVinChecksum,
   scanVinWithCamera,
 } from "/js/modules/loaners/vin-scanner.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
 
 protectRoute({ allowedModules: ["loaner-fleet"] });
 
@@ -38,6 +39,7 @@ window.addEventListener("dexp-session-ready", () => {
   session = getSession();
   currentDealerId = session?.dealerId || "";
   renderAppHeader({ title: "Manage Fleet", showHome: true });
+  showLoanerFilesTab();
   wireAddForm();
   wireImport();
   $("manageFleetSearch")?.addEventListener("input", (event) => {

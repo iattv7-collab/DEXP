@@ -35,6 +35,8 @@ import {
   passesVinChecksum,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
+import { openLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -526,7 +528,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         </td>
 
         <td class="col-mileage">
-          ${showReturnDetails ? escapeHtml(x.lastMileage || "") : ""}
+          ${
+            rowStatus === "OUT"
+              ? escapeHtml(x.outMileage || x.lastMileage || "")
+              : `<input
+                  class="cell-edit"
+                  id="outmiles-${safeId}"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  value="${escapeAttr(x.lastMileage || "")}"
+                  placeholder="Out miles"
+                >`
+          }
         </td>
 
         <td class="col-fuel">
@@ -605,6 +619,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const notes =
       document.getElementById(`notes-${safeId}`)?.value.trim() || "";
 
+    const outMilesRaw =
+      document.getElementById(`outmiles-${safeId}`)?.value.trim() || "";
+
     let status = document.getElementById(`status-${safeId}`)?.value || "";
 
     let loanerOutAt = "";
@@ -643,6 +660,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
+      const outMilesValue = Number(outMilesRaw);
+
+      if (!outMilesRaw || !Number.isFinite(outMilesValue) || outMilesValue < 1) {
+        alert("Enter the out mileage (1 or more) before assigning this loaner.");
+        return;
+      }
+
+      const previousMiles = Number(fleetRow.lastMileage);
+
+      if (Number.isFinite(previousMiles) && outMilesValue < previousMiles) {
+        const keepLower = confirm(
+          `Out mileage ${outMilesValue} is less than the last returned mileage ${previousMiles}. Save it anyway?`,
+        );
+
+        if (!keepLower) return;
+      }
+
       status = "Out";
       loanerOutAt = new Date().toLocaleString();
 
@@ -655,10 +689,32 @@ document.addEventListener("DOMContentLoaded", async () => {
           loanerStatus: "Out",
           loanerAssignedAt: serverTimestamp(),
           loanerOutAt,
+          loanerOutMileage: String(outMilesValue),
           updatedAt: serverTimestamp(),
         },
         { merge: true },
       );
+
+      await openLoanerTrip({
+        dealerId: currentDealerId,
+        vin: cleanVin,
+        unitNumber: fleetRow.unitNumber || "",
+        year: fleetRow.year || "",
+        make: fleetRow.make || "",
+        model: fleetRow.model || "",
+        plate: fleetRow.plate || "",
+        assignedRo,
+        customerName: roData.customerName || "",
+        advisorId: roData.advisorId || "",
+        advisorName:
+          roData.advisorName ||
+          roData.advisorDisplayName ||
+          roData.advisorEmail ||
+          "",
+        outAtMs: Date.now(),
+        outAtText: loanerOutAt,
+        outMileage: String(outMilesValue),
+      });
     }
 
     if (previousRo && previousRo !== assignedRo) {
@@ -694,6 +750,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (assignedRo && status === "Out") {
       fleetUpdate.outAt = loanerOutAt;
+      fleetUpdate.outMileage = String(Number(outMilesRaw));
+      fleetUpdate.lastMileage = String(Number(outMilesRaw));
     }
 
     await setDoc(doc(db, "loanerFleet", cleanVin), fleetUpdate, {
@@ -881,6 +939,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   currentSession = await waitForSession();
   currentDealerId = currentSession?.dealerId || "";
+  showLoanerFilesTab();
 
   await load();
 

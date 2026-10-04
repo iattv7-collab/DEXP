@@ -14,6 +14,7 @@ import { getSession } from "/js/core/session.js";
 import { MODULES } from "/js/config/modules.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
 
 import {
   collection,
@@ -299,6 +300,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   currentDealerId = currentSession?.dealerId || "";
 
   listenToWashQueue();
+  showLoanerFilesTab();
 
   window.addEventListener("beforeunload", () => {
     if (unsubscribeWashQueue) {

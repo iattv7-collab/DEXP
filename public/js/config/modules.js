@@ -16,6 +16,7 @@ export const MODULES = {
   LOANER_FLEET: "loaner-fleet",
   LOANER_RETURNS: "loaner-returns",
   LOANER_WASH: "loaner-wash",
+  LOANER_FILES: "loaner-files",
   MANAGER: "manager",
   ADMIN: "admin",
   COMPANY_PROFILE: "company-profile",
@@ -102,6 +103,13 @@ export const MODULE_CONFIG = {
     label: "Loaner Wash Queue",
     route: "/pages/loaner-wash/loaner-wash.html",
     icon: "local_car_wash",
+    permission: PERMISSIONS.MASTER_RO_VIEW,
+  },
+
+  [MODULES.LOANER_FILES]: {
+    label: "Loaner Files",
+    route: "/pages/loaner-fleet/loaner-files.html",
+    icon: "folder",
     permission: PERMISSIONS.MASTER_RO_VIEW,
   },
 
@@ -294,6 +302,7 @@ export const SELLABLE_MODULE_GROUPS = [
       MODULES.LOANER_FLEET,
       MODULES.LOANER_RETURNS,
       MODULES.LOANER_WASH,
+      MODULES.LOANER_FILES,
     ],
   },
 

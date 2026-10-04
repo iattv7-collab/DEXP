@@ -33,6 +33,8 @@ import {
   isValidVin,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
+import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
+import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js";
 
 const VIN_REJECT_NOT_IN_FLEET =
   "VIN rejected — not in loaner fleet. Try again.";
@@ -737,6 +739,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         createdAt: serverTimestamp(),
       });
 
+      await closeLoanerTrip({
+        dealerId: currentDealerId,
+        vin,
+        assignedRo,
+        returnedAtMs: Date.now(),
+        returnedAtText,
+        returnMileage: String(mileageValue),
+        fuelLevel: fuelValue,
+        damageNotes: damageRecord,
+        receivedByName,
+        destination: returnDestination,
+      });
+
       await setDoc(
         fleetRef,
         {
@@ -995,6 +1010,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await load();
   await updateCounts();
+  showLoanerFilesTab();
 
   window.addEventListener("beforeunload", () => {
     if (unsubscribeReturns) {

@@ -35,6 +35,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { watchDealerROs } from "/js/services/firestore/ros-service.js";
+import { renderLoanerDaysCard } from "/js/modules/loaners/loaner-days.js";
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 
@@ -100,6 +107,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentView = session?.role === "advisor" ? "mine" : "all";
 
   let selectedAdvisorId = "";
+  let loanerTrips = [];
 
   function setMsg(text, ok = true) {
     msgEl.textContent = text || "";
@@ -606,6 +614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updateViewControls();
     render();
+    renderLoanerDays();
   }
 
   function updateViewControls() {
@@ -1019,6 +1028,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   searchEl.addEventListener("input", render);
+
+  function renderLoanerDays() {
+    const advisorId =
+      currentView === "mine"
+        ? session?.uid || ""
+        : currentView === "advisor"
+          ? selectedAdvisorId
+          : "";
+    const advisorName =
+      currentView === "mine"
+        ? session?.displayName || session?.email || ""
+        : advisorFilterEl.options[advisorFilterEl.selectedIndex]?.textContent?.trim() || "";
+
+    renderLoanerDaysCard(
+      $("loanerDaysCard"),
+      loanerTrips,
+      advisorId,
+      advisorName,
+    );
+  }
+
+  if (session?.dealerId) {
+    onSnapshot(
+      query(
+        collection(db, "loanerTrips"),
+        where("dealerId", "==", session.dealerId),
+      ),
+      (snap) => {
+        loanerTrips = snap.docs.map((tripDoc) => tripDoc.data() || {});
+        renderLoanerDays();
+      },
+    );
+  }
 
   watchDealerROs((dealerRows) => {
     rows = Array.isArray(dealerRows) ? dealerRows : [];
