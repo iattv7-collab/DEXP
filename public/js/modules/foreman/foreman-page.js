@@ -387,11 +387,6 @@ function initializeLeaderViews() {
   });
 }
 
-function myShopId() {
-  const me = techUsers.find((user) => String(user.uid || user.id) === String(session.uid));
-  return me?.shopId || session.profile?.shopId || "";
-}
-
 function defaultShopSettings() {
   return {
     useServiceManager: true,
