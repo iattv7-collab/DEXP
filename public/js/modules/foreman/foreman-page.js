@@ -31,6 +31,7 @@ let techUsers = [];
 let activeTab = "unassigned";
 let searchText = "";
 let extraFilter = "";
+let leaderView = "team";
 
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({ allowedModules: ["foreman"] });
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   session = await waitForSession();
 
   initializeTabs();
+  initializeLeaderViews();
   initializeFilters();
   initializeActions();
 
@@ -145,6 +147,8 @@ function render() {
   setTabText("hold", `Hold (${counts.hold})`);
   setTabText("parked", `Parked (${counts.parked})`);
   setTabText("completed", `Done (${counts.completed})`);
+  const leaderWrap = document.getElementById("leaderViews");
+  if (leaderWrap) leaderWrap.hidden = currentSeat() !== "team_leader";
 
   const filtered = rows
     .filter((ro) => getForemanStatus(ro) === activeTab)
@@ -187,6 +191,11 @@ function renderPriority(ro) {
 }
 
 function renderAction(ro, status) {
+  if (currentSeat() === "team_leader" && leaderView === "individual") {
+    return ["working", "hold", "parked", "completed"].map((value) =>
+      `<button type="button" class="small-button" data-action="setStatus" data-status="${value}">${statusLabel(value === "completed" ? "completed" : value)}</button>`
+    ).join(" ");
+  }
   if (status === "completed") return "";
 
   const options = [
@@ -319,28 +328,68 @@ function matchesSeat(ro) {
   const seat = currentSeat();
   if (seat === "manager") return true;
   if (seat === "foreman") {
-    if (!session.shopId) return true;
+    const shopId = myShopId();
+    if (!shopId) {
+      setMsg("This foreman has no shop. Set it on Shop setup and use People Save.");
+      return false;
+    }
     const advisor = techUsers.find((user) =>
       user.role === "advisor" && (
         String(user.uid || user.id) === String(ro.advisorId || "") ||
-        String(user.displayName || "").toLowerCase() === String(ro.advisorName || "").toLowerCase()
+        String(user.displayName || "").toLowerCase() === String(ro.advisorName || "").toLowerCase() ||
+        String(user.email || "").toLowerCase() === String(ro.advisorName || "").toLowerCase()
       )
     );
-    return advisor?.shopId === session.shopId;
+    return advisor?.shopId === shopId;
   }
   if (seat === "team_leader") {
-    if (!ro.techId) return !session.shopId || !ro.shopId || ro.shopId === session.shopId;
+    if (leaderView === "individual") return String(ro.techId || "") === String(session.uid);
+    const teamId = myTeamId();
+    if (!teamId) return false;
+    if (!ro.techId) return true;
     const tech = techUsers.find((item) => String(item.uid || item.id) === String(ro.techId));
-    return String(tech?.teamId || "") === String(session.teamId || "");
+    return String(tech?.teamId || "") === String(teamId);
   }
   return true;
 }
 
 function currentSeat() {
-  if (session.role === "admin" || session.role === "platform_admin" || session.shopLevel === "manager") return "manager";
-  if (session.shopLevel === "foreman") return "foreman";
-  if (session.shopLevel === "team_leader") return "team_leader";
+  const seat = me()?.shopLevel || session.profile?.shopLevel || "";
+  if (session.role === "admin" || session.role === "platform-admin" || session.role === "manager") return "manager";
+  if (session.role === "foreman" || seat === "foreman") return "foreman";
+  if (seat === "team_leader") return "team_leader";
   return "manager";
+}
+
+function me() {
+  return techUsers.find((user) => String(user.uid || user.id) === String(session.uid));
+}
+
+function myShopId() {
+  return me()?.shopId || "";
+}
+
+function myTeamId() {
+  return me()?.teamId || "";
+}
+
+function initializeLeaderViews() {
+  const wrap = document.getElementById("leaderViews");
+  if (!wrap) return;
+  wrap.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-view]");
+    if (!button) return;
+    leaderView = button.dataset.view;
+    wrap.querySelectorAll("button[data-view]").forEach((item) => {
+      item.classList.toggle("active", item.dataset.view === leaderView);
+    });
+    render();
+  });
+}
+
+function myShopId() {
+  const me = techUsers.find((user) => String(user.uid || user.id) === String(session.uid));
+  return me?.shopId || session.profile?.shopId || "";
 }
 
 function defaultShopSettings() {
@@ -475,6 +524,14 @@ function initializeActions() {
     const row = event.target.closest("tr[data-ro-id]");
     if (!button || !row) return;
 
+    if (button.dataset.action === "setStatus") {
+      await updateDoc(doc(db, "ros", row.dataset.roId), {
+        techStatus: button.dataset.status,
+        updatedAt: serverTimestamp(),
+        updatedBy: session.uid,
+      });
+      return;
+    }
     if (button.dataset.action === "assignTech") {
       const select = row.querySelector("select[data-role='techSelect']");
       await assignTech(row.dataset.roId, select?.value);

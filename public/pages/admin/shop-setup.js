@@ -84,6 +84,7 @@ function bindSetup() {
         markDirty();
     });
     document.getElementById("saveShopSetupBtn").addEventListener("click", saveShopSetup);
+    document.getElementById("saveAdvisorsBtn")?.addEventListener("click", saveAdvisors);
 }
 
 function showTeamRow(on) {
@@ -213,6 +214,22 @@ async function saveShopSetup() {
     savedShopSettings = JSON.parse(JSON.stringify(shopSettings));
     markDirty();
     document.getElementById("msg").textContent = "Shop setup saved.";
+}
+
+async function saveAdvisors() {
+    const button = document.getElementById("saveAdvisorsBtn");
+    if (button) button.disabled = true;
+    for (const row of document.querySelectorAll("#advisorList [data-advisor-uid]")) {
+        const shopId = row.querySelector("[data-field='advisorShopId']").value;
+        await updateDoc(doc(db, "users", row.dataset.advisorUid), {
+            shopId,
+            updatedAt: serverTimestamp(),
+        });
+        const advisor = advisors.find((item) => (item.uid || item.id) === row.dataset.advisorUid);
+        if (advisor) advisor.shopId = shopId;
+    }
+    if (button) button.disabled = false;
+    document.getElementById("msg").textContent = "Advisors saved.";
 }
 
 function slug(value) {
