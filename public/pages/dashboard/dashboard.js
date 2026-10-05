@@ -6,6 +6,8 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 import { MODULE_CONFIG } from "/js/config/modules.js";
 
 import { navigateTo, protectRoute } from "/js/core/router.js";
+import { db } from "/js/services/firebase/firestore.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 protectRoute();
 
@@ -33,6 +35,7 @@ function initializeDashboard() {
 
   renderWelcome(session);
   renderModules();
+  addTeamLeaderTile(session);
 }
 
 function renderDealerWorkspaceBanner(session) {
@@ -105,14 +108,18 @@ function renderModules() {
     modulesContainer.appendChild(button);
   });
 
-  const session = getSession();
-  if (session?.profile?.shopLevel === "team_leader") {
-    const button = document.createElement("button");
-    button.className = "dashboard-module-button";
-    button.innerHTML = `<div>Team leader</div>`;
-    button.addEventListener("click", () => {
-      navigateTo("/pages/team-leader/team-leader.html");
-    });
-    modulesContainer.appendChild(button);
-  }
+}
+
+async function addTeamLeaderTile(session) {
+  if (!session?.uid) return;
+  const snap = await getDoc(doc(db, "users", session.uid));
+  const seat = snap.exists() ? snap.data()?.shopLevel : session.profile?.shopLevel;
+  if (seat !== "team_leader") return;
+  const button = document.createElement("button");
+  button.className = "dashboard-module-button";
+  button.innerHTML = `<div>Team leader</div>`;
+  button.addEventListener("click", () => {
+    navigateTo("/pages/team-leader/team-leader.html");
+  });
+  modulesContainer.appendChild(button);
 }

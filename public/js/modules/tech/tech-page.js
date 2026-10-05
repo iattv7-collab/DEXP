@@ -15,6 +15,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({ allowedModules: ["tech"] });
   renderAppHeader();
   session = await waitForSession();
+  await showTeamLink();
 
   $("techTableBody").addEventListener("click", onTableClick);
   $("techTableBody").addEventListener("blur", onNotesBlur, true);
@@ -419,6 +421,14 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#039;",
   })[char]);
+}
+
+async function showTeamLink() {
+  const link = $("teamLeaderLink");
+  if (!link || !session?.uid) return;
+  const snap = await getDoc(doc(db, "users", session.uid));
+  const seat = snap.exists() ? snap.data()?.shopLevel : session.profile?.shopLevel;
+  link.hidden = seat !== "team_leader";
 }
 
 function waitForSession() {

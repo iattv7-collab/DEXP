@@ -2,44 +2,55 @@
 
 <!doctype html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Team leader</title>
     <link rel="stylesheet" href="/css/core/reset.css" />
     <link rel="stylesheet" href="/css/core/base.css" />
     <link rel="stylesheet" href="/css/modules/foreman.css?v=2" />
-  </head>
-  <body>
+</head>
+
+<body>
     <div id="appHeader"></div>
     <main class="foreman-shell">
-      <section class="page-section">
-        <h1>Team leader</h1>
-        <p id="msg" class="small-muted"></p>
-        <div class="foreman-tabs" id="leaderViews">
-          <button type="button" class="active" data-view="team">Team</button>
-          <button type="button" data-view="individual">Individual</button>
-        </div>
-      </section>
-      <section class="page-section">
-        <div class="foreman-table-wrap">
-          <table class="foreman-table">
-            <thead>
-              <tr>
-                <th>RO</th>
-                <th>Tag</th>
-                <th>Vehicle</th>
-                <th>Advisor</th>
-                <th>Tech</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="teamTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+        <section class="page-section">
+            <h1>Team leader</h1>
+            <p id="msg" class="small-muted"></p>
+            <div class="foreman-tabs" id="leaderViews">
+                <button type="button" class="active" data-view="team">My team</button>
+                <button type="button" data-view="shop">Shop unassigned</button>
+                <button type="button" onclick="window.location.href='/pages/tech/index.html'">Tech</button>
+            </div>
+            <div class="form-row" id="shopFilters" hidden>
+                <button type="button" data-filter="waiters">Waiters</button>
+                <button type="button" data-filter="pastDue">Past Due</button>
+                <button type="button" data-filter="dueSoon">Due Soon</button>
+            </div>
+        </section>
+        <section class="page-section">
+            <div class="foreman-table-wrap">
+                <table class="foreman-table">
+                    <thead>
+                        <tr>
+                            <th>Priority</th>
+                            <th>Due</th>
+                            <th>RO</th>
+                            <th>Tag</th>
+                            <th>Vehicle</th>
+                            <th>Advisor</th>
+                            <th>Tech</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teamTableBody"></tbody>
+                </table>
+            </div>
+        </section>
     </main>
-    <script type="module" src="/js/modules/team-leader/team-leader-page.js?v=1"></script>
-  </body>
+    <script type="module" src="/js/modules/team-leader/team-leader-page.js?v=4"></script>
+</body>
+
 </html>
