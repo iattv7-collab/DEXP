@@ -104,4 +104,15 @@ function renderModules() {
 
     modulesContainer.appendChild(button);
   });
+
+  const session = getSession();
+  if (session?.profile?.shopLevel === "team_leader") {
+    const button = document.createElement("button");
+    button.className = "dashboard-module-button";
+    button.innerHTML = `<div>Team leader</div>`;
+    button.addEventListener("click", () => {
+      navigateTo("/pages/team-leader/team-leader.html");
+    });
+    modulesContainer.appendChild(button);
+  }
 }
