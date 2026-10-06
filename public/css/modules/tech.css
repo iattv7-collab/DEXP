@@ -176,3 +176,29 @@
     min-height: 32px;
   }
 }
+
+.tech-table .action-cell {
+  width: 320px;
+  min-width: 320px;
+  white-space: nowrap;
+}
+
+.tech-notes-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.tech-notes-box {
+  background: #fff;
+  padding: 16px;
+  width: min(520px, 92vw);
+}
+.tech-notes-box textarea {
+  width: 100%;
+  min-height: 160px;
+  margin: 8px 0;
+}

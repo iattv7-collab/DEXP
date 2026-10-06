@@ -1,91 +1,92 @@
 <!-- FILE: /public/pages/foreman/foreman.html -->
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Foreman</title>
-    <link rel="stylesheet" href="/css/core/reset.css" />
-    <link rel="stylesheet" href="/css/core/base.css" />
-    <link rel="stylesheet" href="/css/modules/foreman.css?v=2" />
-  </head>
-  <body>
-    <div id="appHeader"></div>
 
-    <main class="foreman-shell">
-      <section class="page-section">
-        <h1>Shop Foreman</h1>
-        <p>Dispatch, assign techs, and watch shop work.</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foreman</title>
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/foreman.css?v=2" />
+</head>
 
-        <div id="shopSetup" class="page-section" hidden>
-          <h2>Shop setup</h2>
-          <p class="small-muted">Tech is always on. Turn on only the seats this dealer uses.</p>
-          <label><input id="useServiceManager" type="checkbox" /> Service manager</label>
-          <label><input id="useShopForeman" type="checkbox" /> Shop foreman</label>
-          <label><input id="useTeamLeader" type="checkbox" /> Team leader</label>
-          <div class="form-row">
-            <input id="shopNameInput" type="text" placeholder="Shop name, like Main" />
-            <button type="button" id="addShopBtn">Add shop</button>
-          </div>
-          <div id="shopList"></div>
-          <div class="form-row" id="teamRow" hidden>
-            <input id="teamNameInput" type="text" placeholder="Team name" />
-            <select id="teamShopSelect"></select>
-            <button type="button" id="addTeamBtn">Add team</button>
-          </div>
-          <div id="teamList"></div>
-          <h3>People</h3>
-          <div id="peopleList"></div>
-          <button type="button" id="saveShopSetupBtn" disabled>Save</button>
-        </div>
+<body>
+  <div id="appHeader"></div>
 
-        <div class="foreman-tabs" id="foremanTabs">
-          <button type="button" class="active" data-tab="unassigned">Unassigned (0)</button>
-          <button type="button" data-tab="assigned">Assigned (0)</button>
-          <button type="button" data-tab="working">Working (0)</button>
-          <button type="button" data-tab="hold">Hold (0)</button>
-          <button type="button" data-tab="parked">Parked (0)</button>
-          <button type="button" data-tab="completed">Done (0)</button>
-        </div>
-      </section>
+  <main class="foreman-shell">
+    <section class="page-section">
+      <h1>Shop Foreman</h1>
+      <p>Dispatch, assign techs, and watch shop work.</p>
 
-      <section class="page-section">
-        <div id="msg" class="small-muted"></div>
-
+      <div id="shopSetup" class="page-section" hidden>
+        <h2>Shop setup</h2>
+        <p class="small-muted">Tech is always on. Turn on only the seats this dealer uses.</p>
+        <label><input id="useServiceManager" type="checkbox" /> Service manager</label>
+        <label><input id="useShopForeman" type="checkbox" /> Shop foreman</label>
+        <label><input id="useTeamLeader" type="checkbox" /> Team leader</label>
         <div class="form-row">
-          <button type="button" id="waitersFilterBtn" data-filter="waiters">Waiters</button>
-          <button type="button" id="pastDueFilterBtn" data-filter="pastDue">Past Due</button>
-          <button type="button" id="dueSoonFilterBtn" data-filter="dueSoon">Due Soon</button>
-          <label for="foremanSearchInput">Search:</label>
-          <input
-            id="foremanSearchInput"
-            type="text"
-            placeholder="Tag, RO, tech, or advisor..."
-          />
+          <input id="shopNameInput" type="text" placeholder="Shop name, like Main" />
+          <button type="button" id="addShopBtn">Add shop</button>
         </div>
-
-        <div class="foreman-table-wrap">
-          <table class="foreman-table">
-            <thead>
-              <tr>
-                <th>Priority</th>
-                <th>Due</th>
-                <th>RO</th>
-                <th>Tag</th>
-                <th>Vehicle</th>
-                <th>Advisor</th>
-                <th>Tech</th>
-                <th>Status</th>
-                <th>Tech Notes</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="foremanTableBody"></tbody>
-          </table>
+        <div id="shopList"></div>
+        <div class="form-row" id="teamRow" hidden>
+          <input id="teamNameInput" type="text" placeholder="Team name" />
+          <select id="teamShopSelect"></select>
+          <button type="button" id="addTeamBtn">Add team</button>
         </div>
-      </section>
-    </main>
+        <div id="teamList"></div>
+        <h3>People</h3>
+        <div id="peopleList"></div>
+        <button type="button" id="saveShopSetupBtn" disabled>Save</button>
+      </div>
 
-    <script type="module" src="/js/modules/foreman/foreman-page.js?v=9"></script>
-  </body>
+      <div class="foreman-tabs" id="shopSwitch"></div>
+
+      <div class="foreman-tabs" id="foremanTabs">
+        <button type="button" class="active" data-tab="unassigned">Unassigned (0)</button>
+        <button type="button" data-tab="assigned">Assigned (0)</button>
+        <button type="button" data-tab="working">Working (0)</button>
+        <button type="button" data-tab="hold">Hold (0)</button>
+        <button type="button" data-tab="parked">Parked (0)</button>
+        <button type="button" data-tab="completed">Done (0)</button>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div id="msg" class="small-muted"></div>
+
+      <div class="form-row">
+        <button type="button" id="waitersFilterBtn" data-filter="waiters">Waiters</button>
+        <button type="button" id="pastDueFilterBtn" data-filter="pastDue">Past Due</button>
+        <button type="button" id="dueSoonFilterBtn" data-filter="dueSoon">Due Soon</button>
+        <label for="foremanSearchInput">Search:</label>
+        <input id="foremanSearchInput" type="text" placeholder="Tag, RO, tech, or advisor..." />
+      </div>
+
+      <div class="foreman-table-wrap">
+        <table class="foreman-table">
+          <thead>
+            <tr>
+              <th>Priority</th>
+              <th>Due</th>
+              <th>RO</th>
+              <th>Tag</th>
+              <th>Vehicle</th>
+              <th>Advisor</th>
+              <th>Tech</th>
+              <th>Status</th>
+              <th>Tech Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="foremanTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/modules/foreman/foreman-page.js?v=10"></script>
+</body>
+
 </html>

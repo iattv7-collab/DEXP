@@ -6,6 +6,7 @@ import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { db } from "/js/services/firebase/firestore.js";
 import {
+  cancelRequest,
   createRequest,
   watchActiveRequests,
 } from "/js/services/firestore/requests-service.js";
@@ -28,6 +29,7 @@ let rows = [];
 let requestTypes = [];
 let openRequestsByRoId = {};
 let searchText = "";
+let customerUpdates = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,6 +40,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   await showTeamLink();
 
   $("techTableBody").addEventListener("click", onTableClick);
+  $("techTableBody").addEventListener("dblclick", (event) => {
+    const notes = event.target.closest(".tech-notes");
+    if (notes) openNotesPopup(notes);
+  });
+  $("techTableBody").addEventListener("change", onCustomerUpdate);
   $("techTableBody").addEventListener("blur", onNotesBlur, true);
   $("techSearchInput").addEventListener("input", (event) => {
     searchText = String(event.target.value || "").trim().toLowerCase();
@@ -136,9 +143,7 @@ function isParkType(type) {
 }
 
 function requestLabel(type) {
-  if (isWashType(type)) return "Done, send to wash";
-  if (isParkType(type)) return "Send to park";
-  return type.name || type.requestType || "Request";
+  return type?.name || type?.requestType || "Request";
 }
 
 function firstType(predicate) {
@@ -165,34 +170,34 @@ function requestButton(type, label, enabled) {
 function renderActions(ro) {
   const status = techStatus(ro);
   const hasOpenRequest = Boolean(openRequestForRo(ro));
-  const washType = firstType(isWashType);
   const parkType = firstType(isParkType);
+  const washType = (requestTypes || []).find(isWashType);
+  const buttons = [];
 
-  const startEnabled = status === "assigned" || status === "completed" || status === "parked";
-  const holdEnabled = status === "working" || status === "parked";
-  const resumeEnabled = status === "hold";
-  const parkEnabled =
-    (status === "working" || status === "hold") && Boolean(parkType) && !hasOpenRequest;
-  const washEnabled =
-    (status === "working" || status === "hold" || status === "parked" || status === "completed") &&
-    Boolean(washType) &&
-    !hasOpenRequest;
+  if (status === "assigned") buttons.push(`<button type="button" class="small-button" data-action="start">Start</button>`);
+  if (status === "working") {
+    buttons.push(`<button type="button" class="small-button" data-action="hold">Hold</button>`);
+    buttons.push(`<button type="button" class="small-button" data-action="done">Done</button>`);
+  }
+  if (status === "hold") {
+    buttons.push(`<button type="button" class="small-button" data-action="start">Resume</button>`);
+    buttons.push(`<button type="button" class="small-button" data-action="done">Done</button>`);
+  }
+  if (status === "parked") {
+    buttons.push(`<button type="button" class="small-button" data-action="start">Working</button>`);
+  }
+  if (status === "completed") {
+    buttons.push(`<button type="button" class="small-button" data-action="start">Reopen</button>`);
+  }
+  if (status === "hold" && parkType && !hasOpenRequest) {
+    buttons.push(requestButton(parkType, requestLabel(parkType), true));
+  }
+  if (status === "completed" && !hasOpenRequest) {
+    if (parkType) buttons.push(requestButton(parkType, requestLabel(parkType), true));
+    if (washType) buttons.push(requestButton(washType, requestLabel(washType), true));
+  }
 
-  const startLabel =
-    status === "completed" || status === "parked" ? "Start work again" : "Start";
-
-  return `
-    <button type="button" class="small-button" data-action="start" ${startEnabled ? "" : "disabled"}>
-      ${startLabel}
-    </button>
-    <button type="button" class="small-button" data-action="hold" ${holdEnabled ? "" : "disabled"}>
-      Hold
-    </button>
-    <button type="button" class="small-button" data-action="resume" ${resumeEnabled ? "" : "disabled"}>
-      Resume
-    </button>
-    ${requestButton(parkType, "Send to park", parkEnabled)}
-    ${requestButton(washType, "Done, send to wash", washEnabled)}`;
+  return buttons.join("");
 }
 
 function sortRows(list) {
@@ -258,7 +263,7 @@ function render() {
   updateTabCounts(list);
 
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="8">No live repair orders.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9">No live repair orders.</td></tr>`;
     return;
   }
 
@@ -272,14 +277,24 @@ function render() {
           <td>${escapeHtml(vehicle)}</td>
           <td>${escapeHtml(ro.advisorName || "")}</td>
           <td>${escapeHtml(statusLabel(ro))}</td>
-          <td>${escapeHtml(openRequestLabel(ro))}</td>
+          <td>
+            ${escapeHtml(openRequestLabel(ro))}
+            ${openRequestForRo(ro) ? `<button type="button" class="small-button" data-action="cancelRequest">Cancel</button>` : ""}
+          </td>
           <td>
             <input
               class="tech-notes"
               data-ro-id="${escapeHtml(ro.id)}"
               value="${escapeHtml(ro.techNotes || "")}"
               placeholder="Notes"
+              title="Double-click for more space"
             />
+          </td>
+          <td>
+            <select data-action="customerUpdate">
+              <option value="">Select</option>
+              ${customerUpdates.map((item) => `<option value="${escapeHtml(item)}" ${ro.customerUpdate === item ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+            </select>
           </td>
           <td class="action-cell">${renderActions(ro)}</td>
         </tr>`;
@@ -293,7 +308,7 @@ function render() {
       next.focus();
       try {
         next.setSelectionRange(activePos, activePos);
-      } catch (_err) {}
+      } catch (_err) { }
     }
   }
 }
@@ -314,8 +329,14 @@ async function onTableClick(event) {
     }
     if (action === "hold") await updateTechStatus(roId, "hold", "tech_hold");
     if (action === "resume") await updateTechStatus(roId, "working", "tech_resumed");
+    if (action === "done") {
+      await updateTechStatus(roId, "completed", "tech_completed", { techCompletedAtMs: Date.now() });
+    }
     if (action === "requestType") {
       await handleTechRequestType(roId, button.dataset.requestTypeId);
+    }
+    if (action === "cancelRequest") {
+      await cancelTechRequest(roId);
     }
   } catch (error) {
     console.error(error);
@@ -340,21 +361,21 @@ async function onNotesBlur(event) {
   await logActivity(roId, "tech_note_updated");
 }
 
+async function cancelTechRequest(roId) {
+  const ro = rows.find((row) => row.id === roId);
+  const request = openRequestForRo(ro);
+  if (!request) return;
+  const ok = window.confirm(`Cancel ${request.title || "this request"}?`);
+  if (!ok) return;
+  await cancelRequest(request);
+  setMsg("Request cancelled.");
+}
+
 async function handleTechRequestType(roId, requestTypeId) {
   const ro = rows.find((row) => row.id === roId);
   const requestType = requestTypes.find((type) => type.id === requestTypeId);
   if (!ro) throw new Error("Repair order not found.");
   if (!requestType?.targetGroupId) throw new Error("Request type is missing a target group.");
-
-  if (isWashType(requestType)) {
-    const ok = window.confirm(
-      `RO ${ro.roNumber || ""} • Tag ${ro.tagNumber || ""}\n\nTake completed paperwork to Booking before you leave the stall.\n\nMark Done and send to wash?`,
-    );
-    if (!ok) {
-      setMsg("Done / wash canceled.");
-      return;
-    }
-  }
 
   await createRequest({
     roId: ro.id,
@@ -374,21 +395,6 @@ async function handleTechRequestType(roId, requestTypeId) {
   });
 
   await logActivity(roId, `tech_request_${requestType.requestType || requestType.id}`);
-
-  if (isWashType(requestType)) {
-    await updateTechStatus(roId, "completed", "tech_completed", {
-      techCompletedAtMs: Date.now(),
-    });
-    setMsg("Sent to wash. Job marked Done.");
-    return;
-  }
-
-  if (isParkType(requestType)) {
-    await updateTechStatus(roId, "parked", "tech_parked");
-    setMsg("Sent to park. Job is Parked — not Done.");
-    return;
-  }
-
   setMsg(`${requestType.name || "Request"} sent.`);
 }
 
@@ -429,6 +435,43 @@ async function showTeamLink() {
   const snap = await getDoc(doc(db, "users", session.uid));
   const seat = snap.exists() ? snap.data()?.shopLevel : session.profile?.shopLevel;
   link.hidden = seat !== "team_leader";
+}
+
+function openNotesPopup(input) {
+  const overlay = document.createElement("div");
+  overlay.className = "tech-notes-overlay";
+  overlay.innerHTML = `
+    <div class="tech-notes-box">
+      <div>Notes</div>
+      <textarea></textarea>
+      <div>
+        <button type="button" data-notes="cancel">Cancel</button>
+        <button type="button" data-notes="save">Save</button>
+      </div>
+    </div>`;
+  overlay.querySelector("textarea").value = input.value || "";
+  overlay.addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-notes]");
+    if (!button) return;
+    if (button.dataset.notes === "save") {
+      input.value = overlay.querySelector("textarea").value;
+      input.dispatchEvent(new Event("blur", { bubbles: true }));
+    }
+    overlay.remove();
+  });
+  document.body.appendChild(overlay);
+  overlay.querySelector("textarea").focus();
+}
+
+async function onCustomerUpdate(event) {
+  const select = event.target.closest("select[data-action='customerUpdate']");
+  const row = event.target.closest("tr[data-ro-id]");
+  if (!select || !row) return;
+  await updateDoc(doc(db, "ros", row.dataset.roId), {
+    customerUpdate: select.value,
+    updatedAt: serverTimestamp(),
+    updatedBy: session?.uid || "",
+  });
 }
 
 function waitForSession() {

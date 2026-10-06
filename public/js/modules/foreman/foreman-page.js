@@ -31,6 +31,7 @@ let techUsers = [];
 let activeTab = "unassigned";
 let searchText = "";
 let extraFilter = "";
+let selectedShopId = "";
 let leaderView = "team";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -51,6 +52,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     setMsg("Could not load tech users.");
   }
 
+  await loadShopSettings();
+  renderShopSwitch();
   listenToRos();
 });
 
@@ -328,7 +331,7 @@ function matchesSeat(ro) {
   const seat = currentSeat();
   if (seat === "manager") return true;
   if (seat === "foreman") {
-    const shopId = myShopId();
+    const shopId = selectedShopId || myShopId();
     if (!shopId) {
       setMsg("This foreman has no shop. Set it on Shop setup and use People Save.");
       return false;
@@ -367,6 +370,22 @@ function me() {
 
 function myShopId() {
   return me()?.shopId || "";
+}
+
+function renderShopSwitch() {
+  const wrap = document.getElementById("shopSwitch");
+  if (!wrap || currentSeat() !== "foreman") return;
+  selectedShopId = selectedShopId || myShopId();
+  wrap.innerHTML = (shopSettings.shops || []).map((shop) =>
+    `<button type="button" data-shop-id="${escapeHtml(shop.id)}" class="${shop.id === selectedShopId ? "active" : ""}">${escapeHtml(shop.name)}</button>`
+  ).join("");
+  wrap.onclick = (event) => {
+    const button = event.target.closest("button[data-shop-id]");
+    if (!button) return;
+    selectedShopId = button.dataset.shopId;
+    renderShopSwitch();
+    render();
+  };
 }
 
 function myTeamId() {
