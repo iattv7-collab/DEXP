@@ -138,8 +138,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     video.style.zIndex = "9999";
     video.style.background = "#000";
 
-    if (video.requestFullscreen) {
-      video.requestFullscreen().catch(() => { });
+    const target = $("vinTarget");
+
+    if (target) {
+      target.style.display = "flex";
+      target.style.position = "fixed";
+      target.style.left = "8vw";
+      target.style.top = "36vh";
+      target.style.width = "84vw";
+      target.style.height = "28vh";
+      target.style.zIndex = "10000";
+      target.style.border = "3px solid #fff";
+      target.style.borderRadius = "12px";
+      target.style.boxShadow = "0 0 0 100vmax rgba(0,0,0,0.35)";
+      target.style.alignItems = "flex-end";
+      target.style.justifyContent = "center";
+      target.style.color = "#fff";
+      target.style.font = "16px Times New Roman, Times, serif";
+      target.style.pointerEvents = "none";
     }
   }
 
@@ -150,6 +166,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     video.removeAttribute("style");
     video.style.display = "none";
+
+    const target = $("vinTarget");
+
+    if (target) {
+      target.style.display = "none";
+    }
   }
 
   $("toggleAddLoanerBtn")?.addEventListener("click", () => {
@@ -179,6 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await fill(res.vin);
         status.textContent = "VIN scanned. Please verify before saving.";
       } else {
+        if ($("vin")) $("vin").value = "";
         validatedFleetVin = "";
         updateSaveFleetButton();
         status.textContent = res?.reason || "No valid VIN captured. Try again.";
@@ -528,10 +551,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         </td>
 
         <td class="col-mileage">
-          ${
-            rowStatus === "OUT"
-              ? escapeHtml(x.outMileage || x.lastMileage || "")
-              : `<input
+          ${rowStatus === "OUT"
+          ? escapeHtml(x.outMileage || x.lastMileage || "")
+          : `<input
                   class="cell-edit"
                   id="outmiles-${safeId}"
                   type="number"
@@ -540,7 +562,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   value="${escapeAttr(x.lastMileage || "")}"
                   placeholder="Out miles"
                 >`
-          }
+        }
         </td>
 
         <td class="col-fuel">

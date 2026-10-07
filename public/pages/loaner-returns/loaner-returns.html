@@ -2,350 +2,341 @@
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+<head>
+  <meta charset="UTF-8" />
 
-    <title>Loaner Returns</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="/css/core/reset.css" />
-    <link rel="stylesheet" href="/css/core/base.css" />
+  <title>Loaner Returns</title>
 
-    <link
-      rel="stylesheet"
-      href="/css/modules/loaners-shared.css?v=4"
-    />
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
 
-    <link
-      rel="stylesheet"
-      href="/css/modules/loaner-returns.css?v=3"
-    />
-    <style>
-      #fuelEntryWrap[data-mode="range"] #fuelTankSelect { display: none !important; }
-      #fuelEntryWrap[data-mode="fuel"] #fuelLevel { display: none !important; }
-      .fuel-mode-toggle button {
-        background: #fff !important;
-        color: #123a73 !important;
-        border: 1px solid #123a73 !important;
+  <link rel="stylesheet" href="/css/modules/loaners-shared.css?v=4" />
+
+  <link rel="stylesheet" href="/css/modules/loaner-returns.css?v=3" />
+  <style>
+    #fuelEntryWrap[data-mode="range"] #fuelTankSelect {
+      display: none !important;
+    }
+
+    #fuelEntryWrap[data-mode="fuel"] #fuelLevel {
+      display: none !important;
+    }
+
+    .fuel-mode-toggle button {
+      background: #fff !important;
+      color: #123a73 !important;
+      border: 1px solid #123a73 !important;
+    }
+
+    .fuel-mode-toggle button.is-on {
+      background: #123a73 !important;
+      color: #fff !important;
+    }
+
+    #fuelLevel::-webkit-outer-spin-button,
+    #fuelLevel::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .form-grid select,
+    .form-grid textarea,
+    .dexp-admin-card>label input {
+      padding: 8px 10px;
+      border: 1px solid #a0bcdf;
+      border-radius: 8px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14px;
+    }
+
+    .return-scan-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .return-scan-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid #a0bcdf;
+      border-radius: 8px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14px;
+    }
+
+    .return-scan-row button {
+      white-space: nowrap;
+    }
+
+    @media (max-width: 700px) {
+      .return-phone-hide {
+        display: none;
       }
-      .fuel-mode-toggle button.is-on {
-        background: #123a73 !important;
-        color: #fff !important;
+
+      #loanerReturnsPage .page-section {
+        margin-bottom: 8px;
       }
-      #fuelLevel::-webkit-outer-spin-button,
-      #fuelLevel::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
+
+      #loanerReturnsPage .dexp-admin-card {
+        padding: 8px;
       }
-      .form-grid select,
-      .form-grid textarea,
-      .dexp-admin-card > label input {
-        padding: 8px 10px;
-        border: 1px solid #a0bcdf;
-        border-radius: 8px;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 14px;
+
+      #loanerReturnsPage .dexp-admin-card h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
       }
-      .return-scan-row {
-        display: flex;
+
+      #loanerReturnsPage .page-shell,
+      #loanerReturnsPage {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      #loanerReturnsPage .form-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 6px;
-        align-items: center;
+        margin-top: 6px;
       }
-      .return-scan-row input {
-        flex: 1;
+
+      #loanerReturnsPage .form-grid label,
+      #loanerReturnsPage .form-grid input,
+      #loanerReturnsPage .form-grid select,
+      #loanerReturnsPage .form-grid textarea {
         min-width: 0;
-        padding: 8px 10px;
-        border: 1px solid #a0bcdf;
-        border-radius: 8px;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 14px;
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
       }
-      .return-scan-row button { white-space: nowrap; }
-      @media (max-width: 700px) {
-        .return-phone-hide { display: none; }
-        #loanerReturnsPage .page-section { margin-bottom: 8px; }
-        #loanerReturnsPage .dexp-admin-card { padding: 8px; }
-        #loanerReturnsPage .dexp-admin-card h3 { margin: 0 0 4px; font-size: 16px; }
-        #loanerReturnsPage .page-shell,
-        #loanerReturnsPage { padding-left: 8px; padding-right: 8px; }
-        #loanerReturnsPage .form-grid {
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-          gap: 6px;
-          margin-top: 6px;
-        }
-        #loanerReturnsPage .form-grid label,
-        #loanerReturnsPage .form-grid input,
-        #loanerReturnsPage .form-grid select,
-        #loanerReturnsPage .form-grid textarea {
-          min-width: 0;
-          max-width: 100%;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        #loanerReturnsPage .form-grid label { font-size: 13px; gap: 2px; }
-        #loanerReturnsPage .action-row { margin-top: 6px; }
-        #loanerReturnsPage textarea { min-height: 36px; }
+
+      #loanerReturnsPage .form-grid label {
+        font-size: 13px;
+        gap: 2px;
       }
-    </style>
-  </head>
 
-  <body>
-    <div id="appHeader"></div>
+      #loanerReturnsPage .action-row {
+        margin-top: 6px;
+      }
 
-    <main
-      id="loanerReturnsPage"
-      class="page-shell loaner-returns-shell"
-    >
-      <section class="page-section return-phone-hide">
-        <h1>Loaners</h1>
+      #loanerReturnsPage textarea {
+        min-height: 36px;
+      }
+    }
+  </style>
+</head>
 
-        <div class="subtabs">
-          <a id="loanerFleetTab" href="/pages/loaner-fleet/loaner-fleet.html" style="display:none">
-            Fleet
-          </a>
+<body>
+  <div id="appHeader"></div>
 
-          <a id="loanerManageTab" href="/pages/loaner-fleet/loaner-manage.html" style="display:none">
-            Manage Fleet
-          </a>
+  <main id="loanerReturnsPage" class="page-shell loaner-returns-shell">
+    <section class="page-section return-phone-hide">
+      <h1>Loaners</h1>
 
-          <a id="loanerFilesTab" href="/pages/loaner-fleet/loaner-files.html" style="display:none">
-            Files
-          </a>
+      <div class="subtabs">
+        <a id="loanerFleetTab" href="/pages/loaner-fleet/loaner-fleet.html" style="display:none">
+          Fleet
+        </a>
 
-          <a
-            id="loanerReturnsTab"
-            href="/pages/loaner-returns/loaner-returns.html"
-            class="active"
-            style="display:none"
-          >
-            Returns
-          </a>
+        <a id="loanerManageTab" href="/pages/loaner-fleet/loaner-manage.html" style="display:none">
+          Manage Fleet
+        </a>
 
-          <a id="loanerWashTab" href="/pages/loaner-wash/loaner-wash.html" style="display:none">
-            Wash Queue
-          </a>
+        <a id="loanerFilesTab" href="/pages/loaner-fleet/loaner-files.html" style="display:none">
+          Files
+        </a>
+
+        <a id="loanerReturnsTab" href="/pages/loaner-returns/loaner-returns.html" class="active" style="display:none">
+          Returns
+        </a>
+
+        <a id="loanerWashTab" href="/pages/loaner-wash/loaner-wash.html" style="display:none">
+          Wash Queue
+        </a>
+      </div>
+
+      <div id="loanerCounts" class="loaner-counts">
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">
+            Total
+          </span>
+
+          <strong id="loanerTotalCount">
+            0
+          </strong>
         </div>
 
-        <div
-          id="loanerCounts"
-          class="loaner-counts"
-        >
-          <div class="loaner-count-card">
-            <span class="loaner-count-label">
-              Total
-            </span>
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">
+            Out
+          </span>
 
-            <strong id="loanerTotalCount">
-              0
-            </strong>
-          </div>
-
-          <div class="loaner-count-card">
-            <span class="loaner-count-label">
-              Out
-            </span>
-
-            <strong id="loanerOutCount">
-              0
-            </strong>
-          </div>
-
-          <div class="loaner-count-card">
-            <span class="loaner-count-label">
-              Available
-            </span>
-
-            <strong id="loanerAvailableCount">
-              0
-            </strong>
-          </div>
-
-          <div class="loaner-count-card">
-            <span class="loaner-count-label">
-              At Wash
-            </span>
-
-            <strong id="loanerAtWashCount">
-              0
-            </strong>
-          </div>
-
-          <div class="loaner-count-card">
-            <span class="loaner-count-label">
-              In Shop
-            </span>
-
-            <strong id="loanerInShopCount">
-              0
-            </strong>
-          </div>
+          <strong id="loanerOutCount">
+            0
+          </strong>
         </div>
-      </section>
 
-      <section class="page-section">
-        <div class="dexp-admin-card">
-          <h3>Return Intake</h3>
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">
+            Available
+          </span>
 
-          <div class="return-scan-row">
-            <button id="scanReturnBtn" type="button">Scan VIN</button>
-            <input
-              id="manualVin"
-              type="search"
-              inputmode="text"
-              enterkeyhint="search"
-              autocomplete="off"
-              autocapitalize="characters"
-              placeholder="Full VIN, last 8, or last 6"
-            />
-            <button id="findReturnVinBtn" type="button" disabled>Find</button>
-          </div>
-
-          <div
-            id="vinRejectMsg"
-            class="vin-reject-msg"
-            role="alert"
-          ></div>
-
-          <video
-            id="scannerVideo"
-            autoplay
-            playsinline
-            muted
-            style="display: none"
-          ></video>
-
-          <div
-            id="scannerStatus"
-            class="small-muted"
-          ></div>
-
-          <div id="returnSummary" class="page-message"></div>
-
-          <div class="form-grid">
-            <label>
-              VIN
-              <input id="vin" readonly />
-            </label>
-            <label>
-              Year
-              <input id="year" readonly />
-            </label>
-            <label>
-              Model
-              <input id="model" readonly />
-            </label>
-            <label>
-              Returned at
-              <input id="returnedAt" readonly />
-            </label>
-            <label>
-              Received by
-              <input id="receivedBy" readonly />
-            </label>
-            <label>
-              Miles
-              <input id="mileage" type="number" inputmode="numeric" min="0" />
-            </label>
-            <label>
-              Damage
-              <select id="damageYesNo">
-                <option value="">Damage?</option>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </select>
-            </label>
-            <label>
-              Where it goes
-              <select id="returnDestination">
-                <option value="At Wash" selected>Send to Wash</option>
-                <option value="Available">Available (no wash)</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="form-grid" id="fuelEntryWrap" data-mode="range">
-            <label>
-              Range or fuel
-              <span class="fuel-mode-toggle">
-                <button id="fuelModeFuelBtn" type="button">Fuel</button>
-                <button id="fuelModeRangeBtn" type="button">Range</button>
-              </span>
-            </label>
-            <label>
-              Level
-              <select id="fuelTankSelect">
-                <option value="">Fuel level</option>
-                <option value="Full">Full</option>
-                <option value="3/4">3/4</option>
-                <option value="Half">Half</option>
-                <option value="1/4">1/4</option>
-                <option value="Empty">Empty</option>
-              </select>
-              <input
-                id="fuelLevel"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                enterkeyhint="done"
-                autocomplete="off"
-                placeholder="Range (mi)"
-              />
-            </label>
-            <label>
-              Damage notes
-              <textarea
-                id="damageNotes"
-                placeholder="Required if Yes"
-              ></textarea>
-            </label>
-          </div>
-
-          <div id="damagePhotoBox" style="display:none">
-            <input id="damagePhotoInput" type="file" accept="image/*" capture="environment" hidden />
-            <button id="damagePhotoBtn" type="button">Take picture</button>
-            <img id="damagePhotoPreview" alt="Damage preview" style="display:none;max-width:180px" />
-            <button id="damagePhotoAccept" type="button" style="display:none">Accept</button>
-            <button id="damagePhotoRetake" type="button" style="display:none">Retake</button>
-            <div id="damagePhotoCount" class="small-muted"></div>
-          </div>
-
-          <p id="retireReturnBanner" class="tool-help" style="display:none">
-            This unit is flagged Retire on return. Check-in will not send it to wash.
-          </p>
-
-          <div class="action-row">
-            <button
-              id="saveReturnBtn"
-              type="button"
-              disabled
-            >
-              Save Return
-            </button>
-          </div>
-
-          <div id="returnMsg" class="page-message"></div>
+          <strong id="loanerAvailableCount">
+            0
+          </strong>
         </div>
-      </section>
 
-      <section class="page-section">
-        <div class="dexp-admin-card">
-          <h3>Return List</h3>
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">
+            At Wash
+          </span>
+
+          <strong id="loanerAtWashCount">
+            0
+          </strong>
+        </div>
+
+        <div class="loaner-count-card">
+          <span class="loaner-count-label">
+            In Shop
+          </span>
+
+          <strong id="loanerInShopCount">
+            0
+          </strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="dexp-admin-card">
+        <h3>Return Intake</h3>
+
+        <div class="return-scan-row">
+          <button id="scanReturnBtn" type="button">Scan VIN</button>
+          <input id="manualVin" type="search" inputmode="text" enterkeyhint="search" autocomplete="off"
+            autocapitalize="characters" placeholder="Full VIN, last 8, or last 6" />
+          <button id="findReturnVinBtn" type="button" disabled>Find</button>
+        </div>
+
+        <div id="vinRejectMsg" class="vin-reject-msg" role="alert"></div>
+
+        <video id="scannerVideo" autoplay playsinline muted style="display: none"></video>
+        <div id="vinTarget" style="display: none">
+          <div>Line up the VIN</div>
+        </div>
+
+        <div id="scannerStatus" class="small-muted"></div>
+
+        <div id="returnSummary" class="page-message"></div>
+
+        <div class="form-grid">
           <label>
-            Day
-            <input id="returnDay" type="date" />
+            VIN
+            <input id="vin" readonly />
           </label>
-          <div class="table-wrap" id="returnTable"></div>
+          <label>
+            Year
+            <input id="year" readonly />
+          </label>
+          <label>
+            Model
+            <input id="model" readonly />
+          </label>
+          <label>
+            Returned at
+            <input id="returnedAt" readonly />
+          </label>
+          <label>
+            Received by
+            <input id="receivedBy" readonly />
+          </label>
+          <label>
+            Miles
+            <input id="mileage" type="number" inputmode="numeric" min="0" />
+          </label>
+          <label>
+            Damage
+            <select id="damageYesNo">
+              <option value="">Damage?</option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </label>
+          <label>
+            Where it goes
+            <select id="returnDestination">
+              <option value="At Wash" selected>Send to Wash</option>
+              <option value="Available">Available (no wash)</option>
+            </select>
+          </label>
         </div>
-      </section>
-    </main>
 
-    <script
-      type="module"
-      src="/js/modules/loaners/loaner-returns-page.js?v=21"
-    ></script>
-  </body>
+        <div class="form-grid" id="fuelEntryWrap" data-mode="range">
+          <label>
+            Range or fuel
+            <span class="fuel-mode-toggle">
+              <button id="fuelModeFuelBtn" type="button">Fuel</button>
+              <button id="fuelModeRangeBtn" type="button">Range</button>
+            </span>
+          </label>
+          <label>
+            Level
+            <select id="fuelTankSelect">
+              <option value="">Fuel level</option>
+              <option value="Full">Full</option>
+              <option value="3/4">3/4</option>
+              <option value="Half">Half</option>
+              <option value="1/4">1/4</option>
+              <option value="Empty">Empty</option>
+            </select>
+            <input id="fuelLevel" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done"
+              autocomplete="off" placeholder="Range (mi)" />
+          </label>
+          <label>
+            Damage notes
+            <textarea id="damageNotes" placeholder="Required if Yes"></textarea>
+          </label>
+        </div>
+
+        <div id="damagePhotoBox" style="display:none">
+          <input id="damagePhotoInput" type="file" accept="image/*" capture="environment" hidden />
+          <button id="damagePhotoBtn" type="button">Take picture</button>
+          <img id="damagePhotoPreview" alt="Damage preview" style="display:none;max-width:180px" />
+          <button id="damagePhotoAccept" type="button" style="display:none">Accept</button>
+          <button id="damagePhotoRetake" type="button" style="display:none">Retake</button>
+          <div id="damagePhotoCount" class="small-muted"></div>
+        </div>
+
+        <p id="retireReturnBanner" class="tool-help" style="display:none">
+          This unit is flagged Retire on return. Check-in will not send it to wash.
+        </p>
+
+        <div class="action-row">
+          <button id="saveReturnBtn" type="button" disabled>
+            Save Return
+          </button>
+        </div>
+
+        <div id="returnMsg" class="page-message"></div>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="dexp-admin-card">
+        <h3>Return List</h3>
+        <label>
+          Day
+          <input id="returnDay" type="date" />
+        </label>
+        <div class="table-wrap" id="returnTable"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/modules/loaners/loaner-returns-page.js?v=21"></script>
+</body>
+
 </html>

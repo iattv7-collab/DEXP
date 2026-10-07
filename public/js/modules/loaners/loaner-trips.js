@@ -17,20 +17,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /**
- * @param {object} value
- * @return {number}
- */
-function stampMs(value) {
-  if (value && typeof value.toMillis === "function") {
-    return value.toMillis();
-  }
-
-  const parsed = Date.parse(String(value || ""));
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-/**
  * @param {string} dealerId
  * @return {Promise<object[]>}
  */
@@ -186,96 +172,4 @@ export async function closeLoanerTrip(close) {
     ...closeFields,
     createdAt: serverTimestamp(),
   });
-}
-
-/**
- * File old loanerReturns that never got a loanerTrips row.
- * Does not close a car that is still Out on that same RO.
- * @param {string} dealerId
- * @return {Promise<number>}
- */
-export async function recoverMissingReturnTrips(dealerId) {
-  if (!dealerId) {
-    return 0;
-  }
-
-  const [returnSnap, tripSnap, fleetSnap] = await Promise.all([
-    getDocs(query(collection(db, "loanerReturns"), where("dealerId", "==", dealerId))),
-    getDocs(query(collection(db, "loanerTrips"), where("dealerId", "==", dealerId))),
-    getDocs(query(collection(db, "loanerFleet"), where("dealerId", "==", dealerId))),
-  ]);
-  const trips = tripSnap.docs.map((tripDoc) => tripDoc.data() || {});
-  const fleetByVin = new Map();
-
-  fleetSnap.docs.forEach((fleetDoc) => {
-    const data = fleetDoc.data() || {};
-    const vin = String(data.vin || fleetDoc.id || "").trim();
-
-    if (vin) {
-      fleetByVin.set(vin, data);
-    }
-  });
-
-  let wrote = 0;
-
-  for (const returnDoc of returnSnap.docs) {
-    const row = returnDoc.data() || {};
-    const vin = String(row.vin || "").trim();
-
-    if (!vin) {
-      continue;
-    }
-
-    if (trips.some((trip) => sameClosedReturn(trip, row))) {
-      continue;
-    }
-
-    const fleet = fleetByVin.get(vin) || {};
-    const stillOut = String(fleet.status || "").toUpperCase() === "OUT" &&
-      String(fleet.assignedRo || "") === String(row.assignedRo || "");
-
-    if (stillOut) {
-      continue;
-    }
-
-    const returnedAtMs = stampMs(row.createdAt) || stampMs(row.returnedAtText) || Date.now();
-
-    await setDoc(doc(db, "loanerTrips", `${vin}-return-${returnedAtMs}`), {
-      dealerId,
-      vin,
-      unitNumber: fleet.unitNumber || "",
-      year: row.year || fleet.year || "",
-      make: fleet.make || "",
-      model: row.model || fleet.model || "",
-      plate: fleet.plate || "",
-      assignedRo: row.assignedRo || "",
-      customerName: "",
-      advisorId: "",
-      advisorName: "",
-      outAtMs: 0,
-      outAtText: "",
-      outMileage: row.checkoutMileage || "",
-      returnedAtMs,
-      returnedAtText: row.returnedAtText || "",
-      returnMileage: row.mileage || "",
-      fuelLevel: row.fuelLevel || "",
-      damageNotes: row.damageNotes || "",
-      receivedByName: row.receivedByName || "",
-      destination: "",
-      photoUrls: [],
-      status: "closed",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }, {merge: true});
-
-    trips.push({
-      vin,
-      status: "closed",
-      returnedAtText: row.returnedAtText || "",
-      returnMileage: row.mileage || "",
-    });
-    wrote += 1;
-  }
-
-  return wrote;
 }
