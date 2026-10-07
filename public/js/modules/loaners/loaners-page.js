@@ -35,7 +35,7 @@ import {
   passesVinChecksum,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
-import { openLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
+import { openLoanerTrip } from "/js/modules/loaners/loaner-trips.js?v=2";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
 const $ = (id) => document.getElementById(id);

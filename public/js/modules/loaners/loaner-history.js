@@ -5,6 +5,7 @@
 // ======================================================
 
 import {db} from "/js/services/firebase/firestore.js";
+import { recoverMissingReturnTrips } from "/js/modules/loaners/loaner-trips.js?v=2";
 import {
   collection,
   onSnapshot,
@@ -63,6 +64,10 @@ export function startLoanerHistory(dealerId, searchInput, resultEl) {
   }
 
   let trips = [];
+
+  recoverMissingReturnTrips(dealerId).catch((error) => {
+    console.error("Loaner return recovery failed:", error);
+  });
 
   const unsubscribe = onSnapshot(
       query(collection(db, "loanerTrips"), where("dealerId", "==", dealerId)),

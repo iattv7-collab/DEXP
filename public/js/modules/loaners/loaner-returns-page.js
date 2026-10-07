@@ -33,7 +33,7 @@ import {
   isValidVin,
   decodeVinLive,
 } from "/js/modules/loaners/vin-scanner.js";
-import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js";
+import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js?v=2";
 import { uploadLoanerDamagePhotos } from "/js/modules/loaners/loaner-damage-photos.js";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
@@ -798,12 +798,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
       }
 
+      let customerName = "";
+      let advisorId = "";
+      let advisorName = "";
+
+      if (assignedRo) {
+        const roDoc = await findRoByNumber(assignedRo);
+        const roData = roDoc?.data() || {};
+        customerName = roData.customerName || "";
+        advisorId = roData.advisorId || "";
+        advisorName =
+          roData.advisorName ||
+          roData.advisorDisplayName ||
+          roData.advisorEmail ||
+          "";
+      }
+
       await closeLoanerTrip({
         dealerId: currentDealerId,
         vin,
-        photoUrls,
-        photoUrls,
+        unitNumber: fleetData.unitNumber || "",
+        year: fleetData.year || year,
+        make: fleetData.make || "",
+        model: fleetData.model || model,
+        plate: fleetData.plate || "",
         assignedRo,
+        customerName,
+        advisorId,
+        advisorName,
+        outAtMs: 0,
+        outAtText: fleetData.outAt || "",
+        outMileage: fleetData.outMileage || (checkoutMileage == null ? "" : String(checkoutMileage)),
+        photoUrls,
         returnedAtMs: Date.now(),
         returnedAtText,
         returnMileage: String(mileageValue),
