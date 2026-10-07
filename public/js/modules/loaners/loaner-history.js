@@ -5,7 +5,9 @@
 // ======================================================
 
 import {db} from "/js/services/firebase/firestore.js";
-import { recoverMissingReturnTrips } from "/js/modules/loaners/loaner-trips.js?v=2";
+  recoverMissingReturnTrips(dealerId).catch((error) => {
+    console.error("Loaner return recovery failed:", error);
+  });
 import {
   collection,
   onSnapshot,
