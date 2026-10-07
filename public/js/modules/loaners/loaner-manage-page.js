@@ -132,11 +132,10 @@ function renderActive(rows) {
             </label>
           </td>
           <td>
-            ${
-              isOut(row)
-                ? ""
-                : `<button type="button" class="small-button secondary js-retire-now" data-vin="${escapeHtml(vin)}">Retire now</button>`
-            }
+            ${isOut(row)
+          ? ""
+          : `<button type="button" class="small-button secondary js-retire-now" data-vin="${escapeHtml(vin)}">Retire now</button>`
+        }
           </td>
         </tr>
       `;
@@ -282,16 +281,59 @@ function wireAddForm() {
     updateSave();
   });
 
+  function openScanner() {
+    if (!video) return;
+    video.style.display = "block";
+    video.style.position = "fixed";
+    video.style.top = "0";
+    video.style.left = "0";
+    video.style.width = "100vw";
+    video.style.height = "100vh";
+    video.style.objectFit = "cover";
+    video.style.zIndex = "9999";
+    video.style.background = "#000";
+    const target = $("vinTarget");
+    if (target) {
+      target.style.display = "flex";
+      target.style.position = "fixed";
+      target.style.left = "8vw";
+      target.style.top = "36vh";
+      target.style.width = "84vw";
+      target.style.height = "28vh";
+      target.style.zIndex = "10000";
+      target.style.border = "3px solid #fff";
+      target.style.borderRadius = "12px";
+      target.style.boxShadow = "0 0 0 100vmax rgba(0,0,0,0.35)";
+      target.style.alignItems = "flex-end";
+      target.style.justifyContent = "center";
+      target.style.color = "#fff";
+      target.style.font = "16px Times New Roman, Times, serif";
+      target.style.pointerEvents = "none";
+    }
+  }
+
+  function closeScanner() {
+    if (!video) return;
+    video.removeAttribute("style");
+    video.style.display = "none";
+    const target = $("vinTarget");
+    if (target) target.style.display = "none";
+  }
+
   $("scanFleetBtn")?.addEventListener("click", async () => {
     try {
       status.textContent = "Scanning VIN...";
-      video.style.display = "block";
+      openScanner();
       const res = await scanVinWithCamera(video, status);
-      video.style.display = "none";
-      if (res?.vin) await fill(res.vin);
-      else status.textContent = res?.reason || "No VIN.";
+      closeScanner();
+      if (res?.vin && isValidVin(res.vin) && passesVinChecksum(res.vin)) {
+        await fill(res.vin);
+      } else {
+        if ($("vin")) $("vin").value = "";
+        status.textContent = res?.reason || "No valid VIN captured. Try again.";
+      }
     } catch (error) {
-      video.style.display = "none";
+      closeScanner();
       status.textContent = error.message || "Scan failed";
     }
   });
@@ -505,36 +547,32 @@ function renderCompare(sheetRows) {
   $("importMsg").textContent = `Sheet ${sheetVins.length} VIN · ${toAdd.length} new · ${missing.length} in DEXP not on sheet.`;
   const preview = $("importPreview");
   preview.innerHTML = `
-    <p><strong>New on sheet</strong> ${
-      toAdd.length
-        ? `<button type="button" class="small-button" id="importAddAllBtn">Add all ${toAdd.length}</button>`
-        : ""
+    <p><strong>New on sheet</strong> ${toAdd.length
+      ? `<button type="button" class="small-button" id="importAddAllBtn">Add all ${toAdd.length}</button>`
+      : ""
     }</p>
-    <div>${
-      toAdd.length
-        ? toAdd
-            .map(
-              (row) =>
-                `<div>${escapeHtml(row.vin)} · mi ${escapeHtml(row.mileage || "—")} <button type="button" class="small-button js-import-add" data-vin="${escapeHtml(row.vin)}">Add</button></div>`,
-            )
-            .join("")
-        : "None"
+    <div>${toAdd.length
+      ? toAdd
+        .map(
+          (row) =>
+            `<div>${escapeHtml(row.vin)} · mi ${escapeHtml(row.mileage || "—")} <button type="button" class="small-button js-import-add" data-vin="${escapeHtml(row.vin)}">Add</button></div>`,
+        )
+        .join("")
+      : "None"
     }</div>
     <p style="margin-top:12px"><strong>In DEXP, not on sheet</strong></p>
-    <div>${
-      missing.length
-        ? missing
-            .map((row) => {
-              const vin = normalizeVin(row.vin || row.id);
-              const out = isOut(row);
-              return `<div>${escapeHtml(vin)} · ${escapeHtml(row.status || "")} ${
-                out
-                  ? `<button type="button" class="small-button js-import-flag" data-vin="${escapeHtml(vin)}">Retire on return</button>`
-                  : `<button type="button" class="small-button js-import-retire" data-vin="${escapeHtml(vin)}">Retire now</button>`
-              }</div>`;
-            })
-            .join("")
-        : "None"
+    <div>${missing.length
+      ? missing
+        .map((row) => {
+          const vin = normalizeVin(row.vin || row.id);
+          const out = isOut(row);
+          return `<div>${escapeHtml(vin)} · ${escapeHtml(row.status || "")} ${out
+              ? `<button type="button" class="small-button js-import-flag" data-vin="${escapeHtml(vin)}">Retire on return</button>`
+              : `<button type="button" class="small-button js-import-retire" data-vin="${escapeHtml(vin)}">Retire now</button>`
+            }</div>`;
+        })
+        .join("")
+      : "None"
     }</div>
   `;
   preview.querySelectorAll(".js-import-add").forEach((button) => {
