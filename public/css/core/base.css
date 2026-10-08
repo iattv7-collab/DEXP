@@ -568,7 +568,14 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
 
-  padding: 10px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  padding-top: 10px;
+  padding-right: 14px;
+  padding-bottom: 10px;
+  padding-left: 14px;
 
   box-sizing: border-box;
 }
@@ -768,5 +775,11 @@ button:disabled {
 
     width: auto;
     max-width: none;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  #appHeader {
+    padding-top: 54px;
   }
 }

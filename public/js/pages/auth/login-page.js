@@ -48,7 +48,9 @@ const changeDealerButton = document.getElementById("btn-change-dealer");
 
 initializeDealerEntry();
 
-emailLoginButton?.addEventListener("click", async () => {
+document.getElementById("loginForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
   const email = emailInput?.value.trim();
   const password = passwordInput?.value;
 
@@ -183,12 +185,6 @@ resetPasswordButton?.addEventListener("click", async () => {
     console.error("Password reset failed:", error);
 
     alert("Could not verify this email. Please try again.");
-  }
-});
-
-passwordInput?.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    emailLoginButton?.click();
   }
 });
 

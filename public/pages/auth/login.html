@@ -2,99 +2,66 @@
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
 
-    <title>DEXP Dealer Sign In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="/css/core/reset.css" />
+  <title>DEXP Dealer Sign In</title>
 
-    <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/core/reset.css" />
 
-    <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/core/base.css" />
 
-    <link rel="icon" type="image/png" href="/assets/logo-v2.png" />
+  <link rel="manifest" href="/manifest.json" />
 
-    <meta name="theme-color" content="#0b3d91" />
-  </head>
+  <link rel="icon" type="image/png" href="/assets/logo-v2.png" />
 
-  <body>
-    <main
-      class="app-shell"
-      style="
+  <meta name="theme-color" content="#0b3d91" />
+</head>
+
+<body>
+  <main class="app-shell" style="
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 24px;
-      "
-    >
-      <section
-        class="tool-card"
-        style="width: 100%; max-width: 420px; text-align: center; padding: 32px"
-      >
-        <img
-          src="/assets/logo-v2.png"
-          alt="DEXP"
-          style="width: 180px; max-width: 70%; margin-bottom: 18px"
-        />
+      ">
+    <section class="tool-card" style="width: 100%; max-width: 420px; text-align: center; padding: 32px">
+      <img src="/assets/logo-v2.png" alt="DEXP" style="width: 180px; max-width: 70%; margin-bottom: 18px" />
 
-        <h1>DEXP</h1>
+      <h1>DEXP</h1>
 
-        <p class="tool-help">Dealer Execution Platform</p>
+      <p class="tool-help">Dealer Execution Platform</p>
 
-        <p
-          id="dealerLoginName"
-          class="tool-help"
-          style="margin-top: 10px; font-weight: bold; color: #0b3d91"
-        >
-          Dealer Login
-        </p>
+      <p id="dealerLoginName" class="tool-help" style="margin-top: 10px; font-weight: bold; color: #0b3d91">
+        Dealer Login
+      </p>
 
-        <div id="dealerCodeWrap" class="hidden" style="margin-top: 16px">
-          <input
-            id="dealerCodeInput"
-            type="text"
-            autocomplete="off"
-            autocapitalize="none"
-            placeholder="Dealer code from your invite"
-            style="width: 100%; padding: 10px"
-          />
-          <button id="btn-dealer-code" type="button" style="margin-top: 10px; width: 100%">
-            Continue
-          </button>
-        </div>
+      <div id="dealerCodeWrap" class="hidden" style="margin-top: 16px">
+        <input id="dealerCodeInput" type="text" autocomplete="off" autocapitalize="none"
+          placeholder="Dealer code from your invite" style="width: 100%; padding: 10px" />
+        <button id="btn-dealer-code" type="button" style="margin-top: 10px; width: 100%">
+          Continue
+        </button>
+      </div>
 
-        <div
-          style="
+      <form id="loginForm" method="post" action="/pages/auth/login.html" style="
             display: flex;
             flex-direction: column;
             gap: 12px;
             margin-top: 24px;
-          "
-        >
-          <input
-            id="emailInput"
-            type="email"
-            placeholder="Company Email"
-            style="width: 100%; padding: 10px"
-          />
+          ">
+        <input id="emailInput" name="username" type="email" autocomplete="username" placeholder="Company Email"
+          style="width: 100%; padding: 10px" />
 
-          <div style="position: relative; width: 100%">
-            <input
-              id="passwordInput"
-              type="password"
-              placeholder="Password"
-              style="width: 100%; padding: 10px 52px 10px 10px"
-            />
+        <div style="position: relative; width: 100%">
+          <input id="passwordInput" name="password" type="password" autocomplete="current-password"
+            placeholder="Password" style="width: 100%; padding: 10px 52px 10px 10px" />
 
-            <button
-              id="togglePasswordButton"
-              type="button"
-              aria-label="Show password"
-              style="
+          <button id="togglePasswordButton" type="button" aria-label="Show password" style="
                 position: absolute;
                 right: 10px;
                 top: 50%;
@@ -106,42 +73,33 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
-              "
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#0b3d91"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-            </button>
-          </div>
-
-          <button id="btn-email-login" type="button">Sign In</button>
-
-          <button id="btn-register" type="button" class="secondary">
-            Register New Account
-          </button>
-
-          <button id="btn-reset-password" type="button" class="secondary">
-            Forgot Password
-          </button>
-
-          <button id="btn-change-dealer" type="button" class="secondary">
-            Change dealership
+              ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke="#0b3d91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
           </button>
         </div>
-      </section>
-    </main>
 
-    <script type="module" src="/js/pages/auth/login-page.js?v=13"></script>
-  </body>
+        <button id="btn-email-login" type="submit">Sign In</button>
+
+        <button id="btn-register" type="button" class="secondary">
+          Register New Account
+        </button>
+
+        <button id="btn-reset-password" type="button" class="secondary">
+          Forgot Password
+        </button>
+
+        <button id="btn-change-dealer" type="button" class="secondary">
+          Change dealership
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/js/pages/auth/login-page.js?v=15"></script>
+</body>
+
 </html>

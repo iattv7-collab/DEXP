@@ -15,6 +15,12 @@ import { watchArchivedROs } from "/js/services/firestore/ros-service.js";
 let unsubscribeHeaderFollowUps = null;
 
 export function renderAppHeader(options = {}) {
+  const viewport = document.querySelector('meta[name="viewport"]');
+
+  if (viewport && !String(viewport.content || "").includes("viewport-fit=cover")) {
+    viewport.content = `${viewport.content}, viewport-fit=cover`;
+  }
+
   const { showHome = true, platformMode = false } = options;
 
   const session = getSession();
