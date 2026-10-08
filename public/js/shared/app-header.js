@@ -59,11 +59,14 @@ export function renderAppHeader(options = {}) {
 
   const header = document.createElement("header");
   header.id = "appHeader";
-  header.style.paddingTop = "59px";
-  const iphone = /iPhone|iPad/i.test(navigator.userAgent || "");
+  const ua = navigator.userAgent || "";
+  const iphone = /iPhone|iPad/i.test(ua);
+  const androidApp = /Android/i.test(ua);
 
   if (iphone) {
     header.style.paddingTop = "54px";
+  } else if (androidApp) {
+    header.style.paddingTop = "59px";
   }
 
   header.innerHTML = `

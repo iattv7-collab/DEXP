@@ -778,8 +778,10 @@ button:disabled {
   }
 }
 
-@supports (-webkit-touch-callout: none) {
-  #appHeader {
-    padding-top: 54px;
+@media (max-width: 600px) {
+  @supports (-webkit-touch-callout: none) {
+    #appHeader {
+      padding-top: 54px;
+    }
   }
 }
