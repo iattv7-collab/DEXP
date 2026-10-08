@@ -59,6 +59,12 @@ export function renderAppHeader(options = {}) {
 
   const header = document.createElement("header");
   header.id = "appHeader";
+  header.style.paddingTop = "59px";
+  const iphone = /iPhone|iPad/i.test(navigator.userAgent || "");
+
+  if (iphone) {
+    header.style.paddingTop = "54px";
+  }
 
   header.innerHTML = `
     <div class="app-header-left">

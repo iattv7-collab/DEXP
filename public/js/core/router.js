@@ -1,5 +1,13 @@
 // public/js/core/router.js
 
+import { db } from "/js/services/firebase/firestore.js";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
 const PUBLIC_ROUTES = [
   "/",
   "/index.html",
@@ -26,7 +34,7 @@ export function protectRoute(options = {}) {
     guardProtectedPage(redirectTo);
   });
 
-  window.addEventListener("dexp-session-ready", () => {
+  window.addEventListener("dexp-session-ready", async () => {
     const currentPath = window.location.pathname;
 
     if (PUBLIC_ROUTES.includes(currentPath)) {
@@ -37,6 +45,12 @@ export function protectRoute(options = {}) {
 
     if (!session?.uid) {
       redirectToLogin(redirectTo);
+      return;
+    }
+
+    const sentToMove = await sendOwnerToOpenMove(session);
+
+    if (sentToMove) {
       return;
     }
 
@@ -103,4 +117,44 @@ function getStoredSession() {
   } catch (error) {
     return null;
   }
+}
+
+async function sendOwnerToOpenMove(session) {
+  const path = window.location.pathname;
+
+  if (path.includes("/pages/move-locate/")) {
+    return false;
+  }
+
+  if (!session?.uid || !session?.dealerId) {
+    return false;
+  }
+
+  const snap = await getDocs(
+    query(
+      collection(db, "ros"),
+      where("moveStartedByUid", "==", session.uid),
+    ),
+  );
+
+  const openMove = snap.docs
+    .map((item) => item.data() || {})
+    .find((ro) => {
+      return (
+        ro.dealerId === session.dealerId &&
+        String(ro.moveStatus || "") === "moving"
+      );
+    });
+
+  if (!openMove) {
+    return false;
+  }
+
+  const tag = String(openMove.tagNumber || openMove.tag || "").trim();
+
+  window.location.replace(
+    `/pages/move-locate/move-locate.html?tagNumber=${encodeURIComponent(tag)}`,
+  );
+
+  return true;
 }
