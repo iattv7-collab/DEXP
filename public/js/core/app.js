@@ -714,6 +714,21 @@ watchAuthState(async (user) => {
     console.log(
       "No active session"
     );
+
+    if (
+      !isAuthLoginPage() &&
+      !isPlatformLoginPage()
+    ) {
+      const lastDealerId =
+        localStorage.getItem("dexp_last_dealer_id") ||
+        "";
+
+      window.location.replace(
+        lastDealerId
+          ? `/pages/auth/login.html?dealerId=${encodeURIComponent(lastDealerId)}`
+          : "/pages/auth/login.html"
+      );
+    }
   }
 
   initializeApp();

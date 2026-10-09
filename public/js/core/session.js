@@ -11,9 +11,6 @@ import {
 
 const SESSION_KEY = "dexp_session";
 
-const SESSION_DURATION_MS =
-  30 * 60 * 1000;
-
 let currentSession = null;
 
 export function setSession({
@@ -76,14 +73,11 @@ export function setSession({
     profile,
     dealer,
 
-    // Session validation metadata.
+    // Session stays until Sign Out. A phone reload must not expire it.
     appVersion:
       DEXP_APP_VERSION,
 
-    loadedAt,
-
-    expiresAt:
-      loadedAt + SESSION_DURATION_MS
+    loadedAt
   };
 
   localStorage.setItem(
@@ -171,17 +165,6 @@ export function getValidSession({
   if (
     session.appVersion !==
     DEXP_APP_VERSION
-  ) {
-    clearSession();
-    return null;
-  }
-
-  const expiresAt =
-    Number(session.expiresAt || 0);
-
-  if (
-    !expiresAt ||
-    Date.now() >= expiresAt
   ) {
     clearSession();
     return null;
