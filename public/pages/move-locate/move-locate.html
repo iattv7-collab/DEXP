@@ -2,192 +2,193 @@
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
 
-    <title>Move & Locate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="/css/core/base.css" />
-    <link rel="stylesheet" href="/css/components/loading.css" />
-    <link rel="stylesheet" href="/css/modules/move-locate.css?v=7" />
-  </head>
+  <title>Move & Locate</title>
 
-  <body>
-    <main id="moveLocatePage" class="full-page">
-      <section class="page-shell full-page">
-        <div class="parking-availability-wrap">
-          <div class="parking-availability-title">Available Parking</div>
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/components/loading.css" />
+  <link rel="stylesheet" href="/css/modules/move-locate.css?v=8" />
+</head>
 
-          <div
-            id="parkingAvailabilityList"
-            class="parking-availability-list"
-          ></div>
+<body>
+  <main id="moveLocatePage" class="full-page">
+    <section class="page-shell full-page">
+      <div class="parking-availability-wrap">
+        <div class="parking-availability-title">Available Parking</div>
+
+        <div id="parkingAvailabilityList" class="parking-availability-list"></div>
+      </div>
+
+      <section class="tool-card move-workflow-card">
+        <div class="move-card-header">
+          <div>
+            <h3>Move Vehicle</h3>
+            <p class="tool-help">Search by RO, Tag, or VIN</p>
+          </div>
+
+          <p id="moveLocateMessage" class="tool-message">
+            Enter RO # or Tag #.
+          </p>
         </div>
 
-        <section class="tool-card move-workflow-card">
-          <div class="move-card-header">
-            <div>
-              <h3>Move Vehicle</h3>
-              <p class="tool-help">Search by RO, Tag, or VIN</p>
-            </div>
+        <p id="moveDestinationLine" class="move-destination-line hidden"></p>
 
-            <p id="moveLocateMessage" class="tool-message">
-              Enter RO # or Tag #.
-            </p>
-          </div>
+        <div class="tool-row move-search-row">
+          <input id="vehicleSearchInput" type="text" placeholder="RO # or Tag #" />
 
-          <p id="moveDestinationLine" class="move-destination-line hidden"></p>
+          <button id="searchModeToggleButton" type="button" class="small-button secondary">
+            By Tag
+          </button>
 
-          <div class="tool-row move-search-row">
-            <input
-              id="vehicleSearchInput"
-              type="text"
-              placeholder="RO # or Tag #"
-            />
+          <button id="searchVehicleButton" type="button">Search</button>
 
-            <button
-              id="searchModeToggleButton"
-              type="button"
-              class="small-button secondary"
-            >
-              By Tag
-            </button>
+          <button id="updateLocationButton" type="button" class="small-button secondary">
+            Update location
+          </button>
+        </div>
 
-            <button id="searchVehicleButton" type="button">Search</button>
-          </div>
+        <div id="updateLocationPanel" class="update-location-panel hidden">
+          <div class="update-location-title">Update location</div>
 
-          <div id="vehicleResultCard" class="tool-preview move-vehicle-preview hidden">
-            <div class="move-preview-main">
-              <div class="tool-preview-grid move-preview-grid">
-                <div>
-                  <strong>TAG</strong>
-                  <span id="previewTag">—</span>
-                </div>
+          <label>
+            Area
+            <select id="updateLocationAreaSelect">
+              <option value="">Select area...</option>
+            </select>
+          </label>
 
-                <div>
-                  <strong>RO</strong>
-                  <span id="previewRO">—</span>
-                </div>
+          <label>
+            Lot
+            <select id="updateLocationLotSelect">
+              <option value="">Select lot...</option>
+            </select>
+          </label>
 
-                <div>
-                  <strong>Location:</strong>
-                  <span id="previewLocation"></span>
-                </div>
+          <button id="saveUpdatedLocationButton" type="button" disabled>
+            Save location
+          </button>
+        </div>
 
-                <div>
-                  <strong>Status:</strong>
-                  <span id="previewStatus"></span>
-                </div>
-
-                <div>
-                  <strong>Blocked by:</strong>
-                  <span id="previewBlockedBy">—</span>
-                </div>
-              </div>
-
-              <div class="move-action-stack">
-                <button
-                  id="detailsButton"
-                  type="button"
-                  class="small-button secondary"
-                >
-                  View Details
-                </button>
-
-                <button id="startMoveButton" type="button">Start Move</button>
-
-                <button
-                  id="releaseRequestButton"
-                  type="button"
-                  class="small-button secondary hidden"
-                >
-                  Release Request
-                </button>
-
-                <button
-                  id="cancelMoveButton"
-                  type="button"
-                  class="small-button secondary hidden"
-                >
-                  Cancel Move
-                </button>
-
-                <button
-                  id="overrideCancelMoveButton"
-                  type="button"
-                  class="small-button secondary hidden"
-                >
-                  Override Cancel
-                </button>
-              </div>
-            </div>
-
-            <div id="vehicleDetailsPanel" class="tool-details hidden">
-              <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
-              <div><b>VIN:</b> <span id="detailVIN"></span></div>
-              <div><b>Model:</b> <span id="detailVehicle"></span></div>
-              <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
+        <div id="vehicleResultCard" class="tool-preview move-vehicle-preview hidden">
+          <div class="move-preview-main">
+            <div class="tool-preview-grid move-preview-grid">
               <div>
-                <b>Started By:</b> <span id="detailMoveStartedBy"></span>
+                <strong>TAG</strong>
+                <span id="previewTag">—</span>
               </div>
+
               <div>
-                <b>Started At:</b> <span id="detailMoveStartedAt"></span>
+                <strong>RO</strong>
+                <span id="previewRO">—</span>
+              </div>
+
+              <div>
+                <strong>Location:</strong>
+                <span id="previewLocation"></span>
+              </div>
+
+              <div>
+                <strong>Status:</strong>
+                <span id="previewStatus"></span>
+              </div>
+
+              <div>
+                <strong>Blocked by:</strong>
+                <span id="previewBlockedBy">—</span>
               </div>
             </div>
-          </div>
 
-          <div id="moveChainPanel" class="tool-details hidden">
-            <hr />
+            <div class="move-action-stack">
+              <button id="detailsButton" type="button" class="small-button secondary">
+                View Details
+              </button>
 
-            <div><b>Move Chain:</b></div>
+              <button id="startMoveButton" type="button">Start Move</button>
 
-            <div id="moveChainList"></div>
-          </div>
+              <button id="releaseRequestButton" type="button" class="small-button secondary hidden">
+                Release Request
+              </button>
 
-          <div id="finalLocationPanel" class="hidden">
-            <div id="groupFinalLocationList"></div>
+              <button id="cancelMoveButton" type="button" class="small-button secondary hidden">
+                Cancel Move
+              </button>
 
-            <div id="groupSaveLocationRow" class="tool-row hidden">
-              <button id="saveGroupLocationsButton" type="button" disabled>
-                Save
+              <button id="overrideCancelMoveButton" type="button" class="small-button secondary hidden">
+                Override Cancel
               </button>
             </div>
           </div>
-        </section>
 
-        <section class="tool-card">
-          <h3>My Moves</h3>
+          <div id="vehicleDetailsPanel" class="tool-details hidden">
+            <div><b>Customer:</b> <span id="detailCustomerName"></span></div>
+            <div><b>VIN:</b> <span id="detailVIN"></span></div>
+            <div><b>Model:</b> <span id="detailVehicle"></span></div>
+            <div><b>Advisor:</b> <span id="detailAdvisor"></span></div>
+            <div>
+              <b>Started By:</b> <span id="detailMoveStartedBy"></span>
+            </div>
+            <div>
+              <b>Started At:</b> <span id="detailMoveStartedAt"></span>
+            </div>
+          </div>
+        </div>
 
-          <p class="tool-help">
-            Open moves on your login. Tap a row to finish Save lot or Cancel.
-          </p>
+        <div id="moveChainPanel" class="tool-details hidden">
+          <hr />
 
-          <div id="myMovesList"></div>
-        </section>
+          <div><b>Move Chain:</b></div>
+
+          <div id="moveChainList"></div>
+        </div>
+
+        <div id="finalLocationPanel" class="hidden">
+          <div id="groupFinalLocationList"></div>
+
+          <div id="groupSaveLocationRow" class="tool-row hidden">
+            <button id="saveGroupLocationsButton" type="button" disabled>
+              Save
+            </button>
+          </div>
+        </div>
       </section>
-    </main>
 
-<script>
-  const moveParams = new URLSearchParams(window.location.search);
+      <section class="tool-card">
+        <h3>My Moves</h3>
 
-  if (moveParams.get("tagNumber")) {
-    const message = document.getElementById("moveLocateMessage");
-    const resultCard = document.getElementById("vehicleResultCard");
+        <p class="tool-help">
+          Open moves on your login. Tap a row to finish Save lot or Cancel.
+        </p>
 
-    if (message) {
-      message.classList.add("dexp-loading");
-      message.textContent = "Loading...";
+        <div id="myMovesList"></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const moveParams = new URLSearchParams(window.location.search);
+
+    if (moveParams.get("tagNumber")) {
+      const message = document.getElementById("moveLocateMessage");
+      const resultCard = document.getElementById("vehicleResultCard");
+
+      if (message) {
+        message.classList.add("dexp-loading");
+        message.textContent = "Loading...";
+      }
+
+      if (resultCard) {
+        resultCard.classList.add("hidden");
+      }
     }
+  </script>
 
-    if (resultCard) {
-      resultCard.classList.add("hidden");
-    }
-  }
-</script>
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/move-locate/move-locate.js?v=24"></script>
+</body>
 
-    <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate.js?v=23"></script>
-  </body>
 </html>

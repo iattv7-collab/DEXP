@@ -58,6 +58,17 @@ const searchModeToggleButton = document.getElementById(
   "searchModeToggleButton",
 );
 const searchVehicleButton = document.getElementById("searchVehicleButton");
+const updateLocationButton = document.getElementById("updateLocationButton");
+const updateLocationPanel = document.getElementById("updateLocationPanel");
+const updateLocationAreaSelect = document.getElementById(
+  "updateLocationAreaSelect",
+);
+const updateLocationLotSelect = document.getElementById(
+  "updateLocationLotSelect",
+);
+const saveUpdatedLocationButton = document.getElementById(
+  "saveUpdatedLocationButton",
+);
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
 const moveLocateMessage = document.getElementById("moveLocateMessage");
@@ -148,8 +159,33 @@ function initializeMoveLocate() {
   searchModeToggleButton.addEventListener("click", toggleSearchMode);
 
   searchVehicleButton.addEventListener("click", async () => {
+    hideUpdateLocationPanel();
     await findVehicle();
   });
+
+  if (updateLocationButton) {
+    updateLocationButton.addEventListener("click", async () => {
+      await beginUpdateLocation();
+    });
+  }
+
+  if (updateLocationAreaSelect) {
+    updateLocationAreaSelect.addEventListener("change", () => {
+      fillUpdateLocationLots();
+    });
+  }
+
+  if (saveUpdatedLocationButton) {
+    saveUpdatedLocationButton.addEventListener("click", async () => {
+      await saveUpdatedLocation();
+    });
+  }
+
+  if (updateLocationLotSelect) {
+    updateLocationLotSelect.addEventListener("change", () => {
+      saveUpdatedLocationButton.disabled = !updateLocationLotSelect.value;
+    });
+  }
 
   vehicleSearchInput.addEventListener("keydown", async (event) => {
     if (event.key === "Enter") {
@@ -278,6 +314,7 @@ function hideInitialPanels() {
   vehicleDetailsPanel.classList.add("hidden");
   moveChainPanel.classList.add("hidden");
   finalLocationPanel.classList.add("hidden");
+  hideUpdateLocationPanel();
   cancelMoveButton.classList.add("hidden");
   overrideCancelMoveButton.classList.add("hidden");
 
@@ -412,6 +449,142 @@ function loadDealerROs() {
       }
     }
   });
+}
+
+function hideUpdateLocationPanel() {
+  if (!updateLocationPanel) {
+    return;
+  }
+
+  updateLocationPanel.classList.add("hidden");
+
+  if (saveUpdatedLocationButton) {
+    saveUpdatedLocationButton.disabled = true;
+  }
+}
+
+function fillUpdateLocationLots() {
+  if (!updateLocationLotSelect || !updateLocationAreaSelect) {
+    return;
+  }
+
+  const area = updateLocationAreaSelect.value;
+
+  updateLocationLotSelect.innerHTML = `<option value="">Select lot...</option>`;
+
+  (groupedLocations[area] || []).forEach((lot) => {
+    const option = document.createElement("option");
+
+    option.value = lot.label;
+    option.textContent = lot.label;
+
+    updateLocationLotSelect.appendChild(option);
+  });
+
+  if (saveUpdatedLocationButton) {
+    saveUpdatedLocationButton.disabled = true;
+  }
+}
+
+function showUpdateLocationPanel() {
+  if (!updateLocationAreaSelect || !updateLocationPanel) {
+    return;
+  }
+
+  updateLocationAreaSelect.innerHTML = `<option value="">Select area...</option>`;
+
+  Object.keys(groupedLocations).forEach((area) => {
+    const option = document.createElement("option");
+
+    option.value = area;
+    option.textContent = formatAreaLabel(area);
+
+    updateLocationAreaSelect.appendChild(option);
+  });
+
+  fillUpdateLocationLots();
+  updateLocationPanel.classList.remove("hidden");
+  showMessage("Pick the lot, then Save location.");
+}
+
+async function beginUpdateLocation() {
+  hideUpdateLocationPanel();
+  await findVehicle();
+
+  if (!currentRO?.id) {
+    return;
+  }
+
+  if (isMoving(currentRO)) {
+    showMessage(
+      "This car is in a move. Finish or cancel that move before updating the lot.",
+    );
+    return;
+  }
+
+  showUpdateLocationPanel();
+}
+
+async function saveUpdatedLocation() {
+  clearMessage();
+
+  if (!currentRO?.id) {
+    showMessage("Enter the tag, then Update location.");
+    return;
+  }
+
+  const finalArea = String(updateLocationAreaSelect?.value || "").trim();
+  const finalLot = String(updateLocationLotSelect?.value || "").trim();
+
+  if (!finalArea || !finalLot) {
+    showMessage("Select the area and lot.");
+    return;
+  }
+
+  lastROs = await getDealerROs();
+
+  const freshRO = lastROs.find((ro) => ro.id === currentRO.id);
+
+  if (!freshRO || String(freshRO.status || "").toLowerCase() === "archived") {
+    showMessage("This RO is archived. Location updates are only for active Tracker ROs.");
+    return;
+  }
+
+  if (isMoving(freshRO)) {
+    showMessage(
+      "This car is in a move. Finish or cancel that move before updating the lot.",
+    );
+    return;
+  }
+
+  saveUpdatedLocationButton.disabled = true;
+
+  try {
+    await updateRO(
+      freshRO.id,
+      {
+        [ROS_FIELDS.currentLocation]: finalLot,
+        currentLocation: finalLot,
+        currentLocationArea: finalArea,
+        locationUpdatedAt: Date.now(),
+      },
+      {
+        eventType: "location_updated",
+        module: "move-locate",
+        message: `Location updated to ${formatAreaLot(finalArea, finalLot)}`,
+      },
+    );
+
+    lastROs = await getDealerROs();
+    currentRO = lastROs.find((ro) => ro.id === freshRO.id) || freshRO;
+    renderSelectedVehicle(currentRO);
+    hideUpdateLocationPanel();
+    showMessage(`Location updated to ${formatAreaLot(finalArea, finalLot)}.`);
+  } catch (error) {
+    console.error(error);
+    saveUpdatedLocationButton.disabled = false;
+    showMessage("Could not update location.");
+  }
 }
 
 async function findVehicle() {

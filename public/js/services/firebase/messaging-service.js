@@ -183,7 +183,48 @@ async function registerNativePushToken(preferenceOverrides = {}) {
       ? preferenceOverrides.vibrationEnabled
       : currentPreferences.vibrationEnabled;
 
+  const platform = String(window.Capacitor?.getPlatform?.() || "").toLowerCase();
+  const FirebaseMessaging = window.Capacitor?.Plugins?.FirebaseMessaging || null;
   const PushNotifications = getCapacitorPushPlugin();
+
+  if (platform === "ios" && FirebaseMessaging) {
+    const permission = await FirebaseMessaging.requestPermissions();
+
+    if (permission?.receive !== "granted") {
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "denied";
+    }
+
+    const tokenResult = await FirebaseMessaging.getToken();
+    const iosToken = String(tokenResult?.token || "").trim();
+
+    if (!iosToken) {
+      await persistThisDevice({
+        notificationsEnabled: true,
+        soundEnabled,
+        vibrationEnabled,
+        recordLogin: true,
+      });
+
+      return "no-token";
+    }
+
+    await persistThisDevice({
+      fcmToken: iosToken,
+      notificationsEnabled: true,
+      soundEnabled,
+      vibrationEnabled,
+      recordLogin: true,
+    });
+
+    return "granted";
+  }
 
   if (!PushNotifications) {
     console.warn("Capacitor PushNotifications plugin not available.");
