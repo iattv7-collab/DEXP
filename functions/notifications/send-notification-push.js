@@ -111,6 +111,36 @@ const sendPushForNotificationRequest = onDocumentCreated(
             },
           },
 
+          apns: {
+            headers: {
+              "apns-priority": "10",
+            },
+            payload: {
+              aps: {
+                alert: {
+                  title: String(title || "DEXP Notification"),
+                  body: String(body || ""),
+                },
+                sound: device.soundEnabled !== false ? "default" : undefined,
+              },
+            },
+          },
+
+          apns: {
+            headers: {
+              "apns-priority": "10",
+            },
+            payload: {
+              aps: {
+                alert: {
+                  title: String(title || "DEXP Notification"),
+                  body: String(body || ""),
+                },
+                sound: device.soundEnabled !== false ? "default" : undefined,
+              },
+            },
+          },
+
           webpush: {
             headers: {
               Urgency: "high",
