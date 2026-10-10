@@ -341,6 +341,7 @@ function loadNotificationRouteParams() {
   searchMode = "tag";
 
   vehicleSearchInput.value = tagNumber;
+  setArrivedFromRequest(true);
 
   moveLocateMessage.classList.add("dexp-loading");
   showMessage("Loading...");
@@ -798,6 +799,10 @@ async function findVehicle() {
   moveLocateMessage.classList.remove("dexp-loading");
   showMessage("Vehicle found.");
   renderMoveDestination(match);
+
+  if (activeNotificationId || activeRequestId) {
+    setArrivedFromRequest(true);
+  }
 }
 
 function renderSelectedVehicle(ro) {
@@ -1839,6 +1844,8 @@ window.addEventListener("beforeunload", () => {
 function resetMoveLocateForm() {
   currentRO = null;
   currentMoveGroup = [];
+  setArrivedFromRequest(false);
+  setArrivedFromRequest(false);
 
   vehicleSearchInput.value = "";
   searchVehicleButton.disabled = false;
@@ -1877,6 +1884,16 @@ function resetMoveLocateForm() {
   if (blocksTagInput) {
     blocksTagInput.value = "";
   }
+}
+
+function setArrivedFromRequest(on) {
+  document.querySelector(".move-search-row")?.classList.toggle("hidden", on);
+  document.querySelector(".move-card-header .tool-help")?.classList.toggle("hidden", on);
+}
+
+function setArrivedFromRequest(on) {
+  document.querySelector(".move-search-row")?.classList.toggle("hidden", on);
+  document.querySelector(".move-card-header .tool-help")?.classList.toggle("hidden", on);
 }
 
 function showMessage(message) {
