@@ -1,55 +1,13 @@
 {
-  "firestore": {
-    "database": "(default)",
-    "location": "nam5",
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": []
-    }
-  ],
   "hosting": {
     "public": "public",
-    "headers": [
-      {
-        "source": "/apple-app-site-association",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ]
-      },
-      {
-        "source": "/.well-known/apple-app-site-association",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ]
-      }
-    ],
     "ignore": [
       "firebase.json",
       "**/.*",
-      "!**/.well-known/**",
       "**/node_modules/**"
     ]
   },
-  "storage": {
-    "rules": "storage.rules"
+  "functions": {
+    "source": "functions"
   }
 }
