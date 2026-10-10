@@ -308,3 +308,72 @@
     font-size: 13px;
   }
 }
+
+.advisor-column-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+.advisor-column-modal {
+  background: #fff;
+  width: 420px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.advisor-column-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 20px;
+}
+
+.advisor-column-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.advisor-column-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.advisor-th-help {
+  cursor: default;
+}
+
+.advisor-help-tip {
+  position: fixed;
+  z-index: 1000;
+  display: none;
+  max-width: 240px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #0b3d91;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.advisor-help-tip.is-on {
+  display: block;
+}
+
+.qcStatusCell[title] {
+  cursor: pointer;
+}
+
+.qcActionCell button:disabled {
+  pointer-events: none;
+}

@@ -62,6 +62,7 @@ import {
 import {
   requestQc,
   markNoQcRequired,
+  clearQcDecision,
 } from "/js/modules/shared/qc-actions-service.js";
 
 const $ = (id) => document.getElementById(id);
@@ -92,6 +93,56 @@ document.addEventListener("DOMContentLoaded", async () => {
   const canSetNeedBy = hasPermission(PERMISSIONS.WASH_NEED_BY_SET);
 
   const tableEl = $("ticketsTable");
+  const advisorColumnsButton = $("advisorColumnsButton");
+
+  const ADVISOR_COLUMNS = [
+    { key: "tag", label: "Tag" },
+    { key: "ro", label: "RO" },
+    { key: "customer", label: "Customer" },
+    { key: "model", label: "Model" },
+    { key: "advisor", label: "Advisor" },
+    { key: "location", label: "Location" },
+    { key: "status", label: "RO Status" },
+    { key: "qc", label: "QC" },
+    { key: "requestQc", label: "QC Action" },
+    { key: "cp", label: "CP Booked" },
+    { key: "wty", label: "WTY Booked" },
+    { key: "needBy", label: "Need By" },
+    { key: "projected", label: "Projected" },
+    { key: "wash", label: "Wash" },
+    { key: "rewash", label: "Rewash" },
+    { key: "washed", label: "Washed" },
+    { key: "pickup", label: "Pickup Status" },
+    { key: "requestPickup", label: "Request Pickup" },
+  ];
+
+  const advisorColumnStorageKey = `dexp_advisor_columns_${session?.uid || "local"}`;
+  let visibleAdvisorColumns = loadAdvisorColumns();
+
+  function loadAdvisorColumns() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(advisorColumnStorageKey) || "[]");
+      const allowed = new Set(ADVISOR_COLUMNS.map((column) => column.key));
+      const clean = Array.isArray(saved)
+        ? saved.filter((key) => allowed.has(key))
+        : [];
+
+      return clean.length
+        ? ADVISOR_COLUMNS.map((column) => column.key).filter((key) =>
+            clean.includes(key),
+          )
+        : ADVISOR_COLUMNS.map((column) => column.key);
+    } catch (error) {
+      return ADVISOR_COLUMNS.map((column) => column.key);
+    }
+  }
+
+  function saveAdvisorColumns(keys) {
+    localStorage.setItem(advisorColumnStorageKey, JSON.stringify(keys));
+    visibleAdvisorColumns = keys;
+  }
+
+  advisorColumnsButton?.addEventListener("click", openAdvisorColumns);
   const msgEl = $("msg");
   const searchEl = $("searchInput");
 
@@ -486,7 +537,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (status === "complete") {
-      return "Done";
+      return "Completed";
     }
 
     if (status === "not_required") {
@@ -708,31 +759,181 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function advisorCell(key, ticket, ctx) {
+    const {
+      lateStyle,
+      washStatus,
+      canRewashTicket,
+      qcLocked,
+      pickupRequested,
+      projected,
+      cpDone,
+      wtyDone,
+    } = ctx;
+
+    if (key === "tag") {
+      return `<td><b>${escapeHtml(tagValue(ticket))}</b></td>`;
+    }
+    if (key === "ro") return `<td>${escapeHtml(roValue(ticket))}</td>`;
+    if (key === "advisor") return `<td>${escapeHtml(advisorNameValue(ticket))}</td>`;
+    if (key === "model") return `<td>${escapeHtml(vehicleValue(ticket))}</td>`;
+    if (key === "customer") return `<td>${escapeHtml(ticket.customerName || "")}</td>`;
+    if (key === "location") {
+      return `<td>${escapeHtml(ticket.currentLocation || ticket.location || "")}</td>`;
+    }
+    if (key === "status") return `<td>${escapeHtml(ticket.status || "")}</td>`;
+    if (key === "wash") return `<td>${escapeHtml(washLabel(ticket))}</td>`;
+    if (key === "washed") return `<td>${escapeHtml(fmtTime(ticket.washedAtMs))}</td>`;
+    if (key === "qc") {
+      const canClear = ["requested", "not_required"].includes(
+        clean(ticket.qcStatus).toLowerCase(),
+      );
+
+      return `<td class="qcStatusCell" title="${
+        canClear ? "Double-click to clear this QC choice" : ""
+      }">${escapeHtml(qcLabel(ticket))}</td>`;
+    }
+    if (key === "pickup") return `<td>${escapeHtml(pickupLabel(ticket))}</td>`;
+    if (key === "needBy") {
+      return `<td>
+        <button class="needByBtn" type="button" style="${lateStyle}" ${
+          !canSetNeedBy ||
+          ticket.customerWaiting === true ||
+          ticket.isWaiter === true ||
+          Boolean(ticket.pickedUpAtMs) ||
+          !["pending", "washing", "rewash_requested"].includes(washStatus)
+            ? "disabled"
+            : ""
+        }>${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}</button>
+        ${
+          ticket.needByAtMs &&
+          canSetNeedBy &&
+          !ticket.pickedUpAtMs &&
+          ["pending", "washing", "rewash_requested"].includes(washStatus)
+            ? `<button class="clearNeedByBtn" type="button">Clear</button>`
+            : ""
+        }
+      </td>`;
+    }
+    if (key === "projected") {
+      return `<td style="${lateStyle}">${escapeHtml(fmtTime(projected.projectedFinishAtMs))}</td>`;
+    }
+    if (key === "rewash") {
+      return `<td><button class="rewashBtn" ${
+        !canRequestRewash || !canRewashTicket ? "disabled" : ""
+      }>Request Rewash</button></td>`;
+    }
+    if (key === "cp") {
+      return `<td>${
+        cpDone
+          ? `${canClearCp ? `<span>Booked</span> <button class="cpClearBtn">Clear CP</button>` : "Booked"}`
+          : canMarkCp
+            ? `<button class="cpBookedBtn">Mark CP Booked</button>`
+            : ""
+      }</td>`;
+    }
+    if (key === "wty") {
+      return `<td>${
+        wtyDone
+          ? `${canClearWty ? `<span>Booked</span> <button class="wtyClearBtn">Clear WTY</button>` : "Booked"}`
+          : canMarkWty
+            ? `<button class="wtyBookedBtn">Mark WTY Booked</button>`
+            : ""
+      }</td>`;
+    }
+    if (key === "requestQc") {
+      return `<td class="qcActionCell">
+        <button class="requestQcBtn" ${
+          !canRequestQc || qcLocked ? "disabled" : ""
+        }>Request QC</button>
+        <button class="noQcBtn" ${
+          !canMarkNoQc || qcLocked ? "disabled" : ""
+        }>No QC</button>
+      </td>`;
+    }
+    if (key === "requestPickup") {
+      return `<td><button class="pickupBtn" ${
+        !canRequestPickup || pickupRequested ? "disabled" : ""
+      }>${pickupRequested ? "Pickup Requested" : "Request Pickup"}</button></td>`;
+    }
+
+    return `<td></td>`;
+  }
+
+  function openAdvisorColumns() {
+    const overlay = document.createElement("div");
+    overlay.className = "advisor-column-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "advisor-column-modal";
+    modal.innerHTML = `
+      <h3>Advisor Columns</h3>
+      <p>Choose which columns you want to see.</p>
+      <div class="advisor-column-list">
+        ${ADVISOR_COLUMNS.map((column) => `
+          <label class="advisor-column-option">
+            <input type="checkbox" value="${column.key}" ${
+              visibleAdvisorColumns.includes(column.key) ? "checked" : ""
+            } />
+            <span>${escapeHtml(column.label)}</span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="advisor-column-actions">
+        <button type="button" class="js-cancel">Cancel</button>
+        <button type="button" class="js-save">Save</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    modal.querySelector(".js-cancel").addEventListener("click", () => {
+      overlay.remove();
+    });
+
+    modal.querySelector(".js-save").addEventListener("click", () => {
+      const selected = [...modal.querySelectorAll("input:checked")].map(
+        (input) => input.value,
+      );
+
+      if (!selected.length) {
+        alert("Select at least one column.");
+        return;
+      }
+
+      saveAdvisorColumns(
+        ADVISOR_COLUMNS.map((column) => column.key).filter((key) =>
+          selected.includes(key),
+        ),
+      );
+      render();
+      overlay.remove();
+    });
+  }
+
   function render() {
     const filtered = getCurrentRows();
 
     tableEl.innerHTML = `
       <thead>
         <tr>
-          <th>Tag</th>
-          <th>RO</th>
-          <th>Advisor</th>
-          <th>Model</th>
-          <th>Customer</th>
-          <th>Location</th>
-          <th>RO Status</th>
-          <th>Wash</th>
-          <th>Washed</th>
-          <th>QC</th>
-          <th>Pickup Status</th>
-          <th>Need By</th>
-          <th>Projected</th>
-          <th>Rewash</th>
-          <th>CP Booked</th>
-          <th>WTY Booked</th>
-          <th>Request QC</th>
-          <th>No QC</th>
-          <th>Request Pickup</th>
+          ${visibleAdvisorColumns
+            .map((key) => {
+              const column = ADVISOR_COLUMNS.find((item) => item.key === key);
+              const help = {
+                needBy: "When you need this car finished.",
+                projected: "When wash expects to finish. Red means it will miss Need by.",
+                wash: "Current wash status: Pending, Washing, Rewash Requested, or Washed.",
+                rewash: "Ask wash to run the car again.",
+                washed: "Time the wash finished.",
+              }[key];
+
+              return help
+                ? `<th class="advisor-th-help" data-help="${escapeHtml(help)}">${escapeHtml(column?.label || key)}</th>`
+                : `<th>${escapeHtml(column?.label || key)}</th>`;
+            })
+            .join("")}
         </tr>
       </thead>
 
@@ -774,168 +975,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                   return `
                     <tr data-id="${escapeHtml(ticket.id)}">
-                      <td>
-                        <b>
-                          ${escapeHtml(tagValue(ticket))}
-                        </b>
-                      </td>
-
-                      <td>
-                        ${escapeHtml(roValue(ticket))}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(advisorNameValue(ticket))}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(vehicleValue(ticket))}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(ticket.customerName || "")}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(
-                          ticket.currentLocation || ticket.location || "",
-                        )}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(ticket.status || "")}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(washLabel(ticket))}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(fmtTime(ticket.washedAtMs))}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(qcLabel(ticket))}
-                      </td>
-
-                       <td>
-                         ${escapeHtml(pickupLabel(ticket))}
-                       </td>
-
-                       <td>
-                         <button
-                           class="needByBtn"
-                           type="button"
-                           style="${lateStyle}"
-                           ${
-                             !canSetNeedBy ||
-                             ticket.customerWaiting === true ||
-                             ticket.isWaiter === true ||
-                             Boolean(ticket.pickedUpAtMs) ||
-                             !["pending", "washing", "rewash_requested"].includes(
-                               washStatus,
-                             )
-                               ? "disabled"
-                               : ""
-                           }
-                         >
-                           ${ticket.needByAtMs ? fmtTime(ticket.needByAtMs) : "Need By"}
-                         </button>
-                         ${
-                           ticket.needByAtMs &&
-                           canSetNeedBy &&
-                           !ticket.pickedUpAtMs &&
-                           ["pending", "washing", "rewash_requested"].includes(
-                             washStatus,
-                           )
-                             ? `<button class="clearNeedByBtn" type="button">Clear</button>`
-                             : ""
-                         }
-                       </td>
-
-                       <td style="${lateStyle}">
-                         ${escapeHtml(fmtTime(projected.projectedFinishAtMs))}
-                       </td>
-
-                      <td>
-                        <button
-                          class="rewashBtn"
-                          ${
-                            !canRequestRewash || !canRewashTicket
-                              ? "disabled"
-                              : ""
-                          }
-                        >
-                          Request Rewash
-                        </button>
-                      </td>
-
-                      <td>
-                        ${
-                          cpDone
-                            ? `${canClearCp
-                                ? `<span>Booked</span> <button class="cpClearBtn">Clear CP</button>`
-                                : "Booked"}`
-                            : canMarkCp
-                              ? `<button class="cpBookedBtn">Mark CP Booked</button>`
-                              : ""
-                        }
-                      </td>
-
-                      <td>
-                        ${
-                          wtyDone
-                            ? `${canClearWty
-                                ? `<span>Booked</span> <button class="wtyClearBtn">Clear WTY</button>`
-                                : "Booked"}`
-                            : canMarkWty
-                              ? `<button class="wtyBookedBtn">Mark WTY Booked</button>`
-                              : ""
-                        }
-                      </td>
-
-                      <td>
-                        <button
-                          class="requestQcBtn"
-                          ${!canRequestQc || qcLocked ? "disabled" : ""}
-                        >
-                          Request QC
-                        </button>
-                      </td>
-
-                      <td>
-                        <button
-                          class="noQcBtn"
-                          ${!canMarkNoQc || qcLocked ? "disabled" : ""}
-                        >
-                          No QC Required
-                        </button>
-                      </td>
-
-                      <td>
-                        <button
-                          class="pickupBtn"
-                          ${
-                            !canRequestPickup || pickupRequested
-                              ? "disabled"
-                              : ""
-                          }
-                       >
-                          ${
-                            pickupRequested
-                              ? "Pickup Requested"
-                              : "Request Pickup"
-                          }
-                        </button>
-                      </td>
-
+                      ${visibleAdvisorColumns
+                        .map((key) => advisorCell(key, ticket, {
+                          lateStyle,
+                          washStatus,
+                          canRewashTicket,
+                          qcLocked,
+                          pickupRequested,
+                          projected,
+                          cpDone,
+                          wtyDone,
+                        }))
+                        .join("")}
                     </tr>
                   `;
                 })
                 .join("")
             : `
               <tr>
-                <td colspan="19">
+                <td colspan="${visibleAdvisorColumns.length || 1}">
                   No repair orders found.
                 </td>
               </tr>
@@ -944,6 +1002,68 @@ document.addEventListener("DOMContentLoaded", async () => {
       </tbody>
     `;
   }
+
+  let advisorHelpTip = null;
+
+  tableEl.addEventListener("mouseover", (event) => {
+    const header = event.target.closest(".advisor-th-help");
+
+    if (!header?.dataset.help) {
+      return;
+    }
+
+    if (!advisorHelpTip) {
+      advisorHelpTip = document.createElement("div");
+      advisorHelpTip.className = "advisor-help-tip";
+      document.body.appendChild(advisorHelpTip);
+    }
+
+    const box = header.getBoundingClientRect();
+
+    advisorHelpTip.textContent = header.dataset.help;
+    advisorHelpTip.style.left = `${box.left}px`;
+    advisorHelpTip.style.top = `${box.top - 8}px`;
+    advisorHelpTip.style.transform = "translateY(-100%)";
+    advisorHelpTip.classList.add("is-on");
+  });
+
+  tableEl.addEventListener("mouseout", (event) => {
+    if (event.relatedTarget?.closest?.(".advisor-th-help")) {
+      return;
+    }
+
+    advisorHelpTip?.classList.remove("is-on");
+  });
+
+  tableEl.addEventListener("dblclick", async (event) => {
+    const cell = event.target.closest(".qcStatusCell");
+    const tableRow = event.target.closest("tr[data-id]");
+
+    if (!cell || !tableRow) {
+      return;
+    }
+
+    const ticket = rows.find((item) => item.id === tableRow.dataset.id);
+    const status = clean(ticket?.qcStatus).toLowerCase();
+
+    if (!["requested", "not_required"].includes(status)) {
+      return;
+    }
+
+    const confirmed = confirm("Clear this QC choice so you can choose again?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await clearQcDecision(ticket.id);
+      setMsg("QC choice cleared.");
+    } catch (error) {
+      console.error(error);
+      setMsg(error?.message || "Could not clear QC.", false);
+    }
+  });
 
   tableEl.addEventListener("click", async (event) => {
     const button = event.target.closest("button");

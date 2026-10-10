@@ -63,6 +63,26 @@ export async function requestQc(roId) {
   });
 }
 
+export async function clearQcDecision(roId) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in.");
+
+  await updateDoc(doc(db, "ros", roId), {
+    qcRequired: null,
+    qcStatus: "",
+    qcRequestedAt: null,
+    qcRequestedAtMs: null,
+    qcRequestedBy: null,
+    ...auditPatch([
+      "qcRequired",
+      "qcStatus",
+      "qcRequestedAt",
+      "qcRequestedAtMs",
+      "qcRequestedBy",
+    ]),
+  });
+}
+
 export async function markNoQcRequired(roId) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not signed in.");
