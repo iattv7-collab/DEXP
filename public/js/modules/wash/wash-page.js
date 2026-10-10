@@ -29,6 +29,8 @@ import {
   removeCourtesyWashFromQueue,
 } from "/js/services/firestore/courtesy-wash-service.js";
 
+import { resolveNotificationRequest } from "/js/services/firestore/notification-requests-service.js";
+
 import {
   arrayUnion,
   collection,
@@ -350,6 +352,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function notifyAdvisorNeedByLate(tickets) {
     for (const ticket of tickets) {
       if (!ticket?.needByMissed) {
+        const needBy = Number(ticket.needByAtMs || 0);
+        const alertId = `needby-late-${ticket.id}-${needBy}`;
+        resolveNotificationRequest(alertId).catch(() => { });
         continue;
       }
 
@@ -553,11 +558,10 @@ document.addEventListener("DOMContentLoaded", async () => {
               ${escapeHtml(fmtTime(ticket.needByAtMs))}
             </td>
 
-            <td style="${
-              ticket.needByMissed
-                ? "color:crimson;font-weight:700;"
-                : ""
-            }">
+            <td style="${ticket.needByMissed
+            ? "color:crimson;font-weight:700;"
+            : ""
+          }">
               ${escapeHtml(fmtTime(ticket.projectedFinishAtMs))}
             </td>
 
@@ -571,11 +575,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             <td>
               ${escapeHtml(
-                ticket.washQueuedByName ||
-                  ticket.updatedByName ||
-                  ticket.createdByName ||
-                  "",
-              )}
+            ticket.washQueuedByName ||
+            ticket.updatedByName ||
+            ticket.createdByName ||
+            "",
+          )}
             </td>
 
             <td>

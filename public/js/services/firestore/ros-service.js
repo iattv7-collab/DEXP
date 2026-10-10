@@ -2,6 +2,7 @@
 
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -101,7 +102,7 @@ export async function createRO(data = {}, options = {}) {
     [ROS_FIELDS.isWaiter]: Boolean(data[ROS_FIELDS.isWaiter]),
     customerWaiting: Boolean(data.customerWaiting),
     [ROS_FIELDS.concern]: data[ROS_FIELDS.concern] || "",
-    
+
     roDate: data.roDate || formatRoDateToday(),
 
     [ROS_FIELDS.scanSource]: data[ROS_FIELDS.scanSource] || "manual",
@@ -279,7 +280,7 @@ export function watchArchivedROs(callback, advisorId = null) {
 
   if (!session?.dealerId) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const rosRef = collection(db, ROS_COLLECTION);
@@ -300,7 +301,7 @@ export function watchDealerROs(callback) {
 
   if (!session?.dealerId) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const rosRef = collection(db, ROS_COLLECTION);
@@ -320,7 +321,7 @@ export function watchAdvisorROs(callback) {
 
   if (!session?.dealerId || !session?.uid) {
     callback([]);
-    return () => {};
+    return () => { };
   }
 
   const rosRef = collection(db, ROS_COLLECTION);
@@ -349,7 +350,7 @@ export function watchROsByAdvisorId(advisorId, callback) {
   if (!session?.dealerId || !advisorId) {
     callback([]);
 
-    return () => {};
+    return () => { };
   }
 
   const rosRef = collection(db, ROS_COLLECTION);
@@ -440,6 +441,29 @@ export async function addROActivity(roId, activity = {}) {
   await setDoc(activityRef, activityData);
 
   return activityData;
+}
+
+export async function getDealerLocationActivities() {
+  const session = requireDealerSession();
+
+  const activityQuery = query(
+    collectionGroup(db, ACTIVITY_LOG_COLLECTION),
+    where("dealerId", "==", session.dealerId),
+  );
+
+  const snapshot = await getDocs(activityQuery);
+
+  return snapshot.docs
+    .map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }))
+    .filter((row) => {
+      return (
+        row.eventType === "location_updated" ||
+        row.eventType === "vehicle_blocked"
+      );
+    });
 }
 
 export async function findActiveAdvisorByCompanyId(companyId = "") {

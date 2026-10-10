@@ -18,6 +18,7 @@ import {
 
 import { db } from "../firebase/firestore.js";
 import { getSession } from "../../core/session.js";
+import { getRO } from "./ros-service.js";
 
 const NOTIFICATION_REQUESTS_COLLECTION = "notificationRequests";
 
@@ -445,6 +446,63 @@ export async function resolveFollowupDueAlertsForRo(roId) {
       error,
     );
   }
+}
+
+export async function resolveNeedByLateIfDone(notification = {}) {
+  if (notification.eventType !== "needby_late" || !notification.relatedRoId) {
+    return;
+  }
+
+  const ro = await getRO(notification.relatedRoId);
+
+  if (!shouldClearNeedByLate(ro, notification)) {
+    return;
+  }
+
+  await resolveNotificationRequestIfActive(notification.id);
+}
+
+function shouldClearNeedByLate(ro, notification = {}) {
+  if (!ro) {
+    return true;
+  }
+
+  const status = String(ro.status || "").toLowerCase();
+
+  if (status === "archived" || status === "ready called" || ro.readyCalled) {
+    return true;
+  }
+
+  if (ro.pickedUpAtMs) {
+    return true;
+  }
+
+  const needBy = Number(ro.needByAtMs || 0);
+
+  if (!needBy) {
+    return true;
+  }
+
+  const prefix = `needby-late-${notification.relatedRoId}-`;
+  const alertNeedBy = Number(String(notification.id || "").slice(prefix.length));
+
+  if (alertNeedBy && alertNeedBy !== needBy) {
+    return true;
+  }
+
+  const washStatus = String(ro.washStatus || "").toLowerCase();
+
+  if (!["pending", "washing", "rewash_requested"].includes(washStatus)) {
+    return true;
+  }
+
+  const projected = Number(ro.projectedFinishAtMs || 0);
+
+  if (projected && projected <= needBy) {
+    return true;
+  }
+
+  return false;
 }
 
 async function resolveNotificationRequestIfActive(notificationId) {

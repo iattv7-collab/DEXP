@@ -9,6 +9,7 @@ import {
   openNotificationRequest,
   releaseStaleOpenedNotificationRequest,
   resolveNotificationRequest,
+  resolveNeedByLateIfDone,
 } from "../../services/firestore/notification-requests-service.js";
 
 import { acknowledgeAppointmentArrived } from "../../services/firestore/appointments-service.js";
@@ -120,6 +121,7 @@ export async function startNotificationEngine() {
 
   unsubscribeNotifications = listenToActiveNotificationRequests((requests) => {
     releaseStaleOpenedNotifications(requests, session);
+    clearFinishedNeedByAlerts(requests);
 
     const visibleNotifications = getVisibleNotifications(requests, session);
 
@@ -501,6 +503,16 @@ function releaseStaleOpenedNotifications(requests = [], session) {
       console.error("Could not release stale notification.", error);
     });
   });
+}
+
+function clearFinishedNeedByAlerts(requests = []) {
+  requests
+    .filter((item) => item?.eventType === "needby_late" && item.status === "active")
+    .forEach((item) => {
+      resolveNeedByLateIfDone(item).catch((error) => {
+        console.error("Could not clear Need By alert.", error);
+      });
+    });
 }
 
 function getVisibleNotifications(requests = [], session) {

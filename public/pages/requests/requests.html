@@ -2,139 +2,184 @@
 
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>DEXP Requests</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="/css/core/reset.css" />
-    <link rel="stylesheet" href="/css/core/base.css" />
-  </head>
+  <title>DEXP Requests</title>
 
-  <body>
-    <div id="appHeader"></div>
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+</head>
 
-    <main class="page-shell">
-      <section class="page-section">
-        <div class="page-title-row">
-          <div>
-            <h2>Requests</h2>
-            <p>Create and track interdepartmental requests.</p>
-          </div>
+<body>
+  <div id="appHeader"></div>
+
+  <main class="page-shell">
+    <section class="page-section">
+      <div class="page-title-row">
+        <div>
+          <h2>Requests</h2>
+          <p>Create and track interdepartmental requests.</p>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="page-section">
-        <div class="dexp-admin-card">
-          <h3>Create Request</h3>
+    <section id="requestsCreateSection" class="page-section">
+      <div class="dexp-admin-card">
+        <h3>Create Request</h3>
 
+        <div class="form-grid">
+          <label>
+            RO Number
+            <input id="requestRoNumberInput" type="text" />
+          </label>
+
+          <label>
+            Tag Number
+            <input id="requestTagNumberInput" type="text" />
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button id="searchRequestVehicleButton" type="button">
+            Search Vehicle
+          </button>
+        </div>
+
+        <div id="requestVehicleSummary" class="tool-preview hidden"></div>
+
+        <div id="requestCreateControls" class="hidden">
           <div class="form-grid">
             <label>
-              RO Number
-              <input id="requestRoNumberInput" type="text" />
+              Request Type
+              <select id="requestTypeSelect">
+                <option value="">Select request type...</option>
+              </select>
             </label>
 
             <label>
-              Tag Number
-              <input id="requestTagNumberInput" type="text" />
+              Notes
+              <input id="requestMessageInput" type="text" placeholder="Optional notes..." />
             </label>
           </div>
 
           <div class="action-row">
-            <button id="searchRequestVehicleButton" type="button">
-              Search Vehicle
+            <button id="createRequestButton" type="button">
+              Create Request
             </button>
           </div>
-
-          <div id="requestVehicleSummary" class="tool-preview hidden"></div>
-
-          <div id="requestCreateControls" class="hidden">
-            <div class="form-grid">
-              <label>
-                Request Type
-                <select id="requestTypeSelect">
-                  <option value="">Select request type...</option>
-                </select>
-              </label>
-
-              <label>
-                Notes
-                <input
-                  id="requestMessageInput"
-                  type="text"
-                  placeholder="Optional notes..."
-                />
-              </label>
-            </div>
-
-            <div class="action-row">
-              <button id="createRequestButton" type="button">
-                Create Request
-              </button>
-            </div>
-          </div>
-
-          <p id="requestFormMessage" class="page-message"></p>
         </div>
-      </section>
 
-      <section class="page-section">
-        <div class="dexp-admin-card">
-          <div class="page-title-row">
-            <div>
-              <h3>Requests Tracker</h3>
-              <p>Track request status without taking extra space.</p>
-            </div>
+        <p id="requestFormMessage" class="page-message"></p>
+      </div>
+    </section>
 
-            <div class="action-row">
-              <button
-                id="myRequestsToggleButton"
-                type="button"
-                class="small-button"
-              >
-                My Requests
-              </button>
+    <section class="page-section">
+      <div class="action-row" style="margin-bottom: 10px;">
+        <button id="requestsTrackerTabButton" type="button" class="small-button">
+          Tracker
+        </button>
+        <button id="requestsHistoryTabButton" type="button" class="small-button secondary">
+          History
+        </button>
+      </div>
 
-              <button
-                id="allRequestsToggleButton"
-                type="button"
-                class="small-button secondary"
-              >
-                All Requests
-              </button>
-            </div>
+      <div id="requestsTrackerSection" class="dexp-admin-card">
+        <div class="page-title-row">
+          <div>
+            <h3>Requests Tracker</h3>
+            <p>Open requests, plus completed and cancelled for the last 2 hours.</p>
           </div>
 
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Created</th>
-                  <th>Type</th>
-                  <th>RO</th>
-                  <th>Tag</th>
-                  <th>Target</th>
-                  <th>Status</th>
-                  <th>Opened By</th>
-                  <th>Started By</th>
-                  <th>Completed By</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
+          <div class="action-row">
+            <button id="myRequestsToggleButton" type="button" class="small-button">
+              My Requests
+            </button>
 
-              <tbody id="requestsTableBody">
-                <tr>
-                  <td colspan="10">Loading requests...</td>
-                </tr>
-              </tbody>
-            </table>
+            <button id="allRequestsToggleButton" type="button" class="small-button secondary">
+              All Requests
+            </button>
           </div>
         </div>
-      </section>
-    </main>
 
-    <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/requests/requests-page.js?v=7"></script>
-  </body>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Type</th>
+                <th>RO</th>
+                <th>Tag</th>
+                <th>Target</th>
+                <th>Status</th>
+                <th>Opened By</th>
+                <th>Started By</th>
+                <th>Completed By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+
+            <tbody id="requestsTableBody">
+              <tr>
+                <td colspan="10">Loading requests...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="requestsHistorySection" class="dexp-admin-card hidden">
+        <div class="page-title-row">
+          <div>
+            <h3>History</h3>
+            <p>Day log for accountability. Records stay.</p>
+          </div>
+
+          <button id="requestsHistoryBackButton" type="button" class="small-button secondary">
+            Back
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Day
+            <input id="requestsHistoryDateInput" type="date" />
+          </label>
+
+          <label>
+            Search
+            <input id="requestsHistorySearchInput" type="text" placeholder="Tag, RO, type, or who" />
+          </label>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>What</th>
+                <th>RO</th>
+                <th>Tag</th>
+                <th>Who</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody id="requestsHistoryTableBody">
+              <tr>
+                <td colspan="7">Pick a day.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/core/app.js"></script>
+  <script type="module" src="/pages/requests/requests-page.js?v=8"></script>
+</body>
+
 </html>

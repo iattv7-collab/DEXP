@@ -17,6 +17,7 @@ import {
 import {
   findActiveROByNumber,
   findActiveROByTag,
+  getDealerLocationActivities,
 } from "/js/services/firestore/ros-service.js";
 
 import { watchDealerNotifications } from "/js/services/firestore/notification-requests-service.js";
@@ -47,6 +48,33 @@ const allRequestsToggleButton = document.getElementById(
 );
 
 const requestsTableBody = document.getElementById("requestsTableBody");
+const requestsTrackerTabButton = document.getElementById(
+  "requestsTrackerTabButton",
+);
+const requestsHistoryTabButton = document.getElementById(
+  "requestsHistoryTabButton",
+);
+const requestsTrackerSection = document.getElementById(
+  "requestsTrackerSection",
+);
+const requestsHistorySection = document.getElementById(
+  "requestsHistorySection",
+);
+const requestsHistoryDateInput = document.getElementById(
+  "requestsHistoryDateInput",
+);
+const requestsHistorySearchInput = document.getElementById(
+  "requestsHistorySearchInput",
+);
+const requestsHistoryTableBody = document.getElementById(
+  "requestsHistoryTableBody",
+);
+const requestsCreateSection = document.getElementById(
+  "requestsCreateSection",
+);
+const requestsHistoryBackButton = document.getElementById(
+  "requestsHistoryBackButton",
+);
 
 let notificationGroups = [];
 let dealerNotifications = [];
@@ -54,6 +82,8 @@ let dealerRequests = [];
 let requestTypes = [];
 let selectedRequestRO = null;
 let requestViewMode = "my";
+let requestsTab = "tracker";
+let locationActivities = [];
 
 let unsubscribeDealerRequests = null;
 let unsubscribeDealerNotifications = null;
@@ -80,6 +110,7 @@ async function initializeRequestsPage() {
   populateRequestTypeSelect();
   wireRequestForm();
   wireViewToggle();
+  wireRequestsTabs();
   listenToRequests();
 }
 
@@ -122,6 +153,82 @@ function wireViewToggle() {
   });
 
   updateToggleButtons();
+}
+
+function wireRequestsTabs() {
+  if (requestsHistoryDateInput && !requestsHistoryDateInput.value) {
+    requestsHistoryDateInput.value = toDateInputValue(new Date());
+  }
+
+  requestsTrackerTabButton?.addEventListener("click", () => {
+    requestsTab = "tracker";
+    updateRequestsTabs();
+    renderRequestsTable();
+  });
+
+  requestsHistoryTabButton?.addEventListener("click", async () => {
+    requestsTab = "history";
+    updateRequestsTabs();
+    await loadLocationActivities();
+    renderHistoryTable();
+  });
+
+  requestsHistoryDateInput?.addEventListener("change", () => {
+    renderHistoryTable();
+  });
+
+  requestsHistorySearchInput?.addEventListener("input", () => {
+    renderHistoryTable();
+  });
+
+  requestsHistoryBackButton?.addEventListener("click", () => {
+    clearHistorySearch();
+    requestsTab = "tracker";
+    updateRequestsTabs();
+    renderRequestsTable();
+  });
+
+  requestRoNumberInput?.addEventListener("input", clearHistorySearch);
+  requestTagNumberInput?.addEventListener("input", clearHistorySearch);
+
+  updateRequestsTabs();
+}
+
+function clearHistorySearch() {
+  if (requestsHistorySearchInput) {
+    requestsHistorySearchInput.value = "";
+  }
+
+  if (requestsHistoryTableBody && requestsTab !== "history") {
+    requestsHistoryTableBody.innerHTML = `
+      <tr>
+        <td colspan="7">Pick a day.</td>
+      </tr>
+    `;
+  }
+
+  if (requestsTab === "history") {
+    renderHistoryTable();
+  }
+}
+
+function updateRequestsTabs() {
+  const onTracker = requestsTab === "tracker";
+
+  requestsTrackerTabButton?.classList.toggle("secondary", !onTracker);
+  requestsHistoryTabButton?.classList.toggle("secondary", onTracker);
+  requestsTrackerSection?.classList.toggle("hidden", !onTracker);
+  requestsHistorySection?.classList.toggle("hidden", onTracker);
+  requestsCreateSection?.classList.toggle("hidden", !onTracker);
+}
+
+async function loadLocationActivities() {
+  try {
+    locationActivities = await getDealerLocationActivities();
+  } catch (error) {
+    console.error(error);
+    locationActivities = [];
+  }
 }
 
 function updateToggleButtons() {
@@ -483,6 +590,9 @@ function listenToRequests() {
   unsubscribeDealerRequests = watchDealerRequests((requests) => {
     dealerRequests = requests;
     renderRequestsTable();
+    if (requestsTab === "history") {
+      renderHistoryTable();
+    }
   });
 }
 
@@ -639,6 +749,153 @@ function canCancelRequest(request = {}) {
   return ["platform-admin", "admin", "manager", "dispatcher"].includes(
     session?.role,
   );
+}
+
+function renderHistoryTable() {
+  if (!requestsHistoryTableBody) {
+    return;
+  }
+
+  const dayValue = requestsHistoryDateInput?.value || toDateInputValue(new Date());
+  const search = String(requestsHistorySearchInput?.value || "")
+    .trim()
+    .toLowerCase();
+
+  const rows = [
+    ...getHistoryRequestRows(search ? "" : dayValue),
+    ...getHistoryLocationRows(search ? "" : dayValue),
+  ]
+    .filter((row) => matchesHistorySearch(row, search))
+    .sort((a, b) => b.timeMs - a.timeMs);
+
+  if (!rows.length) {
+    requestsHistoryTableBody.innerHTML = `
+      <tr>
+        <td colspan="7">No history for this day.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  requestsHistoryTableBody.innerHTML = rows.map(renderHistoryRow).join("");
+}
+
+function getHistoryRequestRows(dayValue) {
+  return dealerRequests
+    .filter((request) => !isLoanerWaitRequest(request))
+    .filter((request) => {
+      return (
+        request.status === REQUEST_STATUS.COMPLETED ||
+        request.status === REQUEST_STATUS.CANCELLED
+      );
+    })
+    .map((request) => {
+      const timeMs = Number(
+        request.completedAtMs || request.cancelledAtMs || 0,
+      );
+
+      return {
+        timeMs,
+        source: "Request",
+        what: request.title || request.requestType || "",
+        ro: request.roNumber || "",
+        tag: request.tagNumber || "",
+        who:
+          request.completedByName ||
+          request.cancelledByName ||
+          request.requestedByName ||
+          "",
+        detail: formatStatus(request.status),
+      };
+    })
+    .filter((row) => isSameLocalDay(row.timeMs, dayValue));
+}
+
+function getHistoryLocationRows(dayValue) {
+  return locationActivities
+    .map((activity) => {
+      const timeMs = getActivityTimeMs(activity);
+      const after = activity.after || {};
+      const before = activity.before || {};
+
+      return {
+        timeMs,
+        source: "Location",
+        what:
+          activity.eventType === "vehicle_blocked"
+            ? "Blocking tag"
+            : "Update location",
+        ro: after.roNumber || before.roNumber || "",
+        tag: after.tagNumber || before.tagNumber || "",
+        who: activity.changedByName || "",
+        detail: activity.message || "",
+      };
+    })
+    .filter((row) => isSameLocalDay(row.timeMs, dayValue));
+}
+
+function matchesHistorySearch(row, search) {
+  if (!search) {
+    return true;
+  }
+
+  const haystack = [row.source, row.what, row.ro, row.tag, row.who, row.detail]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(search);
+}
+
+function renderHistoryRow(row) {
+  return `
+    <tr>
+      <td data-label="Time">${formatDateTime(row.timeMs)}</td>
+      <td data-label="Source">${escapeHtml(row.source)}</td>
+      <td data-label="What">${escapeHtml(row.what)}</td>
+      <td data-label="RO">${escapeHtml(row.ro)}</td>
+      <td data-label="Tag">${escapeHtml(row.tag)}</td>
+      <td data-label="Who">${escapeHtml(row.who)}</td>
+      <td data-label="Detail">${escapeHtml(row.detail)}</td>
+    </tr>
+  `;
+}
+
+function isSameLocalDay(timeMs, dayValue) {
+  if (!dayValue) {
+    return true;
+  }
+
+  if (!timeMs) {
+    return false;
+  }
+
+  const date = new Date(timeMs);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return toDateInputValue(date) === dayValue;
+}
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getActivityTimeMs(activity = {}) {
+  if (activity.createdAt?.toMillis) {
+    return activity.createdAt.toMillis();
+  }
+
+  if (typeof activity.createdAtMs === "number") {
+    return activity.createdAtMs;
+  }
+
+  return 0;
 }
 
 function formatStatus(status = "") {
