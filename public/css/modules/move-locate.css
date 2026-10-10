@@ -21,13 +21,23 @@
   margin: 0;
   text-align: right;
 }
-
 #moveLocatePage .move-search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 6px;
   align-items: center;
 }
+
+#moveLocatePage .move-search-row.hidden,
+#moveLocatePage .move-card-header .tool-help.hidden {
+  display: none;
+}
+
+#moveLocatePage .move-search-row.hidden,
+#moveLocatePage .move-card-header .tool-help.hidden {
+  display: none;
+}
+
 
 #moveLocatePage .move-search-row input {
   min-width: 0;
@@ -235,6 +245,12 @@
 
 #moveLocatePage .move-found-message {
   color: #c2410c;
+  font-weight: 700;
+}
+
+#moveLocatePage .move-saved-message {
+  color: #03b014;
+  font-size: 18px;
   font-weight: 700;
 }
 

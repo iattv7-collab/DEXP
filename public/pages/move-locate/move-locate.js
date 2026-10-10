@@ -1294,12 +1294,33 @@ async function saveAllLocations() {
       .map((item) => getROTag(item.ro))
       .filter(Boolean);
 
+    const firstSaved = saveItems[0];
+    const dropOff = formatAreaLot(firstSaved?.finalArea, firstSaved?.finalLot);
+    const savedRO =
+      lastROs.find((ro) => ro.id === firstSaved?.ro?.id) || firstSaved?.ro;
+
+    renderMoveDestination(null);
+    pendingRouteTag = "";
+
+    if (savedRO) {
+      currentRO = savedRO;
+      renderSelectedVehicle(savedRO);
+      vehicleResultCard.classList.remove("hidden");
+    }
+
     if (savedTags.length === 1) {
-      showMessage(`Location saved for Tag ${savedTags[0]}.`);
+      showMessage(
+        dropOff
+          ? `Dropped off Tag ${savedTags[0]} at ${dropOff}.`
+          : `Location saved for Tag ${savedTags[0]}.`,
+      );
     } else {
       showMessage(`Locations saved for ${savedTags.length} vehicles.`);
     }
-    setTimeout(resetMoveLocateForm, 2000);
+
+    setTimeout(() => {
+      resetMoveLocateForm();
+    }, 1500);
   } catch (error) {
     console.error(error);
     showMessage(error?.message || "Could not save locations.");
@@ -1872,6 +1893,8 @@ function resetMoveLocateForm() {
 
   hideOldSingleSaveUi();
   hideUnifiedSaveButton();
+  renderMoveDestination(null);
+  clearMessage();
 
   if (moveAreaSelect) {
     moveAreaSelect.value = "";
@@ -1891,22 +1914,22 @@ function setArrivedFromRequest(on) {
   document.querySelector(".move-card-header .tool-help")?.classList.toggle("hidden", on);
 }
 
-function setArrivedFromRequest(on) {
-  document.querySelector(".move-search-row")?.classList.toggle("hidden", on);
-  document.querySelector(".move-card-header .tool-help")?.classList.toggle("hidden", on);
-}
-
 function showMessage(message) {
   moveLocateMessage.textContent = message;
   moveLocateMessage.classList.toggle(
     "move-found-message",
     message === "Vehicle found.",
   );
+  moveLocateMessage.classList.toggle(
+    "move-saved-message",
+    message.startsWith("Dropped off") || message.startsWith("Locations saved"),
+  );
 }
 
 function clearMessage() {
   moveLocateMessage.textContent = "";
   moveLocateMessage.classList.remove("move-found-message");
+  moveLocateMessage.classList.remove("move-saved-message");
 }
 
 function renderMoveDestination(ro) {
