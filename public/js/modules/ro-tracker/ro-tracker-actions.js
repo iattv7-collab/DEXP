@@ -2,6 +2,8 @@
 
 import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js?v=2";
 import { getSession } from "/js/core/session.js";
+import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
+import { createRequest } from "/js/services/firestore/requests-service.js";
 
 import {
   dateInputToMMDDYYYY,
@@ -349,7 +351,48 @@ async function handleButtonClick(button, getROById) {
       return;
     }
 
+    const pickupType = (await getActiveRequestTypes()).find(
+      (item) => item.useForPickup === true,
+    );
+
+    if (!pickupType) {
+      alert("No request type is marked Use for pickup. Set that in Admin.");
+      return;
+    }
+
     const session = getSession();
+    const tagNumber = ro.tagNumber || ro.tag || "";
+    const roNumber = ro.roNumber || ro.ro || "";
+
+    try {
+      await createRequest({
+        roId,
+        roNumber,
+        tagNumber,
+        vinLast8: ro.vinLast8 || "",
+        requestType: pickupType.requestType,
+        sourceModule: "ro-tracker",
+        targetGroupId: pickupType.targetGroupId,
+        targetGroupName: pickupType.targetGroupName || "",
+        title: pickupType.name || "Customer pickup",
+        message:
+          pickupType.defaultMessage ||
+          `RO ${roNumber || "N/A"} • Tag ${tagNumber || "N/A"}`,
+        route: pickupType.route || "/pages/move-locate/move-locate.html",
+        routeParams: {
+          tagNumber,
+        },
+      });
+    } catch (error) {
+      const message = error?.message || "Could not create pickup request.";
+
+      if (!message.includes("already has an active request")) {
+        alert(message);
+        return;
+      }
+
+      alert(message);
+    }
 
     await updateRO(
       roId,

@@ -122,6 +122,9 @@ async function handleCreateRequestType() {
       techMarksDone:
         document.getElementById("requestTypeTechMarksDoneInput")
           ?.checked === true,
+      useForPickup:
+        document.getElementById("requestTypeUseForPickupInput")
+          ?.checked === true,
     });
 
     requestTypeNameInput.value = "";
@@ -185,7 +188,7 @@ function renderRequestTypeTable(tableBody, rows, inactive) {
   if (!rows.length) {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="7">No ${inactive ? "inactive" : "active"} request types.</td>
+        <td colspan="8">No ${inactive ? "inactive" : "active"} request types.</td>
       </tr>
     `;
     return;
@@ -301,6 +304,19 @@ function buildRequestTypeRow(requestType, inactive) {
         </label>
       </td>
 
+      <td data-label="Pickup">
+        <label>
+          <input
+            class="request-type-use-for-pickup-input"
+            type="checkbox"
+            data-original="${requestType.useForPickup === true ? "1" : "0"}"
+            ${requestType.useForPickup === true ? "checked" : ""}
+            disabled
+          />
+          Pickup
+        </label>
+      </td>
+
       <td data-label="Actions">
         <button
           class="small-button secondary edit-request-type-button"
@@ -409,6 +425,7 @@ function bindEditRow(row) {
     row.querySelector(".request-type-message-input"),
     row.querySelector(".request-type-show-on-tech-input"),
     row.querySelector(".request-type-tech-marks-done-input"),
+    row.querySelector(".request-type-use-for-pickup-input"),
   ].filter(Boolean);
 
   const editButton = row.querySelector(".edit-request-type-button");
@@ -502,7 +519,22 @@ function bindEditRow(row) {
       techMarksDone:
         row.querySelector(".request-type-tech-marks-done-input")
           ?.checked === true,
+      useForPickup:
+        row.querySelector(".request-type-use-for-pickup-input")
+          ?.checked === true,
     });
+
+    if (
+      row.querySelector(".request-type-use-for-pickup-input")?.checked === true
+    ) {
+      const others = requestTypes.filter(
+        (item) => item.id !== saveButton.dataset.id && item.useForPickup === true,
+      );
+
+      for (const other of others) {
+        await updateRequestType(other.id, { useForPickup: false });
+      }
+    }
 
     await loadRequestTypes();
 

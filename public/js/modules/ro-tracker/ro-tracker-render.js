@@ -368,6 +368,7 @@ function getROTrackerColumnClass(key) {
     currentLocation: "col-location",
     readyCalled: "col-ready",
     pickedUp: "col-ready",
+    pickupRequest: "col-pickup",
     notes: "col-notes",
     techVideo: "col-video",
     calledTime: "col-called",

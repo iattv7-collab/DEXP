@@ -101,6 +101,7 @@ export async function createRequestType(data = {}) {
 
     showOnTech: data.showOnTech === true,
     techMarksDone: data.techMarksDone === true,
+    useForPickup: data.useForPickup === true,
 
     createdAt: serverTimestamp(),
     createdAtMs: Date.now(),
