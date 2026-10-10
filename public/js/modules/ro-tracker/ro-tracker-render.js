@@ -66,6 +66,7 @@ function buildCell(ro, key) {
 
   if (key === "readyCalled") return buildReadyCalledCell(ro);
   if (key === "pickedUp") return buildPickedUpCell(ro);
+  if (key === "pickupRequest") return buildPickupRequestCell(ro);
   if (key === "techVideo")
     return buildCheckboxCell(ro, "techVideo", Boolean(ro.techVideo), {
       videoCell: true,
@@ -273,6 +274,23 @@ function techStatusLabel(ro) {
   if (status === "completed") return "Done";
   if (status === "assigned" || ro.techId) return "Assigned";
   return "";
+}
+
+function buildPickupRequestCell(ro) {
+  const requested = ["requested", "on_the_way", "complete"].includes(
+    String(ro.pickupStatus || "").toLowerCase(),
+  );
+
+  const td = document.createElement("td");
+  td.className = "center";
+
+  if (requested) {
+    td.textContent = "Pickup Requested";
+    return td;
+  }
+
+  td.appendChild(buildSmallButton(ro, "pickupRequest", "Request Pickup"));
+  return td;
 }
 
 function buildButtonCell(ro, action, label) {

@@ -62,6 +62,11 @@ export const RO_TRACKER_COLUMNS = [
   },
 
   {
+    key: "pickupRequest",
+    label: "Request Pickup",
+  },
+
+  {
     key: "notes",
     label: "Notes",
   },

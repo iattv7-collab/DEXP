@@ -113,7 +113,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     { key: "rewash", label: "Rewash" },
     { key: "washed", label: "Washed" },
     { key: "pickup", label: "Pickup Status" },
-    { key: "requestPickup", label: "Request Pickup" },
   ];
 
   const advisorColumnStorageKey = `dexp_advisor_columns_${session?.uid || "local"}`;
@@ -851,11 +850,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }>No QC</button>
       </td>`;
     }
-    if (key === "requestPickup") {
-      return `<td><button class="pickupBtn" ${
-        !canRequestPickup || pickupRequested ? "disabled" : ""
-      }>${pickupRequested ? "Pickup Requested" : "Request Pickup"}</button></td>`;
-    }
 
     return `<td></td>`;
   }
@@ -1036,7 +1030,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   tableEl.addEventListener("dblclick", async (event) => {
-    const cell = event.target.closest(".qcStatusCell");
+    const cell = event.target.closest(".qcStatusCell, .qcActionCell");
     const tableRow = event.target.closest("tr[data-id]");
 
     if (!cell || !tableRow) {

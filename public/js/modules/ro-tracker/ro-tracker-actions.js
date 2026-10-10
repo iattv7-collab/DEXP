@@ -342,6 +342,33 @@ async function handleButtonClick(button, getROById) {
     return;
   }
 
+  if (action === "pickupRequest") {
+    const confirmed = confirm("Request pickup for this RO?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    const session = getSession();
+
+    await updateRO(
+      roId,
+      {
+        pickupStatus: "requested",
+        pickupRequestedAtMs: Date.now(),
+        pickupRequestedBy: session?.uid || "",
+        pickupRequestedByName: session?.displayName || session?.email || "",
+      },
+      {
+        module: "ro-tracker",
+        eventType: "pickup_requested",
+        message: "Pickup requested",
+      },
+    );
+
+    return;
+  }
+
   if (action === "archive") {
     const confirmed = confirm("Archive this RO?");
 

@@ -19,7 +19,7 @@ import {
 
 import { RO_TRACKER_COLUMNS } from "/js/modules/ro-tracker/ro-tracker-columns.js?v=11";
 
-import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js?v=11";
+import { buildROTrackerRow } from "/js/modules/ro-tracker/ro-tracker-render.js?v=12";
 
 import {
   getDefaultVisibleColumnKeys,
