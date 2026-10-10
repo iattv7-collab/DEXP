@@ -80,8 +80,11 @@ const sendPushForNotificationRequest = onDocumentCreated(
         return admin.messaging().send({
           token: device.token,
 
-          // Data-only style message:
-          // service worker is responsible for showing the notification.
+          notification: {
+            title: String(title || "DEXP Notification"),
+            body: String(body || ""),
+          },
+
           data: {
             title: String(title || "DEXP Notification"),
             body: String(body || ""),
@@ -114,21 +117,7 @@ const sendPushForNotificationRequest = onDocumentCreated(
           apns: {
             headers: {
               "apns-priority": "10",
-            },
-            payload: {
-              aps: {
-                alert: {
-                  title: String(title || "DEXP Notification"),
-                  body: String(body || ""),
-                },
-                sound: device.soundEnabled !== false ? "default" : undefined,
-              },
-            },
-          },
-
-          apns: {
-            headers: {
-              "apns-priority": "10",
+              "apns-push-type": "alert",
             },
             payload: {
               aps: {
