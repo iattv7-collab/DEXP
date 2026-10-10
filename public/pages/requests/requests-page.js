@@ -500,8 +500,25 @@ function isValetFacingRequestType(requestType = {}) {
 
 function getVisibleRequests() {
   const session = getSession();
+  const closedWindowMs = 2 * 60 * 60 * 1000;
+  const cutoffMs = Date.now() - closedWindowMs;
 
   let rows = dealerRequests.filter((request) => !isLoanerWaitRequest(request));
+
+  rows = rows.filter((request) => {
+    if (
+      request.status === REQUEST_STATUS.COMPLETED ||
+      request.status === REQUEST_STATUS.CANCELLED
+    ) {
+      const closedAtMs = Number(
+        request.completedAtMs || request.cancelledAtMs || 0,
+      );
+
+      return closedAtMs >= cutoffMs;
+    }
+
+    return true;
+  });
 
   if (requestViewMode === "my") {
     rows = rows.filter((request) => {

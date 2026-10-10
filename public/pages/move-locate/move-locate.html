@@ -54,6 +54,7 @@
 
         <div id="updateLocationPanel" class="update-location-panel hidden">
           <div class="update-location-title">Update location</div>
+          <p id="updateLocationVehicleLine" class="tool-help"></p>
 
           <label>
             Area
@@ -67,6 +68,11 @@
             <select id="updateLocationLotSelect">
               <option value="">Select lot...</option>
             </select>
+          </label>
+
+          <label>
+            Blocking Tag
+            <input id="updateLocationBlockingInput" type="text" placeholder="Tag this car is blocking" />
           </label>
 
           <button id="saveUpdatedLocationButton" type="button" disabled>

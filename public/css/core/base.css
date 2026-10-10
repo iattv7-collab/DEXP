@@ -428,8 +428,8 @@ button:hover {
 /* Compact operational tool UI */
 
 .tool-card {
-  background: var(--card);
-  border: 1px solid #cfd6dd;
+  background: #d9e6f5;
+  border: 1px solid #a8b4c0;
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 10px;
@@ -657,8 +657,8 @@ button:disabled {
 }
 
 .dexp-admin-card {
-  background: #ffffff;
-  border: 1px solid #cfd6df;
+  background: #d9e6f5;
+  border: 2px solid #111111;
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .08);

@@ -60,6 +60,9 @@ const searchModeToggleButton = document.getElementById(
 const searchVehicleButton = document.getElementById("searchVehicleButton");
 const updateLocationButton = document.getElementById("updateLocationButton");
 const updateLocationPanel = document.getElementById("updateLocationPanel");
+const updateLocationVehicleLine = document.getElementById(
+  "updateLocationVehicleLine",
+);
 const updateLocationAreaSelect = document.getElementById(
   "updateLocationAreaSelect",
 );
@@ -68,6 +71,9 @@ const updateLocationLotSelect = document.getElementById(
 );
 const saveUpdatedLocationButton = document.getElementById(
   "saveUpdatedLocationButton",
+);
+const updateLocationBlockingInput = document.getElementById(
+  "updateLocationBlockingInput",
 );
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
@@ -165,6 +171,31 @@ function initializeMoveLocate() {
 
   if (updateLocationButton) {
     updateLocationButton.addEventListener("click", async () => {
+      if (updateLocationPanel && !updateLocationPanel.classList.contains("hidden")) {
+        const leavingRO = currentRO;
+        hideUpdateLocationPanel();
+        vehicleSearchInput.value = "";
+        searchVehicleButton.disabled = false;
+
+        if (leavingRO?.id) {
+          renderSelectedVehicle(leavingRO);
+          const area = getROArea(leavingRO);
+          const lot = getROLot(leavingRO);
+          const tag = getROTag(leavingRO) || "—";
+          const where = formatAreaLot(area, lot) || "No location saved";
+          showMessage(`Tag ${tag} · ${where}`);
+
+          setTimeout(() => {
+            if (currentRO?.id !== leavingRO.id) {
+              return;
+            }
+            resetMoveLocateForm();
+            clearMessage();
+          }, 1500);
+        }
+        return;
+      }
+
       await beginUpdateLocation();
     });
   }
@@ -184,6 +215,14 @@ function initializeMoveLocate() {
   if (updateLocationLotSelect) {
     updateLocationLotSelect.addEventListener("change", () => {
       saveUpdatedLocationButton.disabled = !updateLocationLotSelect.value;
+    });
+  }
+
+  if (updateLocationBlockingInput) {
+    updateLocationBlockingInput.addEventListener("input", () => {
+      updateLocationBlockingInput.value = normalizeTag(
+        updateLocationBlockingInput.value,
+      );
     });
   }
 
@@ -461,6 +500,22 @@ function hideUpdateLocationPanel() {
   if (saveUpdatedLocationButton) {
     saveUpdatedLocationButton.disabled = true;
   }
+
+  if (updateLocationBlockingInput) {
+    updateLocationBlockingInput.value = "";
+  }
+
+  if (updateLocationButton) {
+    updateLocationButton.textContent = "Update location";
+  }
+
+  if (updateLocationVehicleLine) {
+    updateLocationVehicleLine.textContent = "";
+  }
+
+  if (vehicleResultCard && currentRO?.id) {
+    vehicleResultCard.classList.remove("hidden");
+  }
 }
 
 function fillUpdateLocationLots() {
@@ -504,6 +559,25 @@ function showUpdateLocationPanel() {
 
   fillUpdateLocationLots();
   updateLocationPanel.classList.remove("hidden");
+
+  if (updateLocationButton) {
+    updateLocationButton.textContent = "Back";
+  }
+
+  if (vehicleResultCard) {
+    vehicleResultCard.classList.add("hidden");
+  }
+
+  if (updateLocationVehicleLine && currentRO) {
+    const area = getROArea(currentRO);
+    const lot = getROLot(currentRO);
+    const tag = getROTag(currentRO) || "—";
+    const roNumber = currentRO[ROS_FIELDS.roNumber] || "—";
+    const where = formatAreaLot(area, lot) || "No location saved";
+
+    updateLocationVehicleLine.textContent = `Tag ${tag} · RO ${roNumber} · ${where}`;
+  }
+
   showMessage("Pick the lot, then Save location.");
 }
 
@@ -541,6 +615,15 @@ async function saveUpdatedLocation() {
     return;
   }
 
+  const blockingTag = normalizeTag(
+    updateLocationBlockingInput?.value || "",
+  );
+
+  if (blockingTag && blockingTag === getROTag(currentRO)) {
+    showMessage("A vehicle cannot block itself.");
+    return;
+  }
+
   lastROs = await getDealerROs();
 
   const freshRO = lastROs.find((ro) => ro.id === currentRO.id);
@@ -560,6 +643,8 @@ async function saveUpdatedLocation() {
   saveUpdatedLocationButton.disabled = true;
 
   try {
+    await clearCarsBlockedByTag(getROTag(freshRO));
+
     await updateRO(
       freshRO.id,
       {
@@ -575,11 +660,40 @@ async function saveUpdatedLocation() {
       },
     );
 
+    if (blockingTag) {
+      await saveBlockingRelationship({
+        blockerRO: {
+          ...freshRO,
+          [ROS_FIELDS.currentLocation]: finalLot,
+          currentLocation: finalLot,
+          currentLocationArea: finalArea,
+        },
+        blockedTag: blockingTag,
+        area: finalArea,
+        lot: finalLot,
+      });
+    }
+
     lastROs = await getDealerROs();
     currentRO = lastROs.find((ro) => ro.id === freshRO.id) || freshRO;
-    renderSelectedVehicle(currentRO);
+    const savedRO = currentRO;
+    vehicleSearchInput.value = "";
+    searchVehicleButton.disabled = false;
+    renderSelectedVehicle(savedRO);
     hideUpdateLocationPanel();
-    showMessage(`Location updated to ${formatAreaLot(finalArea, finalLot)}.`);
+    showMessage(
+      blockingTag
+        ? `Location updated to ${formatAreaLot(finalArea, finalLot)}. Blocking ${blockingTag}.`
+        : `Location updated to ${formatAreaLot(finalArea, finalLot)}.`,
+    );
+
+    setTimeout(() => {
+      if (currentRO?.id !== savedRO.id) {
+        return;
+      }
+      resetMoveLocateForm();
+      clearMessage();
+    }, 1500);
   } catch (error) {
     console.error(error);
     saveUpdatedLocationButton.disabled = false;
@@ -805,8 +919,7 @@ async function startMove() {
 
   if (alreadyMoving) {
     showMessage(
-      `${getROTag(alreadyMoving)} is already being moved by ${
-        alreadyMoving.moveStartedBy || "another user"
+      `${getROTag(alreadyMoving)} is already being moved by ${alreadyMoving.moveStartedBy || "another user"
       }.`,
     );
     return;
@@ -936,13 +1049,13 @@ function renderUnifiedMoveCards() {
             <select class="group-area-select" data-id="${ro.id}">
               <option value="">Select area...</option>
               ${Object.keys(groupedLocations)
-                .map(
-                  (area) =>
-                    `<option value="${escapeHtml(area)}">${escapeHtml(
-                      formatAreaLabel(area),
-                    )}</option>`,
-                )
-                .join("")}
+        .map(
+          (area) =>
+            `<option value="${escapeHtml(area)}">${escapeHtml(
+              formatAreaLabel(area),
+            )}</option>`,
+        )
+        .join("")}
             </select>
           </label>
 
@@ -1552,9 +1665,9 @@ function getROArea(ro) {
 function getROLot(ro) {
   return String(
     ro?.[ROS_FIELDS.currentLocation] ||
-      ro?.currentLocation ||
-      ro?.location ||
-      "",
+    ro?.currentLocation ||
+    ro?.location ||
+    "",
   ).trim();
 }
 

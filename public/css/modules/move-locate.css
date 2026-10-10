@@ -274,9 +274,25 @@
 }
 
 #moveLocatePage .update-location-panel select,
+#moveLocatePage .update-location-panel input,
 #moveLocatePage .update-location-panel button {
   width: 100%;
   min-height: 52px;
   font-size: 18px;
   padding: 10px 12px;
+}
+
+#moveLocatePage .tool-preview {
+  background: #ffffff;
+}
+
+#moveLocatePage .update-location-panel {
+  background: transparent;
+  border-color: #c5d4e6;
+}
+
+#moveLocatePage input,
+#moveLocatePage select {
+  background: #ffffff;
+  border: 1px solid #8eabc8;
 }
