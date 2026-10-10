@@ -52,6 +52,15 @@ import {
   startOwnedMovesWatch,
 } from "./move-locate-my-moves.js";
 
+import {
+  getROTag,
+  getROArea,
+  getROLot,
+  findROByTag,
+  buildMoveGroup,
+  buildBlockedByChain,
+} from "./move-locate-move.js";
+
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
 });
@@ -1710,69 +1719,6 @@ async function takeOverMove() {
     console.error(error);
     showMessage("Could not take over move.");
   }
-}
-
-function getROTag(ro) {
-  return normalizeTag(ro?.[ROS_FIELDS.tagNumber] || ro?.tagNumber || "");
-}
-
-function getROArea(ro) {
-  return String(ro?.currentLocationArea || ro?.area || "").trim();
-}
-
-function getROLot(ro) {
-  return String(
-    ro?.[ROS_FIELDS.currentLocation] ||
-    ro?.currentLocation ||
-    ro?.location ||
-    "",
-  ).trim();
-}
-
-function findROByTag(tag, ros = []) {
-  const cleanTag = normalizeTag(tag);
-
-  return ros.find((ro) => {
-    return getROTag(ro) === cleanTag;
-  });
-}
-
-function buildMoveGroup(ro, ros = []) {
-  const blockedByChain = buildBlockedByChain(ro, ros);
-
-  const blockerTagsInMoveOrder = [...blockedByChain].reverse();
-
-  const blockerROs = blockerTagsInMoveOrder
-    .map((tag) => findROByTag(tag, ros))
-    .filter((item) => item?.id);
-
-  return [...blockerROs, ro];
-}
-
-function buildBlockedByChain(ro, ros = []) {
-  const chain = [];
-  const visited = new Set();
-
-  let nextTag = normalizeTag(ro?.blockedByTag || "");
-
-  while (nextTag) {
-    if (visited.has(nextTag)) {
-      break;
-    }
-
-    visited.add(nextTag);
-    chain.push(nextTag);
-
-    const blockerRO = findROByTag(nextTag, ros);
-
-    if (!blockerRO) {
-      break;
-    }
-
-    nextTag = normalizeTag(blockerRO.blockedByTag || "");
-  }
-
-  return chain;
 }
 
 async function saveBlockingRelationship({ blockerRO, blockedTag, area, lot }) {
