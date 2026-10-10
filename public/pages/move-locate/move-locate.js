@@ -6,6 +6,7 @@ import { getSession } from "/js/core/session.js";
 
 import {
   getDealerROs,
+  getRO,
   updateRO,
   watchDealerROs,
   findActiveROByTag,
@@ -780,6 +781,7 @@ async function findVehicle() {
     return;
   }
 
+  pendingRouteTag = "";
   currentRO = match;
 
   if (isMoving(match) && isMoveOwner(match)) {
@@ -897,7 +899,11 @@ async function startMove() {
 
   lastROs = await getDealerROs();
 
-  const freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
+  let freshCurrentRO = lastROs.find((ro) => ro.id === currentRO.id);
+
+  if (!freshCurrentRO && currentRO?.id) {
+    freshCurrentRO = await getRO(currentRO.id);
+  }
 
   if (!freshCurrentRO) {
     moveLocateMessage.classList.remove("dexp-loading");
@@ -1243,7 +1249,7 @@ async function saveAllLocations() {
 
   clearMoveValidationErrors();
 
-  const validationMessage = validateSaveItems(saveItems);
+  const validationMessage = await validateSaveItems(saveItems);
 
   if (validationMessage) {
     showMessage(validationMessage);
@@ -1304,7 +1310,7 @@ function clearMoveValidationErrors() {
     });
 }
 
-function validateSaveItems(saveItems) {
+async function validateSaveItems(saveItems) {
   for (const item of saveItems) {
     if (item.blockingTag && item.blockingTag === getROTag(item.ro)) {
       return "A vehicle cannot block itself.";
@@ -1314,7 +1320,11 @@ function validateSaveItems(saveItems) {
       continue;
     }
 
-    const blockedRO = findROByTag(item.blockingTag, lastROs);
+    let blockedRO = findROByTag(item.blockingTag, lastROs);
+
+    if (!blockedRO) {
+      blockedRO = await findActiveROByTag(item.blockingTag);
+    }
 
     if (!blockedRO) {
       return `Blocking tag ${item.blockingTag} was not found.`;
