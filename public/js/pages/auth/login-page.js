@@ -69,6 +69,8 @@ document.getElementById("loginForm")?.addEventListener("submit", async (event) =
 
     rememberDealerId(dealerIdFromEntry);
 
+    await offerIosSavePassword(email, password);
+
     window.location.href = `/pages/dashboard/index.html?dealerId=${encodeURIComponent(
       dealerIdFromEntry,
     )}`;
@@ -584,6 +586,32 @@ async function handleRegisterSubmit(modal) {
     createButton.textContent = "Create Account";
 
     alert(getRegistrationErrorMessage(error, companyId));
+  }
+}
+
+async function offerIosSavePassword(username, password) {
+  try {
+    const platform = String(
+      window.Capacitor?.getPlatform?.() || "",
+    ).toLowerCase();
+
+    if (platform !== "ios") {
+      return;
+    }
+
+    const SavePassword = window.Capacitor?.Plugins?.SavePassword;
+
+    if (!SavePassword?.promptDialog) {
+      return;
+    }
+
+    await SavePassword.promptDialog({
+      username: String(username || ""),
+      password: String(password || ""),
+      url: "dexp-5056c.web.app",
+    });
+  } catch (error) {
+    console.warn("iOS save password prompt failed.", error);
   }
 }
 
