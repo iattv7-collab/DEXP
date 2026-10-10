@@ -8,6 +8,8 @@ import {
   getDealerROs,
   updateRO,
   watchDealerROs,
+  findActiveROByTag,
+  findActiveROByNumber,
 } from "/js/services/firestore/ros-service.js";
 
 import { MODULES } from "/js/config/modules.js";
@@ -137,6 +139,8 @@ let searchMode = "tag";
 let groupedLocations = {};
 let activeNotificationId = "";
 let activeRequestId = "";
+let pendingRouteTag = "";
+let pendingRouteTitle = "";
 
 const DEVICE_ID_KEY = "dexp_device_id";
 
@@ -331,6 +335,8 @@ function loadNotificationRouteParams() {
     return;
   }
 
+  pendingRouteTag = tagNumber;
+  pendingRouteTitle = String(params.get("title") || "").trim();
   searchMode = "tag";
 
   vehicleSearchInput.value = tagNumber;
@@ -343,8 +349,14 @@ function loadNotificationRouteParams() {
 
   searchModeToggleButton.textContent = "By Tag";
 
+  if (pendingRouteTitle) {
+    showMessage(`To: ${pendingRouteTitle}`);
+  }
+
   setTimeout(() => {
-    findVehicle();
+    if (lastROs.length) {
+      findVehicle();
+    }
   }, 500);
 }
 
@@ -478,6 +490,10 @@ function loadDealerROs() {
       getROArea,
       getROLot,
     });
+
+    if (pendingRouteTag && !currentRO?.id) {
+      findVehicle();
+    }
 
     if (currentRO?.id) {
       const updatedRO = ros.find((ro) => ro.id === currentRO.id);
@@ -717,9 +733,9 @@ async function findVehicle() {
 
   lastROs = await getDealerROs();
 
-  const match = lastROs.find((ro) => {
-    const roNumber = String(ro[ROS_FIELDS.roNumber] || "").toUpperCase();
-    const tagNumber = String(ro[ROS_FIELDS.tagNumber] || "").toUpperCase();
+  let match = lastROs.find((ro) => {
+    const roNumber = String(ro[ROS_FIELDS.roNumber] || "").trim().toUpperCase();
+    const tagNumber = String(ro[ROS_FIELDS.tagNumber] || "").trim().toUpperCase();
 
     const vin = String(
       ro[ROS_FIELDS.vin] || ro.vin || ro.vehicleVin || ro.fullVin || "",
@@ -735,6 +751,12 @@ async function findVehicle() {
 
     return roNumber === searchValue || tagNumber === searchValue;
   });
+
+  if (!match && searchMode !== "vin") {
+    match =
+      (await findActiveROByTag(searchValue)) ||
+      (await findActiveROByNumber(searchValue));
+  }
 
   if (!match || String(match.status || "").toLowerCase() === "archived") {
     currentRO = null;

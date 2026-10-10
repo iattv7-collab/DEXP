@@ -381,6 +381,7 @@ async function handleButtonClick(button, getROById) {
         route: pickupType.route || "/pages/move-locate/move-locate.html",
         routeParams: {
           tagNumber,
+          title: pickupType.name || "Customer pickup",
         },
       });
     } catch (error) {
