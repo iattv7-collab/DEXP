@@ -390,7 +390,14 @@ export async function findActiveROByNumber(roNumber = "") {
 
   const snapshot = await getDocs(q);
 
-  return snapshot.empty ? null : snapshot.docs[0].data();
+  if (snapshot.empty) return null;
+
+  const ro = snapshot.docs[0].data();
+  if (String(ro[ROS_FIELDS.status] || "").toLowerCase() === ROS_STATUS.ARCHIVED) {
+    return null;
+  }
+
+  return ro;
 }
 
 export async function findActiveROByTag(tagNumber = "") {
@@ -515,7 +522,7 @@ function buildROVisibilityQuery(rosRef, session, options = {}) {
   return query(
     rosRef,
     where(ROS_FIELDS.dealerId, "==", session.dealerId),
-    limit(100),
+    where(ROS_FIELDS.status, "!=", ROS_STATUS.ARCHIVED),
   );
 }
 
