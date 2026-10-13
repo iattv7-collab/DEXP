@@ -1,0 +1,76 @@
+C:\Users\marlo\Projects\DEXP\public\pages\admin\loaner-email-settings.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loaner Return Email</title>
+  <link rel="stylesheet" href="/css/core/reset.css" />
+  <link rel="stylesheet" href="/css/core/base.css" />
+  <link rel="stylesheet" href="/css/modules/request-types.css" />
+  <style>
+    .email-settings-card {
+      max-width: 480px;
+    }
+    .email-settings-card label {
+      display: block;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+    .email-settings-card input[type="email"] {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .help-text {
+      font-size: 13px;
+      color: #555;
+      margin-top: -8px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="appHeader"></div>
+  <main class="page-shell">
+    <section class="page-section">
+      <h2>Loaner Return Email</h2>
+      <p class="tool-help">Notify people when a loaner is returned.</p>
+      <p id="msg" class="tool-message"></p>
+
+      <section class="tool-card email-settings-card">
+        <label>
+          <input id="emailEnabled" type="checkbox" />
+          Send email on loaner return
+        </label>
+
+        <label>
+          Loaner admin
+          <input id="emailLoanerAdmin" type="email" placeholder="loaner-admin@dealership.com" />
+        </label>
+
+        <label>
+          Warranty admin
+          <input id="emailWarrantyAdmin" type="email" placeholder="warranty@dealership.com" />
+        </label>
+
+        <label>
+          Shop manager
+          <input id="emailShopManager" type="email" placeholder="manager@dealership.com" />
+        </label>
+
+        <div class="help-text">
+          The advisor for that specific loaner will also be added automatically.
+        </div>
+
+        <button type="button" id="saveBtn">Save</button>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="/pages/admin/loaner-email-settings.js"></script>
+</body>
+</html>
