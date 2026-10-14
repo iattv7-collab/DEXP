@@ -256,18 +256,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (target) {
       target.style.display = "flex";
       target.style.position = "fixed";
-      target.style.left = "8vw";
-      target.style.top = "36vh";
-      target.style.width = "84vw";
-      target.style.height = "28vh";
+      target.style.left = "3vw";
+      target.style.top = "32vh";
+      target.style.width = "94vw";
+      target.style.height = "36vh";
       target.style.zIndex = "10000";
-      target.style.border = "3px solid #fff";
-      target.style.borderRadius = "12px";
-      target.style.boxShadow = "0 0 0 100vmax rgba(0,0,0,0.35)";
+      target.style.border = "5px solid #7dff7d";
+      target.style.borderRadius = "14px";
+      target.style.boxShadow = "0 0 0 100vmax rgba(0,0,0,0.45)";
       target.style.alignItems = "flex-end";
       target.style.justifyContent = "center";
-      target.style.color = "#fff";
-      target.style.font = "16px Times New Roman, Times, serif";
+      target.style.color = "#7dff7d";
+      target.style.font = "bold 18px Times New Roman, Times, serif";
       target.style.pointerEvents = "none";
     }
   }
