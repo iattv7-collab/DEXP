@@ -36,6 +36,57 @@
       color: #fff !important;
     }
 
+    .fuel-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .fuel-row .fuel-mode-toggle {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .fuel-row .fuel-level {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .fuel-row .fuel-level select,
+    .fuel-row .fuel-level input {
+      width: 100%;
+    }
+
+    .damage-toggle {
+      display: flex;
+      gap: 4px;
+    }
+
+    .damage-toggle button {
+      flex: 1;
+      padding: 8px 6px;
+      background: #fff;
+      color: #123a73;
+      border: 1px solid #123a73;
+      border-radius: 8px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14px;
+    }
+
+    .damage-toggle button.is-on {
+      background: #123a73;
+      color: #fff;
+    }
+
+    .needs-data {
+      background: #fff3bf !important;
+    }
+
+    .damage-toggle.needs-data button {
+      background: #fff3bf !important;
+    }
+
     #fuelLevel::-webkit-outer-spin-button,
     #fuelLevel::-webkit-inner-spin-button {
       -webkit-appearance: none;
@@ -97,32 +148,75 @@
       }
 
       #loanerReturnsPage .form-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 6px;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 8px;
         margin-top: 6px;
       }
 
-      #loanerReturnsPage .form-grid label,
+      #loanerReturnsPage .form-grid label {
+        font-size: 15px;
+        font-weight: 700;
+        gap: 2px;
+      }
+
       #loanerReturnsPage .form-grid input,
       #loanerReturnsPage .form-grid select,
       #loanerReturnsPage .form-grid textarea {
+        font-size: 16px;
+        font-weight: 700;
+        padding: 6px 8px;
+        min-height: 40px;
         min-width: 0;
         max-width: 100%;
         width: 100%;
         box-sizing: border-box;
       }
 
-      #loanerReturnsPage .form-grid label {
-        font-size: 13px;
-        gap: 2px;
+      #loanerReturnsPage .damage-toggle button,
+      #loanerReturnsPage .fuel-mode-toggle button {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      #loanerReturnsPage .return-scan-row {
+        flex-direction: row;
+        gap: 4px;
+      }
+
+      #loanerReturnsPage .return-scan-row button {
+        min-height: 36px;
+        font-size: 14px;
+        padding: 6px 8px;
+      }
+
+      #loanerReturnsPage .return-scan-row input {
+        min-height: 36px;
+        font-size: 14px;
       }
 
       #loanerReturnsPage .action-row {
-        margin-top: 6px;
+        margin-top: 8px;
+      }
+
+      #loanerReturnsPage .action-row button {
+        width: 100%;
+        min-height: 40px;
+        font-size: 16px;
       }
 
       #loanerReturnsPage textarea {
-        min-height: 36px;
+        min-height: 32px;
+      }
+
+      /* Hide Returned at and Received by on mobile (still saved by the page) */
+      #loanerReturnsPage .form-grid label:nth-child(4),
+      #loanerReturnsPage .form-grid label:nth-child(5) {
+        display: none;
+      }
+
+      /* VIN full width */
+      #loanerReturnsPage .form-grid label:nth-child(1) {
+        grid-column: 1 / -1;
       }
     }
   </style>
@@ -232,7 +326,7 @@
 
         <div id="returnSummary" class="page-message"></div>
 
-        <div class="form-grid">
+        <div class="form-grid" id="fuelEntryWrap" data-mode="range">
           <label>
             VIN
             <input id="vin" readonly />
@@ -258,12 +352,25 @@
             <input id="mileage" type="number" inputmode="numeric" min="0" />
           </label>
           <label>
-            Damage
-            <select id="damageYesNo">
-              <option value="">Damage?</option>
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
+            Range or fuel
+            <span class="fuel-row">
+              <span class="fuel-mode-toggle">
+                <button id="fuelModeFuelBtn" type="button">Fuel</button>
+                <button id="fuelModeRangeBtn" type="button">Range</button>
+              </span>
+              <span class="fuel-level">
+                <select id="fuelTankSelect">
+                  <option value="">Fuel level</option>
+                  <option value="Full">Full</option>
+                  <option value="3/4">3/4</option>
+                  <option value="Half">Half</option>
+                  <option value="1/4">1/4</option>
+                  <option value="Empty">Empty</option>
+                </select>
+                <input id="fuelLevel" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done"
+                  autocomplete="off" placeholder="Range (mi)" />
+              </span>
+            </span>
           </label>
           <label>
             Where it goes
@@ -274,28 +381,16 @@
           </label>
         </div>
 
-        <div class="form-grid" id="fuelEntryWrap" data-mode="range">
+        <div class="form-grid">
           <label>
-            Range or fuel
-            <span class="fuel-mode-toggle">
-              <button id="fuelModeFuelBtn" type="button">Fuel</button>
-              <button id="fuelModeRangeBtn" type="button">Range</button>
+            Damage
+            <span class="damage-toggle">
+              <button type="button" id="damageNoBtn">No</button>
+              <button type="button" id="damageYesBtn">Yes</button>
             </span>
+            <input id="damageYesNo" type="hidden" />
           </label>
-          <label>
-            Level
-            <select id="fuelTankSelect">
-              <option value="">Fuel level</option>
-              <option value="Full">Full</option>
-              <option value="3/4">3/4</option>
-              <option value="Half">Half</option>
-              <option value="1/4">1/4</option>
-              <option value="Empty">Empty</option>
-            </select>
-            <input id="fuelLevel" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done"
-              autocomplete="off" placeholder="Range (mi)" />
-          </label>
-          <label>
+          <label id="damageNotesLabel" style="display:none">
             Damage notes
             <textarea id="damageNotes" placeholder="Required if Yes"></textarea>
           </label>
@@ -304,9 +399,7 @@
         <div id="damagePhotoBox" style="display:none">
           <input id="damagePhotoInput" type="file" accept="image/*" capture="environment" hidden />
           <button id="damagePhotoBtn" type="button">Take picture</button>
-          <img id="damagePhotoPreview" alt="Damage preview" style="display:none;max-width:180px" />
-          <button id="damagePhotoAccept" type="button" style="display:none">Accept</button>
-          <button id="damagePhotoRetake" type="button" style="display:none">Retake</button>
+          <div id="damagePhotoThumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
           <div id="damagePhotoCount" class="small-muted"></div>
         </div>
 
@@ -336,7 +429,7 @@
     </section>
   </main>
 
-  <script type="module" src="/js/modules/loaners/loaner-returns-page.js?v=21"></script>
+  <script type="module" src="/js/modules/loaners/loaner-returns-page.js?v=22"></script>
 </body>
 
 </html>

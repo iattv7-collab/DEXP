@@ -112,6 +112,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Number.isFinite(rangeValue) && rangeValue >= 0;
   }
 
+  function markNeedsData(el, needs) {
+    if (!el) return;
+    el.classList.toggle("needs-data", Boolean(needs));
+  }
+
   function updateSaveReturnButton() {
     const button = $("saveReturnBtn");
 
@@ -135,6 +140,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const notesOk =
       damageChoice !== "Yes" ||
       Boolean(String($("damageNotes")?.value || "").trim());
+
+    markNeedsData($("mileage"), hasValidatedVin && !mileageOk);
+    markNeedsData(
+      fuelEntryMode === "range" ? $("fuelLevel") : $("fuelTankSelect"),
+      hasValidatedVin && !fuelOk,
+    );
+    markNeedsData($("returnDestination"), hasValidatedVin && !$("returnDestination")?.value);
+    markNeedsData($("damageNoBtn")?.parentElement, hasValidatedVin && !damageOk);
+    markNeedsData($("damageNotes"), hasValidatedVin && damageChoice === "Yes" && !notesOk);
 
     button.disabled =
       returnSaveInProgress ||
@@ -171,7 +185,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("mileage").placeholder =
         checkoutMileage == null
           ? "Return mileage"
-          : `Must be more than ${checkoutMileage}`;
+          : `More than ${checkoutMileage}`;
     }
   }
 
@@ -196,9 +210,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     setVinRejectMessage("");
     acceptedDamagePhotos = [];
     pendingDamagePhoto = null;
-    if ($("damagePhotoPreview")) $("damagePhotoPreview").style.display = "none";
+    if ($("damagePhotoThumbs")) $("damagePhotoThumbs").innerHTML = "";
     if ($("damagePhotoCount")) $("damagePhotoCount").textContent = "";
+    if ($("damagePhotoBtn")) $("damagePhotoBtn").textContent = "Take picture";
     if ($("damagePhotoBox")) $("damagePhotoBox").style.display = "none";
+    setDamageChoice("");
     savedReturnSnapshot = getReturnFormSnapshot();
     updateSaveReturnButton();
   }
@@ -258,7 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function closeScannerFullscreen() {
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
 
     video.removeAttribute("style");
@@ -563,12 +579,46 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   $("fuelTankSelect")?.addEventListener("change", updateSaveReturnButton);
 
+  function setDamageChoice(value) {
+    const input = $("damageYesNo");
+    if (input) input.value = value;
+    $("damageNoBtn")?.classList.toggle("is-on", value === "No");
+    $("damageYesBtn")?.classList.toggle("is-on", value === "Yes");
+    showDamageCamera();
+    updateSaveReturnButton();
+  }
+
   function showDamageCamera() {
     const yes = $("damageYesNo")?.value === "Yes";
     if ($("damagePhotoBox")) $("damagePhotoBox").style.display = yes ? "" : "none";
+    if ($("damageNotesLabel")) $("damageNotesLabel").style.display = yes ? "" : "none";
   }
 
-  $("damageYesNo")?.addEventListener("change", showDamageCamera);
+  $("damageNoBtn")?.addEventListener("click", () => setDamageChoice("No"));
+  $("damageYesBtn")?.addEventListener("click", () => setDamageChoice("Yes"));
+
+  function renderDamageThumbs() {
+    const thumbs = $("damagePhotoThumbs");
+    if (!thumbs) return;
+    thumbs.innerHTML = "";
+    acceptedDamagePhotos.forEach((file) => {
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      img.alt = "Damage";
+      img.style.maxWidth = "90px";
+      img.style.maxHeight = "90px";
+      img.style.objectFit = "cover";
+      img.style.borderRadius = "6px";
+      thumbs.appendChild(img);
+    });
+    const count = acceptedDamagePhotos.length;
+    if ($("damagePhotoCount")) {
+      $("damagePhotoCount").textContent = count ? `${count} picture${count === 1 ? "" : "s"}` : "";
+    }
+    if ($("damagePhotoBtn")) {
+      $("damagePhotoBtn").textContent = count ? "Add picture" : "Take picture";
+    }
+  }
 
   $("damagePhotoBtn")?.addEventListener("click", () => {
     $("damagePhotoInput")?.click();
@@ -577,30 +627,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("damagePhotoInput")?.addEventListener("change", () => {
     const file = $("damagePhotoInput").files?.[0];
     if (!file) return;
-    pendingDamagePhoto = file;
-    $("damagePhotoPreview").src = URL.createObjectURL(file);
-    $("damagePhotoPreview").style.display = "";
-    $("damagePhotoAccept").style.display = "";
-    $("damagePhotoRetake").style.display = "";
-  });
-
-  $("damagePhotoAccept")?.addEventListener("click", () => {
-    if (!pendingDamagePhoto) return;
-    acceptedDamagePhotos.push(pendingDamagePhoto);
-    pendingDamagePhoto = null;
-    $("damagePhotoPreview").style.display = "none";
-    $("damagePhotoAccept").style.display = "none";
-    $("damagePhotoRetake").style.display = "none";
-    $("damagePhotoCount").textContent = `${acceptedDamagePhotos.length} picture accepted`;
+    acceptedDamagePhotos.push(file);
     $("damagePhotoInput").value = "";
-  });
-
-  $("damagePhotoRetake")?.addEventListener("click", () => {
-    pendingDamagePhoto = null;
-    $("damagePhotoPreview").style.display = "none";
-    $("damagePhotoAccept").style.display = "none";
-    $("damagePhotoRetake").style.display = "none";
-    $("damagePhotoInput").click();
+    renderDamageThumbs();
   });
   applyFuelEntryMode();
 
@@ -877,10 +906,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           retireOnReturn: false,
           ...(retireOnReturn
             ? {
-                retiredAtMs: Date.now(),
-                retiredAtText: returnedAtText,
-                retiredByName: receivedByName,
-              }
+              retiredAtMs: Date.now(),
+              retiredAtText: returnedAtText,
+              retiredByName: receivedByName,
+            }
             : {}),
           updatedAt: serverTimestamp(),
         },
@@ -1057,9 +1086,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function renderReturnList() {
     const selected = $("returnDay")?.value || returnDayKey(Date.now());
-    const rows = returnRows.filter((row) => {
-      return returnDayKey(row.returnedAtText) === selected;
-    });
+    const rows = returnRows
+      .filter((row) => returnDayKey(row.returnedAtText) === selected)
+      .sort((a, b) => {
+        const aTime = new Date(a.returnedAtText || 0).getTime();
+        const bTime = new Date(b.returnedAtText || 0).getTime();
+        return bTime - aTime;
+      });
     let html = `
       <p>${rows.length} returned</p>
       <table class="data-table">

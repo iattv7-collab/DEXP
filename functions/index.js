@@ -44,6 +44,10 @@ setGlobalOptions({
   maxInstances: 10,
 });
 
+const {
+  sendLoanerReturnEmail,
+} = require("./loaners/send-loaner-return-email");
+
 const visionClient = new vision.ImageAnnotatorClient();
 
 const ALLOWED_ROLES = [
@@ -594,6 +598,8 @@ exports.scanRO = onRequest(
 // LOANER LIVE VIN SCANNER
 // =========================
 exports.scanVIN = scanVIN;
+
+exports.sendLoanerReturnEmail = sendLoanerReturnEmail;
 
 exports.sendPushForNotificationRequest =
   sendPushForNotificationRequest;
