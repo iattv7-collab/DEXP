@@ -92,6 +92,10 @@ window.addEventListener("dexp-session-ready", () => {
   initializeRequestsPage();
 });
 
+if (getSession()) {
+  initializeRequestsPage();
+}
+
 async function initializeRequestsPage() {
   const session = getSession();
 

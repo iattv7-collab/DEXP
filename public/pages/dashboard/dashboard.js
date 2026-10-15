@@ -19,6 +19,11 @@ window.addEventListener("dexp-session-ready", () => {
   initializeDashboard();
 });
 
+// In case the event already fired (or session was reused from localStorage)
+if (getSession()) {
+  initializeDashboard();
+}
+
 function initializeDashboard() {
   const session = getSession();
 

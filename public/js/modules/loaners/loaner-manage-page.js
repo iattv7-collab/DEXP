@@ -20,7 +20,7 @@ import {
   normalizeVin,
   passesVinChecksum,
   scanVinWithCamera,
-} from "/js/modules/loaners/vin-scanner.js";
+} from "/js/modules/loaners/vin-scanner.js?v=2";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
 protectRoute({ allowedModules: ["loaner-fleet"] });

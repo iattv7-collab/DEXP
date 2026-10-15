@@ -32,7 +32,7 @@ import {
   normalizeVin,
   isValidVin,
   decodeVinLive,
-} from "/js/modules/loaners/vin-scanner.js";
+} from "/js/modules/loaners/vin-scanner.js?v=2";
 import { closeLoanerTrip } from "/js/modules/loaners/loaner-trips.js?v=2";
 import { uploadLoanerDamagePhotos } from "/js/modules/loaners/loaner-damage-photos.js";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
@@ -166,6 +166,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (rejectEl) {
       rejectEl.textContent = message || "";
+    }
+  }
+
+  function setVinFieldState(vin, state) {
+    const vinInput = $("vin");
+
+    if (!vinInput) {
+      return;
+    }
+
+    vinInput.value = vin || "";
+    vinInput.classList.remove("vin-ok", "vin-bad");
+
+    if (state === "ok") {
+      vinInput.classList.add("vin-ok");
+    }
+
+    if (state === "bad") {
+      vinInput.classList.add("vin-bad");
     }
   }
 
@@ -500,7 +519,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function fillReturnFromVin(rawVin) {
     validatedReturnVin = "";
     checkoutMileage = null;
-    $("vin").value = "";
+    setVinFieldState("", "clear");
     setVinRejectMessage("");
     $("returnMsg").textContent = "";
     updateSaveReturnButton();
@@ -511,6 +530,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!resolvedVin.valid) {
       clearReturnForm();
+      setVinFieldState(normalizeVin(rawVin) || String(rawVin || "").trim(), "bad");
       setVinRejectMessage(resolvedVin.message);
       return;
     }
@@ -523,6 +543,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!validation.valid) {
       clearReturnForm();
+      setVinFieldState(vin, "bad");
       setVinRejectMessage(validation.message);
       return;
     }
@@ -535,7 +556,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const decoded = await decodeVinLive(vin);
 
-      $("vin").value = vin;
+      setVinFieldState(vin, "ok");
       $("year").value = decoded?.year || "";
       $("model").value = decoded?.model || "";
       $("returnedAt").value = stampNow();
@@ -551,7 +572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       console.error("VIN decode failed:", err);
 
-      $("vin").value = vin;
+      setVinFieldState(vin, "ok");
       $("year").value = "";
       $("model").value = "";
       $("returnedAt").value = stampNow();

@@ -15,7 +15,7 @@ import {
   scanVinWithCamera,
   normalizeVin,
   decodeVinLive,
-} from "/js/modules/loaners/vin-scanner.js";
+} from "/js/modules/loaners/vin-scanner.js?v=2";
 
 import {
   createCourtesyWash,

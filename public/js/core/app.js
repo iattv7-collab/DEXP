@@ -737,9 +737,30 @@ watchAuthState(async (user) => {
     "DEXP: auth state to session-ready"
   );
 
+  // Sticky: pages that listen after the event already fired
+  // still get their callback immediately.
+  window.dexpSessionReady = true;
+
   window.dispatchEvent(
-    new CustomEvent(
-      "dexp-session-ready"
-    )
+    new CustomEvent("dexp-session-ready")
   );
 });
+
+const originalAddEventListener = window.addEventListener.bind(window);
+
+window.addEventListener = function (type, listener, options) {
+  if (
+    type === "dexp-session-ready" &&
+    window.dexpSessionReady &&
+    typeof listener === "function"
+  ) {
+    try {
+      listener();
+    } catch (error) {
+      console.error("dexp-session-ready listener failed:", error);
+    }
+    return;
+  }
+
+  return originalAddEventListener(type, listener, options);
+};

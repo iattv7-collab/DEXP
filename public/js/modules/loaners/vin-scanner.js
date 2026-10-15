@@ -75,6 +75,61 @@ async function applyLowLightConstraints(videoTrack) {
   }
 }
 
+async function applyFocusLock(videoTrack) {
+  if (!videoTrack?.getCapabilities) return;
+
+  const capabilities = videoTrack.getCapabilities();
+  const advanced = {};
+
+  if (Array.isArray(capabilities.focusMode)) {
+    if (capabilities.focusMode.includes("continuous")) {
+      advanced.focusMode = "continuous";
+    } else if (capabilities.focusMode.includes("single-shot")) {
+      advanced.focusMode = "single-shot";
+    }
+  }
+
+  if (typeof capabilities.focusDistance === "object") {
+    const min = capabilities.focusDistance.min;
+    const max = capabilities.focusDistance.max;
+
+    if (typeof min === "number" && typeof max === "number" && max > min) {
+      // Bias toward a close VIN plate. 0 is infinity on most phones.
+      advanced.focusDistance = min + (max - min) * 0.45;
+    }
+  }
+
+  if (!Object.keys(advanced).length) return;
+
+  await videoTrack
+    .applyConstraints({
+      advanced: [advanced],
+    })
+    .catch(() => {});
+}
+
+async function kickFocus(videoTrack) {
+  await applyFocusLock(videoTrack);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  await applyFocusLock(videoTrack);
+}
+
+function attachTapToFocus(videoEl, videoTrack) {
+  if (!videoEl || !videoTrack) {
+    return () => {};
+  }
+
+  const onTap = () => {
+    void applyFocusLock(videoTrack);
+  };
+
+  videoEl.addEventListener("pointerdown", onTap);
+
+  return () => {
+    videoEl.removeEventListener("pointerdown", onTap);
+  };
+}
+
 function isCapacitorNative() {
   try {
     return !!(
@@ -387,6 +442,14 @@ export async function scanVinWithCamera(videoEl, statusEl) {
     scanController.abort();
 
     try {
+      if (typeof detachTapToFocus === "function") {
+        detachTapToFocus();
+      }
+    } catch (error) {
+      /* ignore */
+    }
+
+    try {
       stream.getTracks().forEach((track) => {
         track.stop();
       });
@@ -419,6 +482,9 @@ export async function scanVinWithCamera(videoEl, statusEl) {
     const videoTrack = stream.getVideoTracks()[0];
 
     await applyLowLightConstraints(videoTrack);
+    await kickFocus(videoTrack);
+
+    const detachTapToFocus = attachTapToFocus(videoEl, videoTrack);
 
     const startedAt = Date.now();
 

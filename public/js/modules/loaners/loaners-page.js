@@ -34,7 +34,7 @@ import {
   isValidVin,
   passesVinChecksum,
   decodeVinLive,
-} from "/js/modules/loaners/vin-scanner.js";
+} from "/js/modules/loaners/vin-scanner.js?v=2";
 import { openLoanerTrip } from "/js/modules/loaners/loaner-trips.js?v=2";
 import { showLoanerFilesTab } from "/js/modules/loaners/loaner-subtabs.js?v=2";
 
