@@ -240,17 +240,23 @@ export async function decodeVinLive(vin = "") {
   };
 }
 
-async function makeCropBlob(mediaEl, zone, quality = 0.86) {
+async function makeCropBlob(mediaEl, zone, quality = 0.86, degrees = 0) {
   const sourceX = Math.max(0, Math.floor(zone.x));
   const sourceY = Math.max(0, Math.floor(zone.y));
   const sourceWidth = Math.max(1, Math.floor(zone.w));
   const sourceHeight = Math.max(1, Math.floor(zone.h));
 
   const maximumOutputWidth = 1100;
-  const scale = Math.min(1, maximumOutputWidth / sourceWidth);
+  const scale = Math.min(1, maximumOutputWidth / Math.max(sourceWidth, sourceHeight));
 
   const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
   const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+  const rad = (Number(degrees) || 0) * Math.PI / 180;
+  const sin = Math.abs(Math.sin(rad));
+  const cos = Math.abs(Math.cos(rad));
+  const rotatedWidth = Math.max(1, Math.round(outputWidth * cos + outputHeight * sin));
+  const rotatedHeight = Math.max(1, Math.round(outputWidth * sin + outputHeight * cos));
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", {
@@ -261,17 +267,20 @@ async function makeCropBlob(mediaEl, zone, quality = 0.86) {
     throw new Error("Unable to create scanner canvas");
   }
 
-  canvas.width = outputWidth;
-  canvas.height = outputHeight;
-
+  canvas.width = rotatedWidth;
+  canvas.height = rotatedHeight;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, rotatedWidth, rotatedHeight);
+  ctx.translate(rotatedWidth / 2, rotatedHeight / 2);
+  ctx.rotate(rad);
   ctx.drawImage(
     mediaEl,
     sourceX,
     sourceY,
     sourceWidth,
     sourceHeight,
-    0,
-    0,
+    -outputWidth / 2,
+    -outputHeight / 2,
     outputWidth,
     outputHeight,
   );
@@ -280,6 +289,8 @@ async function makeCropBlob(mediaEl, zone, quality = 0.86) {
     canvas.toBlob(resolve, "image/jpeg", quality);
   });
 }
+
+const SCAN_ANGLES = [0, 90, 180, 270, 45, 135, 225, 315];
 
 async function sendBlob(blob, zoneName, signal) {
   const fd = new FormData();
@@ -301,8 +312,8 @@ async function sendBlob(blob, zoneName, signal) {
   return isValidVin(vin) && passesVinChecksum(vin) ? vin : "";
 }
 
-async function scanZone(mediaEl, zone, parentSignal) {
-  const blob = await makeCropBlob(mediaEl, zone, zone.quality ?? 0.86);
+async function scanZone(mediaEl, zone, parentSignal, degrees = 0) {
+  const blob = await makeCropBlob(mediaEl, zone, zone.quality ?? 0.86, degrees);
 
   if (!blob) return "";
 
@@ -355,21 +366,23 @@ async function scanVinFromImage(imageEl, statusEl) {
   ];
 
   for (const zone of zones) {
-    if (statusEl) {
-      statusEl.textContent = `Reading VIN... ${zone.name}`;
-    }
-
-    try {
-      const vin = await scanZone(imageEl, zone);
-
-      if (isValidVin(vin) && passesVinChecksum(vin)) {
-        return {
-          vin,
-          reason: "VIN detected and validated",
-        };
+    for (const degrees of SCAN_ANGLES) {
+      if (statusEl) {
+        statusEl.textContent = `Reading VIN... ${zone.name} ${degrees}°`;
       }
-    } catch (error) {
-      console.warn(`VIN scan failed for ${zone.name}`, error);
+
+      try {
+        const vin = await scanZone(imageEl, zone, null, degrees);
+
+        if (isValidVin(vin) && passesVinChecksum(vin)) {
+          return {
+            vin,
+            reason: "VIN detected and validated",
+          };
+        }
+      } catch (error) {
+        console.warn(`VIN scan failed for ${zone.name} ${degrees}`, error);
+      }
     }
   }
 
@@ -543,7 +556,13 @@ export async function scanVinWithCamera(videoEl, statusEl) {
         let vin = "";
 
         try {
-          vin = await scanZone(videoEl, zone, scanController.signal);
+          for (const degrees of SCAN_ANGLES) {
+            if (cameraStopped) break;
+
+            vin = await scanZone(videoEl, zone, scanController.signal, degrees);
+
+            if (isValidVin(vin) && passesVinChecksum(vin)) break;
+          }
         } catch (error) {
           if (error?.name === "AbortError") {
             if (cameraStopped) break;

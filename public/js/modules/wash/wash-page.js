@@ -730,7 +730,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     currentWashSettings = await getWashSettings();
     fillHourFields(currentWashSettings);
 
-    if (currentWashSettings.autoFollowHours) {
+    if (currentWashSettings.autoFollowHours && !currentWashSettings.manualDayOverride) {
       const shouldOpen = insideShopHours(currentWashSettings);
 
       if (Boolean(currentWashSettings.isOpen) !== shouldOpen) {
@@ -750,9 +750,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     badge.textContent = washIsOpen ? "OPEN" : "CLOSED";
 
-    const automatic = Boolean(
-      currentWashSettings?.autoFollowHours || autoFollowEl?.checked,
-    );
     const crewCan = Boolean(
       currentWashSettings?.crewCanControlDay || $("crewCanControlDay")?.checked,
     );
@@ -760,7 +757,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const adminDay = $("adminDayControl");
 
     if (crewBox) {
-      crewBox.hidden = automatic;
+      crewBox.hidden = !crewCan;
     }
 
     if (adminDay) {
@@ -784,7 +781,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   openBtn.addEventListener("click", async () => {
     try {
-      const settings = await setWashOpen(true);
+      const settings = await updateWashSettings({
+        isOpen: true,
+        manualDayOverride: true,
+      });
 
       currentWashSettings = settings;
 
@@ -859,7 +859,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       await clearOvernightWaiters();
 
-      const settings = await setWashOpen(false);
+      const settings = await updateWashSettings({
+        isOpen: false,
+        manualDayOverride: false,
+      });
 
       currentWashSettings = settings;
 

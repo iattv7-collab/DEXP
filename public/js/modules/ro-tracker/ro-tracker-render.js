@@ -52,8 +52,7 @@ function buildCell(ro, key) {
     );
 
   if (key === "model") return buildTextInputCell(ro, "model", ro.model);
-  if (key === "currentLocation")
-    return buildPlainCell(ro.currentLocation || ro.location || "");
+  if (key === "currentLocation") return buildLocationCell(ro);
   if (key === "loanerVin")
     return buildPlainCell(ro.loanerVin ? String(ro.loanerVin).slice(-8) : "");
 
@@ -96,6 +95,43 @@ function buildCell(ro, key) {
 function buildPlainCell(value) {
   const td = document.createElement("td");
   td.textContent = value || "";
+  return td;
+}
+
+function buildLocationCell(ro) {
+  const td = document.createElement("td");
+
+  const location = String(ro.currentLocation || ro.location || "").trim();
+  td.textContent = location;
+
+  const status = String(ro.washStatus || "").toLowerCase();
+  let label = "";
+  let atMs = 0;
+
+  if (status === "pending" || status === "rewash_requested" || status === "queued") {
+    label = "Key at wash";
+    atMs = Number(ro.washQueuedAtMs || 0);
+  } else if (status === "washing") {
+    label = "Washing";
+    atMs = Number(ro.washingStartedAtMs || 0);
+  } else if (status === "washed") {
+    label = "Washed";
+    atMs = Number(ro.washedAtMs || 0);
+  }
+
+  if (label) {
+    if (location) {
+      td.appendChild(document.createTextNode(" "));
+    }
+
+    const span = document.createElement("span");
+    span.textContent = label;
+    if (atMs) {
+      span.title = formatNoYearDateTime(atMs);
+    }
+    td.appendChild(span);
+  }
+
   return td;
 }
 

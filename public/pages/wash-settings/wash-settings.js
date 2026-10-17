@@ -36,7 +36,10 @@ const fields = {
   satClose: document.getElementById("satClose"),
 
   sunOpen: document.getElementById("sunOpen"),
-  sunClose: document.getElementById("sunClose")
+  sunClose: document.getElementById("sunClose"),
+
+  autoFollowHours: document.getElementById("autoFollowHours"),
+  crewCanControlDay: document.getElementById("crewCanControlDay")
 };
 
 const openWashButton = document.getElementById("openWashBtn");
@@ -119,6 +122,9 @@ function applySettingsToForm(settings) {
   fields.sunOpen.value = settings.sunOpen || "00:00";
   fields.sunClose.value = settings.sunClose || "00:00";
 
+  fields.autoFollowHours.checked = Boolean(settings.autoFollowHours);
+  fields.crewCanControlDay.checked = Boolean(settings.crewCanControlDay);
+
   updateOpenClosedBadge(settings.isOpen);
 }
 
@@ -140,7 +146,10 @@ function readSettingsFromForm() {
     satClose: fields.satClose.value,
 
     sunOpen: fields.sunOpen.value,
-    sunClose: fields.sunClose.value
+    sunClose: fields.sunClose.value,
+
+    autoFollowHours: Boolean(fields.autoFollowHours.checked),
+    crewCanControlDay: Boolean(fields.crewCanControlDay.checked)
   };
 }
 
