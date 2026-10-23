@@ -27,6 +27,7 @@ import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 
 let selectedDate = formatAppointmentDate(new Date());
 let transportFilter = "all";
+let advisorFilter = String(getSession()?.companyId || "").trim() || "all";
 let liveRows = [];
 let previewRows = [];
 let previewDate = "";
@@ -130,7 +131,7 @@ function renderShell() {
     <div class="dexp-admin-card appointments-card">
       <h3>Appointments</h3>
       <p class="tool-help">
-        No Reynolds live feed. Upload tonight or tomorrow morning's printed sheet.
+        Upload tonight or tomorrow morning's printed sheet.
         Review the grid, then save. Arrived cars stay if you upload again.
       </p>
       <div class="action-row appointments-toolbar">
@@ -173,6 +174,11 @@ function renderShell() {
         <button type="button" class="small-button secondary js-transport" data-transport="waiter">Waiter</button>
         <button type="button" class="small-button secondary js-transport" data-transport="valet">Valet</button>
         <button type="button" class="small-button secondary js-transport" data-transport="none">None</button>
+      </div>
+      <div class="action-row">
+        <select id="appointmentsAdvisorSelect" class="small-button secondary">
+          <option value="all">All</option>
+        </select>
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -337,6 +343,11 @@ function wire(root) {
     });
   });
 
+  document.getElementById("appointmentsAdvisorSelect")?.addEventListener("change", (event) => {
+    advisorFilter = String(event.target.value || "all").trim() || "all";
+    renderBoard();
+  });
+
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", handleBoardClick);
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-id]");
@@ -475,6 +486,35 @@ function startWatch() {
   });
 }
 
+function matchesAdvisorFilter(row = {}) {
+  const code = String(row.advisorCode || "").trim();
+  if (advisorFilter === "all") return true;
+  return code === String(advisorFilter || "").trim();
+}
+
+function refreshAdvisorSelect() {
+  const select = document.getElementById("appointmentsAdvisorSelect");
+  if (!select) return;
+  const codes = [...new Set(
+    liveRows
+      .map((row) => String(row.advisorCode || "").trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const preferred = String(advisorFilter || "").trim();
+  const mine = String(getSession()?.companyId || "").trim();
+  const selected = preferred && (preferred === "all" || codes.includes(preferred))
+    ? preferred
+    : (mine && codes.includes(mine) ? mine : "all");
+
+  advisorFilter = selected;
+
+  select.innerHTML = `<option value="all">All</option>` +
+    codes.map((code) => `<option value="${escapeHtml(code)}">${escapeHtml(code)}</option>`).join("");
+
+  select.value = selected;
+}
+
 function renderBoard() {
   syncDayButtons();
   const body = document.getElementById("appointmentsLiveBody");
@@ -491,9 +531,13 @@ function renderBoard() {
     `;
   }
 
+  refreshAdvisorSelect();
+
   const rows = liveRows.filter((row) => {
-    if (transportFilter === "all") return true;
-    return String(row.transportationType || "none") === transportFilter;
+    if (transportFilter !== "all" && String(row.transportationType || "none") !== transportFilter) {
+      return false;
+    }
+    return matchesAdvisorFilter(row);
   });
 
   if (!rows.length) {
@@ -534,23 +578,20 @@ function renderLiveRow(row) {
     <td>${escapeHtml(row.status || "")}</td>
     <td>${escapeHtml(roLabel)}</td>
     <td>
-      ${
-        row.status === APPOINTMENT_STATUS.SCHEDULED
-          ? `<button type="button" class="small-button js-appt-arrived" data-id="${escapeHtml(row.id)}">Arrived</button>
+      ${row.status === APPOINTMENT_STATUS.SCHEDULED
+      ? `<button type="button" class="small-button js-appt-arrived" data-id="${escapeHtml(row.id)}">Arrived</button>
              <button type="button" class="small-button secondary js-appt-noshow" data-id="${escapeHtml(row.id)}">No show</button>
              <button type="button" class="small-button secondary js-appt-cancel" data-id="${escapeHtml(row.id)}">Cancel</button>`
-          : ""
-      }
-      ${
-        canUndoArrived
-          ? `<button type="button" class="small-button secondary js-appt-undo-arrived" data-id="${escapeHtml(row.id)}">Undo arrived</button>`
-          : ""
-      }
-      ${
-        canLink
-          ? `<button type="button" class="small-button secondary js-appt-link" data-id="${escapeHtml(row.id)}" data-ro-id="${escapeHtml(matched.id || matched.roNumber || "")}">Link RO</button>`
-          : ""
-      }
+      : ""
+    }
+      ${canUndoArrived
+      ? `<button type="button" class="small-button secondary js-appt-undo-arrived" data-id="${escapeHtml(row.id)}">Undo arrived</button>`
+      : ""
+    }
+      ${canLink
+      ? `<button type="button" class="small-button secondary js-appt-link" data-id="${escapeHtml(row.id)}" data-ro-id="${escapeHtml(matched.id || matched.roNumber || "")}">Link RO</button>`
+      : ""
+    }
     </td>
   </tr>`;
 }

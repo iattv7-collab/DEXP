@@ -41,6 +41,7 @@ function initializeDashboard() {
   renderWelcome(session);
   renderModules();
   addTeamLeaderTile(session);
+  addVinScanTestTile();
 }
 
 function renderDealerWorkspaceBanner(session) {
@@ -125,6 +126,16 @@ async function addTeamLeaderTile(session) {
   button.innerHTML = `<div>Team leader</div>`;
   button.addEventListener("click", () => {
     navigateTo("/pages/team-leader/team-leader.html");
+  });
+  modulesContainer.appendChild(button);
+}
+
+function addVinScanTestTile() {
+  const button = document.createElement("button");
+  button.className = "dashboard-module-button";
+  button.innerHTML = `<div>VIN Scan Test</div>`;
+  button.addEventListener("click", () => {
+    navigateTo("/pages/vin-scan-test/vin-scan-test.html");
   });
   modulesContainer.appendChild(button);
 }

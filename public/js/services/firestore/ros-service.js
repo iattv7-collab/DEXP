@@ -362,13 +362,19 @@ export function watchROsByAdvisorId(advisorId, callback) {
 
     where(ROS_FIELDS.advisorId, "==", advisorId),
 
-    limit(100),
+    where(ROS_FIELDS.status, "!=", ROS_STATUS.ARCHIVED),
+
+    limit(500),
   );
 
   return onSnapshot(q, (snapshot) => {
     const ros = snapshot.docs
       .map((doc) => doc.data())
-      .filter((ro) => ro[ROS_FIELDS.status] !== ROS_STATUS.ARCHIVED);
+      .sort((a, b) => {
+        const aNum = String(a.roNumber || a.id || "");
+        const bNum = String(b.roNumber || b.id || "");
+        return aNum.localeCompare(bNum, undefined, { numeric: true });
+      });
 
     callback(ros);
   });
