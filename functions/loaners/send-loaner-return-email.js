@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
-const FROM = "DEXP <onboarding@resend.dev>";
+const FROM = "DEXP <noreply@dexpglobal.com>";
 
 function cleanEmail(value) {
   const email = String(value || "").trim().toLowerCase();
