@@ -110,8 +110,14 @@ function renderPendingOption(user) {
 }
 
 function renderActionButton(user, tableType) {
+  const editBtn = `
+    <button class="admin-edit-user-btn small-button" data-user-id="${user.id}" style="margin-right:6px;">
+      Edit
+    </button>
+  `;
+
   if (tableType === "pending") {
-    return `
+    return editBtn + `
       <button class="admin-approve-btn" data-user-id="${user.id}">
         Approve
       </button>
@@ -119,7 +125,7 @@ function renderActionButton(user, tableType) {
   }
 
   if (tableType === "active") {
-    return `
+    return editBtn + `
       <button class="admin-deactivate-btn" data-user-id="${user.id}">
         Deactivate
       </button>
@@ -127,14 +133,14 @@ function renderActionButton(user, tableType) {
   }
 
   if (tableType === "inactive") {
-    return `
+    return editBtn + `
       <button class="admin-reactivate-btn" data-user-id="${user.id}">
         Reactivate
       </button>
     `;
   }
 
-  return "";
+  return editBtn;
 }
 
 function formatAdminDate(value) {

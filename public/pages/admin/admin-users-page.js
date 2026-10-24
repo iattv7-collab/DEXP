@@ -13,6 +13,7 @@ import {
   setUserActive,
   setUserRole,
   setUserAssignedModules,
+  updateUserProfile,
 } from "../../js/services/firebase/admin-functions-service.js";
 
 import { renderUsersTable } from "./admin-users-table.js";
@@ -336,6 +337,17 @@ function attachInviteEvents(inviteLink) {
 }
 
 function attachAdminUserEvents() {
+  document.querySelectorAll(".admin-edit-user-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const user = findAdminUserById(button.dataset.userId);
+      if (!user) {
+        alert("User not found.");
+        return;
+      }
+      openEditUserModal(user);
+    });
+  });
+
   document.querySelectorAll(".admin-edit-modules-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const user = findAdminUserById(button.dataset.userId);
@@ -578,6 +590,76 @@ function getSelectedModalModules() {
 
 function normalizeModuleList(modules = []) {
   return Array.from(new Set(Array.isArray(modules) ? modules : [])).sort();
+}
+
+function openEditUserModal(user) {
+  const existing = document.getElementById("adminEditUserModal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "adminEditUserModal";
+
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:18px;">
+      <div style="background:white;width:min(480px,96vw);border-radius:10px;padding:22px;border:1px solid #cfd6df;">
+        <h2 style="margin-top:0;">Edit User</h2>
+
+        <label>Display Name<br>
+          <input id="editUserName" type="text" value="${escapeAdminHtml(user.displayName || "")}" style="width:100%;margin-bottom:10px;">
+        </label>
+
+        <label>Email<br>
+          <input id="editUserEmail" type="email" value="${escapeAdminHtml(user.email || "")}" style="width:100%;margin-bottom:10px;">
+        </label>
+
+        <label>Phone<br>
+          <input id="editUserPhone" type="text" value="${escapeAdminHtml(user.phone || "")}" style="width:100%;margin-bottom:10px;">
+        </label>
+
+        <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
+          <input id="editUserUpdateLogin" type="checkbox">
+          Also update login email (Firebase Auth)
+        </label>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+          <button id="cancelEditUserBtn" type="button">Cancel</button>
+          <button id="saveEditUserBtn" type="button">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("cancelEditUserBtn").onclick = () => modal.remove();
+
+  document.getElementById("saveEditUserBtn").onclick = async () => {
+    const displayName = document.getElementById("editUserName").value.trim();
+    const email = document.getElementById("editUserEmail").value.trim();
+    const phone = document.getElementById("editUserPhone").value.trim();
+    const updateLoginEmail = document.getElementById("editUserUpdateLogin").checked;
+
+    if (!displayName || !email) {
+      alert("Name and email are required.");
+      return;
+    }
+
+    try {
+      await updateUserProfile({
+        uid: user.id,
+        displayName,
+        email,
+        phone,
+        updateLoginEmail,
+      });
+      modal.remove();
+      await loadAdminUsers();
+      alert("User updated.");
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Update failed.");
+    }
+  };
 }
 
 function escapeAdminHtml(value = "") {
