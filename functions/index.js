@@ -545,6 +545,62 @@ exports.acceptDealerAdminInvite = onCall(async (request) => {
   };
 });
 
+exports.updateUserProfile = onCall(async (request) => {
+  requireAuth(request);
+  requireActive(request);
+  requireRole(request, ["platform-admin", "admin"]);
+
+  const { uid, displayName, email, phone, updateLoginEmail } = request.data || {};
+
+  if (!uid || typeof uid !== "string") {
+    throw new HttpsError("invalid-argument", "uid required.");
+  }
+
+  const cleanName = String(displayName || "").trim();
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanPhone = String(phone || "").trim();
+
+  if (!cleanName) {
+    throw new HttpsError("invalid-argument", "Display name is required.");
+  }
+
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    throw new HttpsError("invalid-argument", "Valid email is required.");
+  }
+
+  await admin.firestore().doc(`users/${uid}`).set(
+    {
+      displayName: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  if (updateLoginEmail === true) {
+    try {
+      await admin.auth().updateUser(uid, {
+        email: cleanEmail,
+        displayName: cleanName,
+      });
+    } catch (err) {
+      throw new HttpsError(
+        "failed-precondition",
+        err.message || "Could not update login email.",
+      );
+    }
+  } else {
+    try {
+      await admin.auth().updateUser(uid, { displayName: cleanName });
+    } catch (err) {
+      console.warn("Could not update Auth displayName:", err);
+    }
+  }
+
+  return { ok: true };
+});
+
 exports.scanRO = onRequest(
   {
     cors: true,
