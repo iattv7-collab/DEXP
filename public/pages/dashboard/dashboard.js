@@ -41,7 +41,9 @@ function initializeDashboard() {
   renderWelcome(session);
   renderModules();
   addTeamLeaderTile(session);
-  addVinScanTestTile();
+  if (session.role === "platform-admin") {
+    addVinScanTestTile();
+  }
 }
 
 function renderDealerWorkspaceBanner(session) {

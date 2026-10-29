@@ -74,20 +74,6 @@ export function syncAppointmentsTabContext({ ros = [], groups = [] } = {}) {
 function syncDateInput() {
   const input = document.getElementById("appointmentsDateInput");
   if (input) input.value = toDateInputValue(selectedDate);
-  syncDayButtons();
-}
-
-function syncDayButtons() {
-  const today = formatAppointmentDate(new Date());
-  const tomorrow = shiftAppointmentDate(today, 1);
-  document.querySelectorAll(".js-day").forEach((button) => {
-    const day = button.dataset.day;
-    let active = false;
-    if (day === "today") active = selectedDate === today;
-    if (day === "tomorrow") active = selectedDate === tomorrow;
-    if (day === "prev") active = selectedDate !== today && selectedDate !== tomorrow;
-    button.classList.toggle("secondary", !active);
-  });
 }
 
 function toDateInputValue(dateStr) {
@@ -135,22 +121,15 @@ function renderShell() {
         Review the grid, then save. Arrived cars stay if you upload again.
       </p>
       <div class="action-row appointments-toolbar">
-        <button type="button" class="small-button secondary js-day" data-day="prev">Prev</button>
-        <button type="button" class="small-button js-day" data-day="today">Today</button>
-        <button type="button" class="small-button secondary js-day" data-day="tomorrow">Tomorrow</button>
         <input id="appointmentsDateInput" type="date" value="${escapeHtml(toDateInputValue(selectedDate))}" />
         <label class="small-button secondary">
           Photo of sheet
           <input id="appointmentsPhotoInput" type="file" accept="image/*" capture="environment" hidden />
         </label>
-        <button type="button" class="small-button secondary" id="appointmentsPasteToggle">Paste text</button>
         <button type="button" class="small-button" id="appointmentsSavePreview" disabled>Save preview</button>
         <button type="button" class="small-button secondary" id="appointmentsAddLive">Add appointment</button>
       </div>
-      <div id="appointmentsPasteWrap" class="hidden" style="margin:8px 0">
-        <textarea id="appointmentsPasteInput" rows="6" placeholder="Paste OCR or exported sheet text"></textarea>
-        <button type="button" class="small-button" id="appointmentsParsePaste">Parse paste</button>
-      </div>
+
       <p id="appointmentsStatusMsg" class="tool-help"></p>
       <div id="appointmentsPreviewWrap" class="hidden">
         <h4>Review before save</h4>
@@ -207,19 +186,6 @@ function renderShell() {
 }
 
 function wire(root) {
-  root.querySelectorAll(".js-day").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (button.dataset.day === "tomorrow") {
-        selectedDate = shiftAppointmentDate(formatAppointmentDate(new Date()), 1);
-      } else if (button.dataset.day === "prev") {
-        selectedDate = shiftAppointmentDate(selectedDate || formatAppointmentDate(new Date()), -1);
-      } else {
-        selectedDate = formatAppointmentDate(new Date());
-      }
-      syncDateInput();
-      startWatch();
-    });
-  });
 
   document.getElementById("appointmentsDateInput")?.addEventListener("change", (event) => {
     selectedDate = fromDateInputValue(event.target.value) || selectedDate;
@@ -241,18 +207,6 @@ function wire(root) {
     } catch (error) {
       setMsg(error?.message || "Could not read photo.");
     }
-  });
-
-  document.getElementById("appointmentsPasteToggle")?.addEventListener("click", () => {
-    document.getElementById("appointmentsPasteWrap")?.classList.toggle("hidden");
-  });
-
-  document.getElementById("appointmentsParsePaste")?.addEventListener("click", async () => {
-    const text = document.getElementById("appointmentsPasteInput")?.value || "";
-    setMsg("Decoding vehicles from VIN…");
-    const parsed = parseAppointmentSheetText(text);
-    parsed.rows = await enrichVehiclesFromVin(parsed.rows);
-    applyParsed(parsed);
   });
 
   document.getElementById("appointmentsPreviewWrap")?.addEventListener("click", async (event) => {
@@ -373,7 +327,7 @@ function applyParsed(parsed) {
   if (!previewRows.length) {
     wrap?.classList.add("hidden");
     if (saveBtn) saveBtn.disabled = true;
-    setMsg("No appointment rows found. Try a flatter photo or paste the text.");
+    setMsg("No appointment rows found. Try a flatter photo.");
     return;
   }
   wrap?.classList.remove("hidden");
@@ -516,7 +470,6 @@ function refreshAdvisorSelect() {
 }
 
 function renderBoard() {
-  syncDayButtons();
   const body = document.getElementById("appointmentsLiveBody");
   const counts = document.getElementById("appointmentsCounts");
   if (!body) return;

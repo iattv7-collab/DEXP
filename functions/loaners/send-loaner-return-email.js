@@ -1,13 +1,14 @@
 // functions/loaners/send-loaner-return-email.js
-// Sends a loaner-return email via Resend when a loanerReturns doc is created.
+// Sends a loaner-return email via Gmail SMTP when a loanerReturns doc is created.
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
 
-const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 
-const FROM = "DEXP <noreply@dexpglobal.com>";
+const FROM = "DEXP <marlon@dexpglobal.com>";
 
 function cleanEmail(value) {
   const email = String(value || "").trim().toLowerCase();
@@ -40,7 +41,7 @@ async function getAdvisorEmail(dealerId, roNumber) {
 const sendLoanerReturnEmail = onDocumentCreated(
   {
     document: "loanerReturns/{returnId}",
-    secrets: [RESEND_API_KEY],
+    secrets: [GMAIL_APP_PASSWORD],
   },
   async (event) => {
     const data = event.data?.data();
@@ -90,44 +91,42 @@ const sendLoanerReturnEmail = onDocumentCreated(
     const text = lines.filter(Boolean).join("\n");
     const html = `<pre style="font-family:sans-serif">${text.replace(/\n/g, "<br>")}</pre>`;
 
-    const apiKey = RESEND_API_KEY.value();
-    if (!apiKey) {
-      console.error("RESEND_API_KEY not set");
+    const appPassword = GMAIL_APP_PASSWORD.value();
+    if (!appPassword) {
+      console.error("GMAIL_APP_PASSWORD not set");
       return;
     }
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "marlon@dexpglobal.com",
+        pass: appPassword,
       },
-      body: JSON.stringify({
+    });
+
+    try {
+      const info = await transporter.sendMail({
         from: FROM,
-        to,
+        to: to.join(", "),
         subject,
         text,
         html,
-      }),
-    });
+      });
 
-    const body = await res.json().catch(() => ({}));
+      await event.data.ref.set(
+        {
+          emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+          emailSentTo: to,
+          emailId: info.messageId || "",
+        },
+        { merge: true },
+      );
 
-    if (!res.ok) {
-      console.error("Resend failed", res.status, body);
-      return;
+      console.log("Loaner return email sent", event.params.returnId, to);
+    } catch (error) {
+      console.error("Gmail send failed", error);
     }
-
-    await event.data.ref.set(
-      {
-        emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-        emailSentTo: to,
-        emailId: body.id || "",
-      },
-      { merge: true },
-    );
-
-    console.log("Loaner return email sent", event.params.returnId, to);
   },
 );
 

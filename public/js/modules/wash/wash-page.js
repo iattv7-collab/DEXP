@@ -71,6 +71,77 @@ document.addEventListener("DOMContentLoaded", async () => {
   let courtesyWashRows = [];
   const lateNeedByNotified = new Set();
 
+  const WASH_COLUMNS = [
+    { key: "tag", label: "Tag" },
+    { key: "ro", label: "RO" },
+    { key: "model", label: "Model" },
+    { key: "location", label: "Location" },
+    { key: "priority", label: "Priority" },
+    { key: "needBy", label: "Need By" },
+    { key: "projected", label: "Projected" },
+    { key: "status", label: "Status" },
+    { key: "droppedOff", label: "Dropped Off" },
+    { key: "droppedBy", label: "Dropped By" },
+    { key: "started", label: "Started" },
+    { key: "notes", label: "Notes" },
+    { key: "start", label: "Start" },
+    { key: "done", label: "Done" },
+    { key: "remove", label: "Remove" },
+  ];
+
+  const washColumnStorageKey = `dexp_wash_columns_${currentSession?.uid || "local"}`;
+  let visibleWashColumns = loadWashColumns();
+
+  function loadWashColumns() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(washColumnStorageKey) || "[]");
+      const allowed = new Set(WASH_COLUMNS.map((c) => c.key));
+      const clean = Array.isArray(saved) ? saved.filter((k) => allowed.has(k)) : [];
+      return clean.length
+        ? WASH_COLUMNS.map((c) => c.key).filter((k) => clean.includes(k))
+        : WASH_COLUMNS.map((c) => c.key);
+    } catch {
+      return WASH_COLUMNS.map((c) => c.key);
+    }
+  }
+
+  function saveWashColumns(keys) {
+    localStorage.setItem(washColumnStorageKey, JSON.stringify(keys));
+    visibleWashColumns = keys;
+  }
+
+  function openWashColumns() {
+    const selected = new Set(visibleWashColumns);
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;";
+    box.innerHTML = `
+      <div style="background:#fff;padding:20px;border-radius:8px;min-width:260px;max-height:80vh;overflow:auto;">
+        <h3 style="margin-top:0">Wash Columns</h3>
+        ${WASH_COLUMNS.map(c => `
+          <label style="display:block;margin:6px 0;">
+            <input type="checkbox" value="${c.key}" ${selected.has(c.key) ? "checked" : ""}>
+            ${c.label}
+          </label>
+        `).join("")}
+        <div style="margin-top:16px;">
+          <button id="washColsSave" type="button">Save</button>
+          <button id="washColsCancel" type="button" style="margin-left:8px;">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(box);
+
+    box.querySelector("#washColsCancel").onclick = () => box.remove();
+    box.querySelector("#washColsSave").onclick = () => {
+      const keys = [...box.querySelectorAll("input:checked")].map(el => el.value);
+      saveWashColumns(keys.length ? keys : WASH_COLUMNS.map(c => c.key));
+      box.remove();
+      renderCombinedQueue();
+    };
+  }
+
+  $("washColumnsButton")?.addEventListener("click", openWashColumns);
+
   function waitForSession() {
     return new Promise((resolve) => {
       const existing = getSession();
@@ -477,148 +548,64 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.error("Need By late alert failed:", error);
     });
 
+    const cols = WASH_COLUMNS.filter((c) => visibleWashColumns.includes(c.key));
+    const head = $("washHead");
+    if (head) {
+      head.innerHTML = `<tr>${cols.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
+    }
+
     if (!sorted.length) {
       rowsEl.innerHTML = `
         <tr>
-          <td colspan="15">
-            No active wash tickets.
-          </td>
+          <td colspan="${cols.length || 1}">No active wash tickets.</td>
         </tr>
       `;
-
       return;
     }
 
     rowsEl.innerHTML = sorted
       .map((ticket) => {
         const status = clean(ticket.washStatus).toLowerCase();
-
         const courtesy = isCourtesyWash(ticket);
+        const statusLabel = status === "rewash_requested" ? "Rewash Requested" : status;
 
-        const statusLabel =
-          status === "rewash_requested" ? "Rewash Requested" : status;
-
-        const startDisabled =
-          !washIsOpen || !["pending", "rewash_requested"].includes(status)
-            ? "disabled"
-            : "";
-
+        const startDisabled = !washIsOpen || !["pending", "rewash_requested"].includes(status) ? "disabled" : "";
         const doneDisabled = status !== "washing" ? "disabled" : "";
 
-        const removeButton = canEditWashSettings()
-          ? `<button class="removeWashBtn" type="button">Remove</button>`
-          : "";
-
         const tagDisplay = courtesy ? "COURTESY" : tagValue(ticket);
-
-        const roDisplay = courtesy
-          ? clean(ticket.vinLast8 || "")
-          : roValue(ticket);
-
-        const modelDisplay = courtesy
-          ? vehicleValue(ticket)
-          : clean(ticket.model || "");
-
-        const locationDisplay = courtesy
-          ? ""
-          : clean(ticket.currentLocation || ticket.location || "");
-
+        const roDisplay = courtesy ? clean(ticket.vinLast8 || "") : roValue(ticket);
+        const modelDisplay = courtesy ? vehicleValue(ticket) : clean(ticket.model || "");
+        const locationDisplay = courtesy ? "" : clean(ticket.currentLocation || ticket.location || "");
         const notesDisplay = courtesy
-          ? [ticket.customerName, ticket.customerPhone]
-            .filter(Boolean)
-            .join(" • ")
+          ? [ticket.customerName, ticket.customerPhone].filter(Boolean).join(" • ")
           : clean(ticket.washNotes || ticket.notes || "");
 
+        const cells = {
+          tag: `<b>${escapeHtml(tagDisplay)}</b>`,
+          ro: escapeHtml(roDisplay),
+          model: escapeHtml(modelDisplay),
+          location: escapeHtml(locationDisplay),
+          priority: escapeHtml(priorityLabel(ticket)),
+          needBy: escapeHtml(fmtTime(ticket.needByAtMs)),
+          projected: `<span style="${ticket.needByMissed ? "color:crimson;font-weight:700;" : ""}">${escapeHtml(fmtTime(ticket.projectedFinishAtMs))}</span>`,
+          status: escapeHtml(statusLabel),
+          droppedOff: escapeHtml(fmtTime(ticket.washQueuedAtMs)),
+          droppedBy: escapeHtml(ticket.washQueuedByName || ticket.updatedByName || ticket.createdByName || ""),
+          started: escapeHtml(fmtTime(ticket.washingStartedAtMs)),
+          notes: escapeHtml(notesDisplay),
+          start: `<button class="startWashBtn" ${startDisabled}>Start</button>`,
+          done: `<button class="markWashedBtn" ${doneDisabled}>Done</button>`,
+          remove: `<button class="removeWashBtn">Remove</button>`,
+        };
+
         return `
-          <tr
-            data-id="${escapeHtml(ticket.id)}"
-            data-source="${courtesy ? "courtesy" : "ro"}"
-          >
-            <td>
-              <b>${escapeHtml(tagDisplay)}</b>
-            </td>
-
-            <td>
-              ${escapeHtml(roDisplay)}
-            </td>
-
-            <td>
-              ${escapeHtml(modelDisplay)}
-            </td>
-
-            <td>
-              ${escapeHtml(locationDisplay)}
-            </td>
-
-            <td>
-              ${escapeHtml(priorityLabel(ticket))}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.needByAtMs))}
-            </td>
-
-            <td style="${ticket.needByMissed
-            ? "color:crimson;font-weight:700;"
-            : ""
-          }">
-              ${escapeHtml(fmtTime(ticket.projectedFinishAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(statusLabel)}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.washQueuedAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(
-            ticket.washQueuedByName ||
-            ticket.updatedByName ||
-            ticket.createdByName ||
-            "",
-          )}
-            </td>
-
-            <td>
-              ${escapeHtml(fmtTime(ticket.washingStartedAtMs))}
-            </td>
-
-            <td>
-              ${escapeHtml(notesDisplay)}
-            </td>
-
-            <td>
-              <button
-                class="startWashBtn"
-                ${startDisabled}
-              >
-                Start
-              </button>
-            </td>
-
-            <td>
-              <button
-                class="markWashedBtn"
-                ${doneDisabled}
-              >
-                Done
-              </button>
-            </td>
-
-            <td>
-              <button class="removeWashBtn">
-                Remove
-              </button>
-            </td>
+          <tr data-id="${escapeHtml(ticket.id)}" data-source="${courtesy ? "courtesy" : "ro"}">
+            ${cols.map((c) => `<td>${cells[c.key] || ""}</td>`).join("")}
           </tr>
         `;
       })
       .join("");
   }
-
   // ====================================================
   // NORMAL RO LISTENER
   // ====================================================

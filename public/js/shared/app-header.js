@@ -11,6 +11,8 @@ import {
 } from "/js/services/firebase/messaging-service.js";
 
 import { watchArchivedROs } from "/js/services/firestore/ros-service.js";
+import { MODULE_CONFIG } from "/js/config/modules.js";
+import { canAccessModule } from "/js/core/session.js";
 
 let unsubscribeHeaderFollowUps = null;
 
@@ -93,6 +95,8 @@ export function renderAppHeader(options = {}) {
 
     </div>
 
+    <div id="headerShortcuts" class="header-shortcuts" style="display:none;"></div>
+
     <nav class="app-header-nav">
 
       ${showHome
@@ -163,6 +167,103 @@ export function renderAppHeader(options = {}) {
     existingHeader.replaceWith(header);
   } else {
     document.body.prepend(header);
+  }
+
+  // Desktop header shortcuts
+  const isDesktop = window.innerWidth >= 900 && !iphone && !androidApp;
+  if (isDesktop && !platformMode && session) {
+    const shortcutsEl = document.getElementById("headerShortcuts");
+    if (shortcutsEl) {
+      shortcutsEl.style.display = "flex";
+      renderHeaderShortcuts(shortcutsEl, session);
+    }
+
+    // Add customize button
+    const nav = header.querySelector(".app-header-nav");
+    if (nav) {
+      const customizeBtn = document.createElement("button");
+      customizeBtn.type = "button";
+      customizeBtn.textContent = "Customize";
+      customizeBtn.title = "Pin modules to the header";
+      customizeBtn.addEventListener("click", () => openHeaderShortcutsPicker(session));
+      nav.insertBefore(customizeBtn, nav.firstChild);
+    }
+  }
+
+  function renderHeaderShortcuts(container, session) {
+    const key = `dexp_header_shortcuts_${session.uid || "local"}`;
+    let keys = [];
+    try {
+      keys = JSON.parse(localStorage.getItem(key) || "[]");
+    } catch {}
+    keys = Array.isArray(keys) ? keys : [];
+
+    const available = Object.entries(MODULE_CONFIG)
+      .filter(([mod]) => canAccessModule(mod))
+      .map(([mod, cfg]) => ({ key: mod, label: cfg.label, route: cfg.route }));
+
+    const selected = keys
+      .map((k) => available.find((m) => m.key === k))
+      .filter(Boolean);
+
+    container.innerHTML = selected
+      .map(
+        (m) =>
+          `<button type="button" class="header-shortcut-btn" data-route="${m.route}">${m.label}</button>`,
+      )
+      .join("");
+
+    container.querySelectorAll(".header-shortcut-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        window.location.href = btn.dataset.route;
+      });
+    });
+  }
+
+  function openHeaderShortcutsPicker(session) {
+    const key = `dexp_header_shortcuts_${session.uid || "local"}`;
+    let current = [];
+    try {
+      current = JSON.parse(localStorage.getItem(key) || "[]");
+    } catch {}
+    const selected = new Set(Array.isArray(current) ? current : []);
+
+    const available = Object.entries(MODULE_CONFIG)
+      .filter(([mod]) => canAccessModule(mod))
+      .map(([mod, cfg]) => ({ key: mod, label: cfg.label }));
+
+    const box = document.createElement("div");
+    box.style.cssText =
+      "position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;display:flex;align-items:center;justify-content:center;";
+    box.innerHTML = `
+      <div style="background:#fff;padding:20px;border-radius:8px;min-width:280px;max-height:80vh;overflow:auto;">
+        <h3 style="margin-top:0">Pin to header</h3>
+        <p style="font-size:13px;color:#555;margin-top:0">Only the ones you check will appear.</p>
+        ${available
+          .map(
+            (m) => `
+          <label style="display:block;margin:6px 0;">
+            <input type="checkbox" value="${m.key}" ${selected.has(m.key) ? "checked" : ""}>
+            ${m.label}
+          </label>`,
+          )
+          .join("")}
+        <div style="margin-top:16px;">
+          <button id="hdrShortSave" type="button">Save</button>
+          <button id="hdrShortCancel" type="button" style="margin-left:8px;">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(box);
+
+    box.querySelector("#hdrShortCancel").onclick = () => box.remove();
+    box.querySelector("#hdrShortSave").onclick = () => {
+      const keys = [...box.querySelectorAll("input:checked")].map((el) => el.value);
+      localStorage.setItem(key, JSON.stringify(keys));
+      box.remove();
+      const el = document.getElementById("headerShortcuts");
+      if (el) renderHeaderShortcuts(el, session);
+    };
   }
 
   ensureNotificationSettingsStyles();
@@ -570,6 +671,41 @@ function ensureNotificationSettingsStyles() {
       font-size: 12px;
       color: #4c5968;
     }
+
+    .header-shortcuts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 12px;
+    }
+
+    .header-shortcut-btn {
+      padding: 6px 10px;
+      font-size: 13px;
+      border: 1px solid #d0d5dd;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .header-shortcut-btn:hover {
+      background: #f5f7fa;
+    }
+.header-shortcut-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;          /* force dark text */
+  cursor: pointer;
+}
+
+.header-shortcut-btn:hover {
+  background: #f5f7fa;
+  color: #1a1a1a;
+}
+
   `;
 
   document.head.appendChild(style);
