@@ -50,6 +50,32 @@
           <button id="updateLocationButton" type="button" class="small-button secondary">
             Update location
           </button>
+
+          <button id="addTagButton" type="button" class="small-button secondary">
+            Add Tag
+          </button>
+        </div>
+
+        <div id="addTagPanel" class="update-location-panel hidden">
+          <div class="update-location-title">Add Tag</div>
+
+          <label>
+            Tag Number
+            <input id="addTagInput" type="text" placeholder="Tag #" />
+          </label>
+
+          <label>
+            Advisor Number
+            <input id="addTagAdvisorInput" type="text" placeholder="Advisor #" />
+          </label>
+
+          <label>
+            RO Number (optional)
+            <input id="addTagRoInput" type="text" placeholder="RO # if you have it" />
+          </label>
+
+          <button id="saveAddTagButton" type="button">Save Tag</button>
+          <button id="cancelAddTagButton" type="button" class="small-button secondary">Cancel</button>
         </div>
 
         <div id="updateLocationPanel" class="update-location-panel hidden">

@@ -5,6 +5,7 @@ import { protectRoute } from "/js/core/router.js";
 import { scanROImage } from "/js/services/ocr/ro-ocr-service.js?v=tag13";
 import {
   createRO,
+  updateRO,
   findActiveROByNumber,
   findActiveROByTag,
   findActiveAdvisorByCompanyId,
@@ -252,9 +253,16 @@ async function checkScannerDuplicates() {
     const existingTag = await findActiveROByTag(tagNumber);
 
     if (existingTag) {
-      tagNumberInput.classList.add("field-error");
-      messages.push(`Tag number ${tagNumber} already exists.`);
-      duplicateFound = true;
+      const isIncomplete =
+        !String(existingTag[ROS_FIELDS.roNumber] || "").trim() &&
+        !String(existingTag[ROS_FIELDS.vin] || "").trim() &&
+        !String(existingTag[ROS_FIELDS.customerName] || "").trim();
+
+      if (!isIncomplete) {
+        tagNumberInput.classList.add("field-error");
+        messages.push(`Tag number ${tagNumber} already exists.`);
+        duplicateFound = true;
+      }
     }
   }
 
@@ -305,6 +313,59 @@ async function saveRO() {
   saveRoButton.textContent = "Saving...";
 
   try {
+    let existingByTag = null;
+
+    if (tagNumber) {
+      existingByTag = await findActiveROByTag(tagNumber);
+    }
+
+    const isIncomplete =
+      existingByTag &&
+      !String(existingByTag[ROS_FIELDS.roNumber] || "").trim() &&
+      !String(existingByTag[ROS_FIELDS.vin] || "").trim() &&
+      !String(existingByTag[ROS_FIELDS.customerName] || "").trim();
+
+    if (isIncomplete) {
+      const enteredBy = existingByTag.createdByName || "someone";
+      const ok = window.confirm(
+        `RO already in the system entered by ${enteredBy}. Merge records?`,
+      );
+
+      if (!ok) {
+        showMessage("Merge cancelled. Existing tag left as-is.");
+        return;
+      }
+
+      await updateRO(
+        existingByTag.id,
+        {
+          [ROS_FIELDS.roNumber]: roNumber,
+          [ROS_FIELDS.tagNumber]: tagNumber,
+          [ROS_FIELDS.vin]: vin,
+          [ROS_FIELDS.year]: decodedVehicle.year,
+          [ROS_FIELDS.make]: decodedVehicle.make,
+          [ROS_FIELDS.model]: decodedVehicle.model,
+          [ROS_FIELDS.customerName]: customerNameInput.value.trim(),
+          [ROS_FIELDS.customerPhone]: customerPhoneInput.value.trim(),
+          [ROS_FIELDS.advisorName]: advisorNameInput.value.trim(),
+          [ROS_FIELDS.advisorCompanyId]: advisorNumberInput.value.trim(),
+          [ROS_FIELDS.isWaiter]: waiterCheckbox.checked,
+          customerWaiting: waiterCheckbox.checked,
+          [ROS_FIELDS.concern]: concernInput.value.trim(),
+          [ROS_FIELDS.scanSource]: "scanner-ro",
+        },
+        {
+          eventType: "scanned_ro_merged",
+          module: "scanner-ro",
+          message: "RO merged from Scanner RO into early tag",
+        },
+      );
+
+      clearForm();
+      showMessage("RO merged and updated.");
+      return;
+    }
+
     await createRO(
       {
         [ROS_FIELDS.roNumber]: roNumber,
@@ -320,7 +381,6 @@ async function saveRO() {
         [ROS_FIELDS.isWaiter]: waiterCheckbox.checked,
         customerWaiting: waiterCheckbox.checked,
         [ROS_FIELDS.concern]: concernInput.value.trim(),
-
         [ROS_FIELDS.scanSource]: "scanner-ro",
       },
       {
@@ -331,11 +391,9 @@ async function saveRO() {
     );
 
     clearForm();
-
     showMessage("RO saved.");
   } catch (error) {
     console.error("Failed to save RO:", error);
-
     showMessage(error?.message || "Could not save RO.");
   } finally {
     saveRoButton.disabled = false;

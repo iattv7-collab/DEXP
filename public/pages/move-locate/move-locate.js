@@ -8,6 +8,7 @@ import {
   getDealerROs,
   getRO,
   updateRO,
+  createRO,
   watchDealerROs,
   findActiveROByTag,
   findActiveROByNumber,
@@ -87,6 +88,14 @@ const saveUpdatedLocationButton = document.getElementById(
 const updateLocationBlockingInput = document.getElementById(
   "updateLocationBlockingInput",
 );
+
+const addTagButton = document.getElementById("addTagButton");
+const addTagPanel = document.getElementById("addTagPanel");
+const addTagInput = document.getElementById("addTagInput");
+const addTagAdvisorInput = document.getElementById("addTagAdvisorInput");
+const addTagRoInput = document.getElementById("addTagRoInput");
+const saveAddTagButton = document.getElementById("saveAddTagButton");
+const cancelAddTagButton = document.getElementById("cancelAddTagButton");
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
 const moveLocateMessage = document.getElementById("moveLocateMessage");
@@ -237,6 +246,24 @@ function initializeMoveLocate() {
       updateLocationBlockingInput.value = normalizeTag(
         updateLocationBlockingInput.value,
       );
+    });
+  }
+
+  if (addTagButton) {
+    addTagButton.addEventListener("click", () => {
+      showAddTagPanel();
+    });
+  }
+
+  if (cancelAddTagButton) {
+    cancelAddTagButton.addEventListener("click", () => {
+      hideAddTagPanel();
+    });
+  }
+
+  if (saveAddTagButton) {
+    saveAddTagButton.addEventListener("click", async () => {
+      await saveAddTag();
     });
   }
 
@@ -1893,4 +1920,97 @@ function renderMoveDestination(ro) {
 
   moveDestinationLine.textContent = `To: ${title}`;
   moveDestinationLine.classList.remove("hidden");
+}
+
+function showAddTagPanel() {
+  if (!addTagPanel) return;
+  addTagPanel.classList.remove("hidden");
+  if (addTagInput) addTagInput.value = "";
+  if (addTagAdvisorInput) addTagAdvisorInput.value = "";
+  if (addTagRoInput) addTagRoInput.value = "";
+  clearMessage();
+  showMessage("Enter tag and advisor number.");
+}
+
+function hideAddTagPanel() {
+  if (!addTagPanel) return;
+  addTagPanel.classList.add("hidden");
+  clearMessage();
+}
+
+async function saveAddTag() {
+  clearMessage();
+
+  const tagNumber = String(addTagInput?.value || "").trim();
+  const advisorNumber = String(addTagAdvisorInput?.value || "").trim();
+  const roNumber = String(addTagRoInput?.value || "").trim();
+
+  if (!tagNumber) {
+    showMessage("Tag number is required.");
+    return;
+  }
+
+  if (!advisorNumber) {
+    showMessage("Advisor number is required.");
+    return;
+  }
+
+  if (saveAddTagButton) {
+    saveAddTagButton.disabled = true;
+    saveAddTagButton.textContent = "Saving...";
+  }
+
+  try {
+    await createRO(
+      {
+        [ROS_FIELDS.roNumber]: roNumber,
+        [ROS_FIELDS.tagNumber]: tagNumber,
+        [ROS_FIELDS.advisorCompanyId]: advisorNumber,
+        [ROS_FIELDS.scanSource]: "move-locate-tag",
+      },
+      {
+        eventType: "tag_entered",
+        module: "move-locate",
+        message: "Tag entered from Move & Locate",
+      },
+    );
+
+    hideAddTagPanel();
+    showMessage(`Tag ${tagNumber} added.`);
+  } catch (error) {
+    console.error(error);
+
+    if (addTagInput) addTagInput.value = "";
+    if (addTagAdvisorInput) addTagAdvisorInput.value = "";
+    if (addTagRoInput) addTagRoInput.value = "";
+    hideAddTagPanel();
+
+    const msg = error?.message || "Could not add tag.";
+    const displayMsg = msg.includes("already exists")
+      ? `Tag ${tagNumber} already exists. Not added.`
+      : msg;
+
+    showMessage(displayMsg);
+
+    // Make the reject message bigger, then clear it after 4 seconds
+    if (moveLocateMessage) {
+      moveLocateMessage.style.fontSize = "1.15rem";
+      moveLocateMessage.style.fontWeight = "600";
+      moveLocateMessage.style.color = "#c0392b";
+    }
+
+    setTimeout(() => {
+      clearMessage();
+      if (moveLocateMessage) {
+        moveLocateMessage.style.fontSize = "";
+        moveLocateMessage.style.fontWeight = "";
+        moveLocateMessage.style.color = "";
+      }
+    }, 4000);
+  } finally {
+    if (saveAddTagButton) {
+      saveAddTagButton.disabled = false;
+      saveAddTagButton.textContent = "Save Tag";
+    }
+  }
 }
