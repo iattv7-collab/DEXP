@@ -312,3 +312,18 @@
   background: #ffffff;
   border: 1px solid #8eabc8;
 }
+
+#moveLocatePage .move-secondary-actions {
+  display: grid;
+  gap: 8px;
+}
+
+#moveLocatePage .move-secondary-actions button {
+  width: 100%;
+  min-height: 44px;
+}
+
+#moveLocatePage .move-secondary-actions.hidden,
+#moveLocatePage .move-secondary-actions button.hidden {
+  display: none;
+}

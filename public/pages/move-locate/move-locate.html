@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="/css/core/base.css" />
   <link rel="stylesheet" href="/css/components/loading.css" />
-  <link rel="stylesheet" href="/css/modules/move-locate.css?v=8" />
+  <link rel="stylesheet" href="/css/modules/move-locate.css?v=9" />
 </head>
 
 <body>
@@ -45,9 +45,11 @@
             By Tag
           </button>
 
-          <button id="searchVehicleButton" type="button">Search</button>
+          <button id="searchVehicleButton" type="button" disabled>Search</button>
+        </div>
 
-          <button id="updateLocationButton" type="button" class="small-button secondary">
+        <div id="moveSecondaryActions" class="move-secondary-actions">
+          <button id="updateLocationButton" type="button" class="small-button secondary hidden">
             Update location
           </button>
 
@@ -65,8 +67,10 @@
           </label>
 
           <label>
-            Advisor Number
-            <input id="addTagAdvisorInput" type="text" placeholder="Advisor #" />
+            Advisor
+            <select id="addTagAdvisorInput">
+              <option value="">Select advisor...</option>
+            </select>
           </label>
 
           <label>
@@ -170,6 +174,10 @@
           </div>
         </div>
 
+        <button id="clearSearchButton" type="button" class="small-button secondary hidden">
+          Clear
+        </button>
+
         <div id="moveChainPanel" class="tool-details hidden">
           <hr />
 
@@ -220,7 +228,7 @@
   </script>
 
   <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/move-locate/move-locate.js?v=25"></script>
+  <script type="module" src="/pages/move-locate/move-locate.js?v=26"></script>
 </body>
 
 </html>

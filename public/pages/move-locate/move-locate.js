@@ -4,6 +4,8 @@ import { renderAppHeader } from "/js/shared/app-header.js";
 import { protectRoute } from "/js/core/router.js";
 import { getSession } from "/js/core/session.js";
 
+import { getAllUsers } from "/js/services/firestore/users-service.js";
+
 import {
   getDealerROs,
   getRO,
@@ -96,6 +98,8 @@ const addTagAdvisorInput = document.getElementById("addTagAdvisorInput");
 const addTagRoInput = document.getElementById("addTagRoInput");
 const saveAddTagButton = document.getElementById("saveAddTagButton");
 const cancelAddTagButton = document.getElementById("cancelAddTagButton");
+
+const clearSearchButton = document.getElementById("clearSearchButton");
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
 const moveLocateMessage = document.getElementById("moveLocateMessage");
@@ -255,6 +259,12 @@ function initializeMoveLocate() {
     });
   }
 
+  if (clearSearchButton) {
+    clearSearchButton.addEventListener("click", () => {
+      resetMoveLocateForm();
+    });
+  }
+
   if (cancelAddTagButton) {
     cancelAddTagButton.addEventListener("click", () => {
       hideAddTagPanel();
@@ -275,7 +285,7 @@ function initializeMoveLocate() {
 
   vehicleSearchInput.addEventListener("input", () => {
     clearMessage();
-    searchVehicleButton.disabled = false;
+    searchVehicleButton.disabled = !vehicleSearchInput.value.trim();
   });
 
   detailsButton.addEventListener("click", toggleDetails);
@@ -830,6 +840,9 @@ async function findVehicle() {
 
   renderSelectedVehicle(match);
   vehicleResultCard.classList.remove("hidden");
+  document.getElementById("addTagButton")?.classList.add("hidden");
+  document.getElementById("updateLocationButton")?.classList.remove("hidden");
+  document.getElementById("clearSearchButton")?.classList.remove("hidden");
 
   searchVehicleButton.disabled = true;
   moveLocateMessage.classList.remove("dexp-loading");
@@ -1878,7 +1891,12 @@ function resetMoveLocateForm() {
   setArrivedFromRequest(false);
 
   vehicleSearchInput.value = "";
-  searchVehicleButton.disabled = false;
+  searchVehicleButton.disabled = true;
+  document.getElementById("addTagButton")?.classList.remove("hidden");
+  document.getElementById("updateLocationButton")?.classList.add("hidden");
+  document.getElementById("clearSearchButton")?.classList.add("hidden");
+  document.querySelector(".move-search-row")?.classList.remove("hidden");
+  document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
 
   vehicleResultCard.classList.add("hidden");
   vehicleDetailsPanel.classList.add("hidden");
@@ -1958,19 +1976,53 @@ function renderMoveDestination(ro) {
   moveDestinationLine.classList.remove("hidden");
 }
 
-function showAddTagPanel() {
+async function showAddTagPanel() {
   if (!addTagPanel) return;
+
+  document.querySelector(".move-search-row")?.classList.add("hidden");
+  document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+  vehicleResultCard?.classList.add("hidden");
+  hideUpdateLocationPanel();
+
   addTagPanel.classList.remove("hidden");
   if (addTagInput) addTagInput.value = "";
-  if (addTagAdvisorInput) addTagAdvisorInput.value = "";
   if (addTagRoInput) addTagRoInput.value = "";
   clearMessage();
-  showMessage("Enter tag and advisor number.");
+  showMessage("Enter tag and pick advisor.");
+
+  if (addTagAdvisorInput) {
+    addTagAdvisorInput.innerHTML = `<option value="">Select advisor...</option>`;
+
+    try {
+      const users = await getAllUsers();
+      const advisors = users
+        .filter((u) => u.role === "advisor" && u.active !== false)
+        .sort((a, b) =>
+          String(a.displayName || a.companyId || "").localeCompare(
+            String(b.displayName || b.companyId || ""),
+          ),
+        );
+
+      advisors.forEach((advisor) => {
+        const option = document.createElement("option");
+        option.value = String(advisor.companyId || "").trim();
+        option.textContent = `${advisor.displayName || "Advisor"} (${advisor.companyId || ""})`;
+        addTagAdvisorInput.appendChild(option);
+      });
+    } catch (error) {
+      console.error(error);
+      showMessage("Could not load advisors.");
+    }
+  }
 }
 
 function hideAddTagPanel() {
   if (!addTagPanel) return;
   addTagPanel.classList.add("hidden");
+  document.querySelector(".move-search-row")?.classList.remove("hidden");
+  document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
+  document.getElementById("addTagButton")?.classList.remove("hidden");
+  document.getElementById("updateLocationButton")?.classList.add("hidden");
   clearMessage();
 }
 
