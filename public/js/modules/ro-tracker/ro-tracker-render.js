@@ -321,7 +321,8 @@ function buildPickupRequestCell(ro) {
   td.className = "center";
 
   if (requested) {
-    td.textContent = "Pickup Requested";
+    td.appendChild(document.createTextNode("Pickup Requested "));
+    td.appendChild(buildSmallButton(ro, "cancelPickupRequest", "Cancel"));
     return td;
   }
 

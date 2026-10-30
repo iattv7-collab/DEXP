@@ -3,7 +3,10 @@
 import { updateRO, archiveRO } from "/js/services/firestore/ros-service.js?v=2";
 import { getSession } from "/js/core/session.js";
 import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
-import { createRequest } from "/js/services/firestore/requests-service.js";
+import {
+  createRequest,
+  cancelRequest,
+} from "/js/services/firestore/requests-service.js";
 
 import {
   dateInputToMMDDYYYY,
@@ -345,6 +348,19 @@ async function handleButtonClick(button, getROById) {
   }
 
   if (action === "pickupRequest") {
+    const washStatus = String(ro.washStatus || "").toLowerCase();
+    const isWashed = washStatus === "washed";
+
+    if (!isWashed) {
+      const continueAnyway = confirm(
+        "Car not washed. Continue with pickup?",
+      );
+
+      if (!continueAnyway) {
+        return;
+      }
+    }
+
     const confirmed = confirm("Request pickup for this RO?");
 
     if (!confirmed) {
@@ -409,6 +425,44 @@ async function handleButtonClick(button, getROById) {
         message: "Pickup requested",
       },
     );
+
+    return;
+  }
+
+  if (action === "cancelPickupRequest") {
+    const confirmed = confirm("Cancel this pickup request?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      if (ro.activeRequestId) {
+        await cancelRequest({
+          id: ro.activeRequestId,
+          roId,
+          notificationRequestId: ro.activeRequestNotificationId || "",
+          title: ro.activeRequestTitle || "Pickup",
+        });
+      }
+
+      await updateRO(
+        roId,
+        {
+          pickupStatus: "",
+          pickupRequestedAtMs: null,
+          pickupRequestedBy: "",
+          pickupRequestedByName: "",
+        },
+        {
+          module: "ro-tracker",
+          eventType: "pickup_cancelled",
+          message: "Pickup request cancelled",
+        },
+      );
+    } catch (error) {
+      alert(error?.message || "Could not cancel pickup request.");
+    }
 
     return;
   }

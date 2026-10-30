@@ -1429,36 +1429,72 @@ async function saveOneMovedVehicle({ ro, finalArea, finalLot, blockingTag }) {
 
   await clearCarsBlockedByTag(movedTag);
 
+  const freshRO = lastROs.find((r) => r.id === ro.id) || ro;
+  const requestType = String(
+    freshRO.activeRequestType || ro.activeRequestType || "",
+  ).toLowerCase();
+  const requestTitle = String(
+    freshRO.activeRequestTitle || ro.activeRequestTitle || "",
+  ).toLowerCase();
+  const isWashRequest =
+    requestType.includes("wash") || requestTitle.includes("wash");
+
+  console.log("WASH CHECK", {
+    isWashRequest,
+    requestType,
+    requestTitle,
+    activeRequestTitle: freshRO?.activeRequestTitle,
+    activeRequestType: freshRO?.activeRequestType,
+    roId: ro.id,
+  });
+
+  const locationUpdates = {
+    [ROS_FIELDS.currentLocation]: finalLot,
+    currentLocation: finalLot,
+    currentLocationArea: finalArea,
+
+    blockedByTag: "",
+    blockingTag: "",
+
+    locationUpdatedAt: Date.now(),
+
+    moveStatus: "",
+    moveStartedAt: null,
+    moveStartedBy: "",
+    moveStartedByUid: "",
+    moveStartedDeviceId: "",
+
+    moveGroupId: "",
+    moveGroupTargetId: "",
+    moveGroupTargetTag: "",
+    moveGroupOrder: null,
+
+    finishMoveLeftAtMs: null,
+    finishMoveNagAtMs: null,
+  };
+
+  if (isWashRequest) {
+    const nowMs = Date.now();
+    const session = getSession();
+    Object.assign(locationUpdates, {
+      washStatus: "pending",
+      washQueuedAtMs: nowMs,
+      washQueuedBy: session?.uid || "",
+      washQueuedByName: session?.displayName || session?.email || "",
+      priorityType: ro.isWaiter || ro.customerWaiting ? "waiter" : "normal",
+      washWaiterAtMs: ro.isWaiter || ro.customerWaiting ? nowMs : null,
+    });
+  }
+
   await updateRO(
     ro.id,
+    locationUpdates,
     {
-      [ROS_FIELDS.currentLocation]: finalLot,
-      currentLocation: finalLot,
-      currentLocationArea: finalArea,
-
-      blockedByTag: "",
-      blockingTag: "",
-
-      locationUpdatedAt: Date.now(),
-
-      moveStatus: "",
-      moveStartedAt: null,
-      moveStartedBy: "",
-      moveStartedByUid: "",
-      moveStartedDeviceId: "",
-
-      moveGroupId: "",
-      moveGroupTargetId: "",
-      moveGroupTargetTag: "",
-      moveGroupOrder: null,
-
-      finishMoveLeftAtMs: null,
-      finishMoveNagAtMs: null,
-    },
-    {
-      eventType: "location_updated",
+      eventType: isWashRequest ? "sent_to_wash_from_move" : "location_updated",
       module: "move-locate",
-      message: `Vehicle moved to ${formatAreaLot(finalArea, finalLot)}`,
+      message: isWashRequest
+        ? `Sent to wash at ${formatAreaLot(finalArea, finalLot)}`
+        : `Vehicle moved to ${formatAreaLot(finalArea, finalLot)}`,
     },
   );
 

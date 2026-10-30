@@ -88,12 +88,22 @@ let locationActivities = [];
 let unsubscribeDealerRequests = null;
 let unsubscribeDealerNotifications = null;
 
-window.addEventListener("dexp-session-ready", () => {
+let requestsPageInitialized = false;
+
+function safeInitRequestsPage() {
+  if (requestsPageInitialized) {
+    return;
+  }
+  requestsPageInitialized = true;
   initializeRequestsPage();
+}
+
+window.addEventListener("dexp-session-ready", () => {
+  safeInitRequestsPage();
 });
 
 if (getSession()) {
-  initializeRequestsPage();
+  safeInitRequestsPage();
 }
 
 async function initializeRequestsPage() {
@@ -316,6 +326,20 @@ async function handleCreateSelectedRequest() {
     const finalRoNumber = selectedRequestRO.roNumber || "";
     const finalTagNumber = selectedRequestRO.tagNumber || "";
     const customMessage = requestMessageInput.value.trim();
+
+    const isPickupType = selectedRequestType.useForPickup === true;
+    const washStatus = String(selectedRequestRO.washStatus || "").toLowerCase();
+    const isWashed = washStatus === "washed";
+
+    if (isPickupType && !isWashed) {
+      const continueAnyway = confirm(
+        "Car not washed. Continue with pickup?",
+      );
+
+      if (!continueAnyway) {
+        return;
+      }
+    }
 
     await createRequest({
       roId: selectedRequestRO.id || "",
