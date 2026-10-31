@@ -244,12 +244,12 @@
 }
 
 #moveLocatePage .move-found-message {
-  color: #c2410c;
+  color: #166534;
   font-weight: 700;
 }
 
 #moveLocatePage .move-saved-message {
-  color: #03b014;
+  color: #166534;
   font-size: 18px;
   font-weight: 700;
 }

@@ -13,6 +13,7 @@ import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
+import { getActiveLocations } from "/js/services/firestore/locations-service.js";
 
 import {
   collection,
@@ -366,6 +367,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (isActiveWash(freshTicket)) {
         return;
+      }
+
+      const locLabel = locationValue(freshTicket);
+      if (locLabel) {
+        const locations = await getActiveLocations();
+        console.log("RO location:", locLabel);
+        console.log("Catalog labels:", locations.map(l => ({ label: l.label, remote: l.remote })));
+        const match = locations.find(
+          (loc) => String(loc.label || "").trim().toLowerCase() === locLabel.toLowerCase(),
+        );
+        if (match?.remote === true) {
+          setMsg(
+            "Car is at a remote location. Move it to the main shop first.",
+            false,
+          );
+          sendBtn.disabled = false;
+          return;
+        }
       }
 
       const waiter = isWaiterTicket(freshTicket);

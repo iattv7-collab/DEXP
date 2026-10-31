@@ -70,6 +70,11 @@
             />
           </label>
 
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input id="locationRemoteInput" type="checkbox" />
+            Remote
+          </label>
+
           <button id="addLocationButton" type="button">Add Parking Lot</button>
         </div>
       </section>
@@ -105,13 +110,14 @@
                 <th>Area</th>
                 <th>Lot Name</th>
                 <th>Capacity</th>
+                <th>Remote</th>
                 <th>Actions</th>
               </tr>
             </thead>
 
             <tbody id="activeLocationsTableBody">
               <tr>
-                <td colspan="4">Loading...</td>
+                <td colspan="5">Loading...</td>
               </tr>
             </tbody>
           </table>
@@ -143,6 +149,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/location-settings/location-settings.js?v=3"></script>
+    <script type="module" src="/pages/location-settings/location-settings.js?v=4"></script>
   </body>
 </html>

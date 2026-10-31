@@ -25,6 +25,7 @@ protectRoute({
 const locationCapacityInput = document.getElementById("locationCapacityInput");
 const locationNameInput = document.getElementById("locationNameInput");
 const locationAreaSelect = document.getElementById("locationAreaSelect");
+const locationRemoteInput = document.getElementById("locationRemoteInput");
 const areaNameInput = document.getElementById("areaNameInput");
 const addAreaButton = document.getElementById("addAreaButton");
 const areasTableBody = document.getElementById("areasTableBody");
@@ -301,10 +302,12 @@ async function handleCreateLocation() {
       label,
       area,
       capacity,
+      remote: locationRemoteInput.checked,
     });
 
     locationNameInput.value = "";
     locationCapacityInput.value = "";
+    locationRemoteInput.checked = false;
 
     await loadLocations();
 
@@ -431,6 +434,16 @@ function buildLocationRow({ location, inactive }) {
       />
     </td>
 
+    <td data-label="Remote">
+      <input
+        class="location-remote-edit-input"
+        type="checkbox"
+        data-original="${location.remote === true}"
+        ${location.remote === true ? "checked" : ""}
+        disabled
+      />
+    </td>
+
     <td data-label="Actions">
       <button class="small-button secondary edit-location-button" data-id="${location.id}">
         Edit
@@ -453,6 +466,7 @@ function bindLocationEditButtons(tableBody) {
   tableBody.querySelectorAll("tr").forEach((row) => {
     const labelInput = row.querySelector(".location-label-edit-input");
     const capacityInput = row.querySelector(".location-capacity-edit-input");
+    const remoteInput = row.querySelector(".location-remote-edit-input");
     const editButton = row.querySelector(".edit-location-button");
     const saveButton = row.querySelector(".save-location-button");
     const cancelButton = row.querySelector(".cancel-location-button");
@@ -460,6 +474,7 @@ function bindLocationEditButtons(tableBody) {
     if (
       !labelInput ||
       !capacityInput ||
+      !remoteInput ||
       !editButton ||
       !saveButton ||
       !cancelButton
@@ -475,25 +490,32 @@ function bindLocationEditButtons(tableBody) {
         Number(capacityInput.value || 0) !==
         Number(capacityInput.dataset.original || 0);
 
-      saveButton.disabled = !labelChanged && !capacityChanged;
+      const remoteChanged =
+        remoteInput.checked !== (remoteInput.dataset.original === "true");
+
+      saveButton.disabled = !labelChanged && !capacityChanged && !remoteChanged;
     }
 
     editButton.addEventListener("click", () => {
       labelInput.disabled = false;
       capacityInput.disabled = false;
+      remoteInput.disabled = false;
       cancelButton.disabled = false;
       labelInput.focus();
     });
 
     labelInput.addEventListener("input", checkForChanges);
     capacityInput.addEventListener("input", checkForChanges);
+    remoteInput.addEventListener("change", checkForChanges);
 
     cancelButton.addEventListener("click", () => {
       labelInput.value = labelInput.dataset.original;
       capacityInput.value = capacityInput.dataset.original;
+      remoteInput.checked = remoteInput.dataset.original === "true";
 
       labelInput.disabled = true;
       capacityInput.disabled = true;
+      remoteInput.disabled = true;
       saveButton.disabled = true;
       cancelButton.disabled = true;
     });
@@ -510,6 +532,7 @@ function bindLocationEditButtons(tableBody) {
       await updateLocation(saveButton.dataset.id, {
         label: newLabel,
         capacity: newCapacity,
+        remote: remoteInput.checked,
       });
 
       await loadLocations();

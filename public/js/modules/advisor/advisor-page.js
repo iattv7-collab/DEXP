@@ -1144,23 +1144,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   searchEl.addEventListener("input", render);
 
   function renderLoanerDays() {
-    const advisorId =
-      currentView === "mine"
-        ? session?.uid || ""
-        : currentView === "advisor"
-          ? selectedAdvisorId
-          : "";
-    const advisorName =
-      currentView === "mine"
-        ? session?.displayName || session?.email || ""
-        : advisorFilterEl.options[advisorFilterEl.selectedIndex]?.textContent?.trim() || "";
-
-    renderLoanerDaysCard(
-      $("loanerDaysCard"),
-      loanerTrips,
-      advisorId,
-      advisorName,
-    );
+    const card = $("loanerDaysCard");
+    if (card) {
+      card.innerHTML = "";
+    }
   }
 
   if (session?.dealerId) {

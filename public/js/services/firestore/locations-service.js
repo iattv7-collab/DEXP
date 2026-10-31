@@ -65,7 +65,7 @@ export async function getAllLocations() {
   }));
 }
 
-export async function createLocation({ label, area = "main", capacity = 0 }) {
+export async function createLocation({ label, area = "main", capacity = 0, remote = false }) {
   const dealerId = getDealerId();
 
   if (!dealerId) {
@@ -87,6 +87,7 @@ export async function createLocation({ label, area = "main", capacity = 0 }) {
     label: cleanLabel,
     area,
     capacity: Number(capacity || 0),
+    remote: remote === true,
     active: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

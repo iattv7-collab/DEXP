@@ -107,7 +107,12 @@ export const RO_TRACKER_COLUMNS = [
   },
 
   {
-    key: "actions",
+    key: "advisorActions",
     label: "Actions",
+  },
+
+  {
+    key: "actions",
+    label: "Archive",
   },
 ];

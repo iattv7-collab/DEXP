@@ -7,6 +7,10 @@ import {
   createRequest,
   cancelRequest,
 } from "/js/services/firestore/requests-service.js";
+import {
+  requestQc,
+  markNoQcRequired,
+} from "/js/modules/shared/qc-actions-service.js";
 
 import {
   dateInputToMMDDYYYY,
@@ -66,6 +70,13 @@ export function setupROTrackerActions({ tableBody, getROById }) {
     if (checkbox) {
       await handleCheckboxChange(checkbox, getROById);
     }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".ro-actions-wrap")) return;
+    document.querySelectorAll(".ro-actions-menu.open").forEach((menu) => {
+      menu.classList.remove("open");
+    });
   });
 
   tableBody.addEventListener("click", async (event) => {
@@ -308,11 +319,69 @@ async function handleCheckboxChange(checkbox, getROById) {
 }
 
 async function handleButtonClick(button, getROById) {
-  const roId = button.dataset.roId;
   const action = button.dataset.roAction;
+
+  if (action === "toggleActionsMenu") {
+    const menu = button.closest(".ro-actions-wrap")?.querySelector(".ro-actions-menu");
+    document.querySelectorAll(".ro-actions-menu.open").forEach((openMenu) => {
+      if (openMenu !== menu) openMenu.classList.remove("open");
+    });
+    menu?.classList.toggle("open");
+
+    if (menu?.classList.contains("open")) {
+      menu.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    return;
+  }
+
+  const roId = button.dataset.roId;
   const ro = getROById(roId);
 
   if (!roId || !action || !ro) return;
+
+  if (action === "needBy") {
+    const currentMs = Number(ro.washNeedByAtMs || 0) || null;
+
+    const pickedMs = await pickDateTimeMs(
+      "Wash Need By",
+      currentMs,
+      5,
+      {
+        anchorEl: button,
+        schedule: {
+          monFri: { start: "07:30", end: "18:00" },
+          sat: { start: "08:00", end: "15:00" },
+          sun: null,
+        },
+      },
+    );
+
+    if (!pickedMs) return;
+
+    await updateRO(
+      roId,
+      {
+        washNeedByAtMs: pickedMs,
+      },
+      {
+        module: "ro-tracker",
+        eventType: "wash_need_by_updated",
+        message: "Wash Need By updated",
+      },
+    );
+
+    return;
+  }
+
+  if (action === "requestQc") {
+    await requestQc(roId);
+    return;
+  }
+
+  if (action === "noQc") {
+    await markNoQcRequired(roId);
+    return;
+  }
 
   if (action === "calledNow") {
     const now = Date.now();

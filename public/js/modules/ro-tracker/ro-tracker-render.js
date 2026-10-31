@@ -87,6 +87,7 @@ function buildCell(ro, key) {
     );
   if (key === "techDone") return buildTechStatusCell(ro);
   if (key === "textSent") return buildButtonCell(ro, "textSent", "Text");
+  if (key === "advisorActions") return buildActionsMenuCell(ro);
   if (key === "actions") return buildButtonCell(ro, "archive", "Archive");
 
   return buildPlainCell("");
@@ -330,6 +331,54 @@ function buildPickupRequestCell(ro) {
   return td;
 }
 
+function buildActionsMenuCell(ro) {
+  const td = document.createElement("td");
+  td.className = "center";
+
+  const wrap = document.createElement("div");
+  wrap.className = "ro-actions-wrap";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "ro-small-action-button";
+  toggle.textContent = "Actions";
+  toggle.dataset.roAction = "toggleActionsMenu";
+
+  const menu = document.createElement("div");
+  menu.className = "ro-actions-menu";
+
+  const washStatus = String(ro.washStatus || "").trim().toLowerCase();
+  const keyAtWash = ["pending", "rewash_requested", "queued"].includes(washStatus);
+  const isWashed = washStatus === "washed";
+
+  const items = [
+    ["requestQc", "Request QC"],
+    ["noQc", "No QC"],
+  ];
+
+  if (keyAtWash) {
+    items.unshift(["needBy", "Need By"]);
+  }
+
+  if (isWashed) {
+    items.push(["requestRewash", "Request Rewash"]);
+  }
+
+  items.forEach(([action, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.roId = getROId(ro);
+    button.dataset.roAction = action;
+    button.textContent = label;
+    menu.appendChild(button);
+  });
+
+  wrap.appendChild(toggle);
+  wrap.appendChild(menu);
+  td.appendChild(wrap);
+  return td;
+}
+
 function buildButtonCell(ro, action, label) {
   const td = document.createElement("td");
   td.className = "center";
@@ -414,6 +463,7 @@ function getROTrackerColumnClass(key) {
     loanerVin: "col-loanerlast6",
     techDone: "col-repairdone",
     textSent: "col-text",
+    advisorActions: "col-advisor-actions",
     actions: "col-archive",
   };
 
