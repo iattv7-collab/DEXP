@@ -44,15 +44,40 @@
           This vehicle is already in the wash flow and cannot be sent again.
         </div>
 
-        <div style="margin-top:12px;">
-          <button id="sendBtn" type="button">Send to Wash</button>
+        <div style="margin-top:14px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="keyAlreadyAtWashCheck" />
+            Key already at wash
+          </label>
         </div>
+
+        <button id="updateLocationBtn" type="button" style="margin-top:12px; width:100%;">Update location</button>
+
+        <div id="locationPanel" style="display:none; margin-top:10px;">
+          <label>Area<br>
+            <select id="locationAreaSelect" style="min-width:220px; margin-top:4px;">
+              <option value="">Select area...</option>
+            </select>
+          </label>
+          <br>
+          <label style="margin-top:8px; display:inline-block;">Lot<br>
+            <select id="locationLotSelect" style="min-width:220px; margin-top:4px;">
+              <option value="">Select lot...</option>
+            </select>
+          </label>
+          <br>
+          <label style="margin-top:8px; display:inline-block;">Blocking Tag<br>
+            <input id="locationBlockingInput" type="text" placeholder="Tag this car is blocking" style="min-width:220px; margin-top:4px;" />
+          </label>
+        </div>
+
+        <button id="saveBtn" type="button" style="margin-top:14px;">Save</button>
       </div>
 
       <div id="msg" class="small-muted"></div>
     </section>
   </main>
 
-  <script type="module" src="/js/modules/wash/send-to-wash-page.js"></script>
+  <script type="module" src="/js/modules/wash/send-to-wash-page.js?v=9"></script>
 </body>
 </html>

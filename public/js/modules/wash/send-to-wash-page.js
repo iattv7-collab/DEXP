@@ -13,7 +13,9 @@ import { getSession } from "/js/core/session.js";
 import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
-import { getActiveLocations } from "/js/services/firestore/locations-service.js";
+import { getActiveLocations, groupLocationsByArea } from "/js/services/firestore/locations-service.js";
+import { createRequest } from "/js/services/firestore/requests-service.js";
+import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
 
 import {
   collection,
@@ -47,7 +49,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const findBtn = $("findBtn");
   const notesEl = $("notes");
   const msgEl = $("msg");
-  const sendBtn = $("sendBtn");
+  const keyAlreadyAtWashCheck = $("keyAlreadyAtWashCheck");
+  const updateLocationBtn = $("updateLocationBtn");
+  const locationPanel = $("locationPanel");
+  const locationAreaSelect = $("locationAreaSelect");
+  const locationLotSelect = $("locationLotSelect");
+  const locationBlockingInput = $("locationBlockingInput");
+  const saveBtn = $("saveBtn");
 
   const previewCard = $("previewCard");
   const alreadyInWashMsg = $("alreadyInWashMsg");
@@ -126,11 +134,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     return washIsOpen;
   }
 
+  let groupedLocations = {};
+
   function resetPreview() {
     selectedTicket = null;
     previewCard.style.display = "none";
     alreadyInWashMsg.style.display = "none";
-    sendBtn.disabled = true;
+    if (keyAlreadyAtWashCheck) keyAlreadyAtWashCheck.checked = false;
+    if (saveBtn) saveBtn.disabled = false;
+    if (locationPanel) locationPanel.style.display = "none";
+    if (locationAreaSelect) locationAreaSelect.innerHTML = '<option value="">Select area...</option>';
+    if (locationLotSelect) locationLotSelect.innerHTML = '<option value="">Select lot...</option>';
+    if (locationBlockingInput) locationBlockingInput.value = "";
 
     pRo.textContent = "";
     pTag.textContent = "";
@@ -152,14 +167,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (alreadyInWash) {
-      sendBtn.disabled = true;
+      if (saveBtn) saveBtn.disabled = true;
       setMsg("This ticket is already in the Wash queue.", false);
       return { alreadyInWash, canSend: false };
     }
 
-    sendBtn.disabled = false;
+    if (saveBtn) saveBtn.disabled = false;
     setMsg("Ticket found.");
     return { alreadyInWash, canSend: true };
+  }
+
+  async function loadLocationCatalog() {
+    try {
+      const locations = await getActiveLocations();
+      groupedLocations = groupLocationsByArea(locations);
+      populateAreaSelect();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function populateAreaSelect() {
+    if (!locationAreaSelect) return;
+    locationAreaSelect.innerHTML = '<option value="">Select area...</option>';
+    Object.keys(groupedLocations).forEach((area) => {
+      const opt = document.createElement("option");
+      opt.value = area;
+      opt.textContent = area;
+      locationAreaSelect.appendChild(opt);
+    });
+  }
+
+  function populateLotSelect() {
+    if (!locationLotSelect) return;
+    const area = locationAreaSelect?.value || "";
+    locationLotSelect.innerHTML = '<option value="">Select lot...</option>';
+    if (!area || !groupedLocations[area]) return;
+    groupedLocations[area].forEach((loc) => {
+      const opt = document.createElement("option");
+      opt.value = loc.label || "";
+      opt.textContent = loc.label || "";
+      locationLotSelect.appendChild(opt);
+    });
   }
 
   function fillPreview(ticket) {
@@ -172,6 +221,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
     pLocation.textContent = locationValue(ticket);
     pWaiter.textContent = isWaiterTicket(ticket) ? "Yes" : "No";
+
+    if (keyAlreadyAtWashCheck) keyAlreadyAtWashCheck.checked = false;
+    if (locationPanel) locationPanel.style.display = "none";
 
     return applyPreviewLocks(ticket);
   }
@@ -332,7 +384,81 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  sendBtn.addEventListener("click", async () => {
+  async function locationBlocksWash(ticket) {
+    const locLabel = locationValue(ticket);
+    if (!locLabel) return null;
+
+    const locations = await getActiveLocations();
+    const match = locations.find(
+      (loc) => String(loc.label || "").trim().toLowerCase() === locLabel.toLowerCase(),
+    );
+
+    if (!match) return null;
+
+    const label = String(match.label || "").toLowerCase();
+
+    if (match.remote === true) {
+      return "Car is at a remote location. Move it to the main shop first.";
+    }
+
+    if (label.includes("annex")) {
+      return "Car is at the Annex. Move it to the main shop first.";
+    }
+
+    if (label.includes("key box") || label.includes("keybox") || match.isKeyBox === true) {
+      return "Key is in a key box. Move the car first.";
+    }
+
+    return null;
+  }
+
+  updateLocationBtn.addEventListener("click", async () => {
+    if (!locationPanel) return;
+    const open = locationPanel.style.display !== "none";
+    if (open) {
+      locationPanel.style.display = "none";
+      return;
+    }
+    if (!Object.keys(groupedLocations).length) {
+      await loadLocationCatalog();
+    }
+    locationPanel.style.display = "block";
+  });
+
+  locationAreaSelect.addEventListener("change", populateLotSelect);
+
+  saveBtn.addEventListener("click", async () => {
+    await handleSave();
+  });
+
+  async function updateLocationIfChanged(ticket) {
+    if (!locationPanel || locationPanel.style.display === "none") return ticket;
+    const area = clean(locationAreaSelect?.value);
+    const lot = clean(locationLotSelect?.value);
+    if (!lot) return ticket;
+    if (lot.toLowerCase() === locationValue(ticket).toLowerCase()) return ticket;
+
+    const user = auth.currentUser;
+    if (!user) throw new Error("Not authenticated.");
+
+    await updateDoc(doc(db, "ros", ticket.id), {
+      currentLocation: lot,
+      location: lot,
+      currentLocationArea: area || "",
+      updatedAt: serverTimestamp(),
+      updatedByUid: user.uid,
+      updatedByName: clean(user.displayName || ""),
+      updatedByEmail: clean(user.email || ""),
+      lastEditedAtMs: Date.now(),
+      lastEditedBy: user.uid,
+      lastEditedRole: currentSession?.role || "unknown",
+      lastEditedFields: ["currentLocation", "location", "currentLocationArea"],
+    });
+
+    return { ...ticket, currentLocation: lot, location: lot, currentLocationArea: area || "" };
+  }
+
+  async function handleSave() {
     setMsg("");
 
     if (!selectedTicket) {
@@ -341,27 +467,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     try {
-      sendBtn.disabled = true;
+      if (saveBtn) saveBtn.disabled = true;
 
       const open = await refreshWashOpen();
-
       if (!open) {
         setMsg("Wash is closed. This car will wait until the next open day.");
       }
 
       const freshSnap = await getDoc(doc(db, "ros", selectedTicket.id));
-
       if (!freshSnap.exists()) {
         setMsg("This ticket no longer exists.", false);
         resetPreview();
         return;
       }
 
-      const freshTicket = {
-        id: freshSnap.id,
-        ...freshSnap.data(),
-      };
+      const keyAlready = keyAlreadyAtWashCheck?.checked === true;
 
+      let freshTicket = { id: freshSnap.id, ...freshSnap.data() };
+      freshTicket = await updateLocationIfChanged(freshTicket);
       selectedTicket = freshTicket;
       fillPreview(freshTicket);
 
@@ -369,43 +492,57 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      const locLabel = locationValue(freshTicket);
-      if (locLabel) {
-        const locations = await getActiveLocations();
-        console.log("RO location:", locLabel);
-        console.log("Catalog labels:", locations.map(l => ({ label: l.label, remote: l.remote })));
-        const match = locations.find(
-          (loc) => String(loc.label || "").trim().toLowerCase() === locLabel.toLowerCase(),
-        );
-        if (match?.remote === true) {
-          setMsg(
-            "Car is at a remote location. Move it to the main shop first.",
-            false,
-          );
-          sendBtn.disabled = false;
-          return;
-        }
+      const blockMsg = await locationBlocksWash(freshTicket);
+      if (blockMsg) {
+        setMsg("Update location. " + blockMsg, false);
+        if (saveBtn) saveBtn.disabled = false;
+        return;
       }
 
       const waiter = isWaiterTicket(freshTicket);
       const notes = clean(notesEl.value);
+      const tag = tagValue(freshTicket);
+      const roNum = roValue(freshTicket);
 
-      const id = await createWashTicket(freshTicket, {
-        waiter,
-        notes,
-      });
+      if (keyAlready) {
+        const id = await createWashTicket(freshTicket, { waiter, notes });
+        setMsg(`Key already at wash. Sent to wash board: ${id}`);
+      } else {
+        const types = await getActiveRequestTypes();
+        const washType = types.find(
+          (item) => String(item.requestType || "").trim() === "move-to-wash",
+        );
 
-      setMsg(`Sent to wash: ${id}`);
+        if (!washType?.targetGroupId) {
+          setMsg("Move to Wash request type is not set.", false);
+          if (saveBtn) saveBtn.disabled = false;
+          return;
+        }
+
+        await createRequest({
+          roId: freshTicket.id,
+          roNumber: roNum,
+          tagNumber: tag,
+          requestType: washType.requestType,
+          sourceModule: "send-to-wash",
+          targetGroupId: washType.targetGroupId,
+          targetGroupName: washType.targetGroupName || "",
+          title: washType.name || "Move to Wash",
+          message: `Tag ${tag} — take key to wash`,
+        });
+
+        setMsg("Request sent. Key will land on wash board when it is finished.");
+      }
 
       searchInputEl.value = "";
       resetPreview();
       searchInputEl.focus();
     } catch (error) {
       console.error(error);
-      sendBtn.disabled = false;
-      setMsg(error?.message || "Error sending ticket to wash.", false);
+      if (saveBtn) saveBtn.disabled = false;
+      setMsg(error?.message || "Error saving.", false);
     }
-  });
+  }
 
   resetPreview();
 });
