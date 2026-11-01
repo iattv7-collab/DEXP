@@ -97,9 +97,11 @@ const addTagInput = document.getElementById("addTagInput");
 const addTagAdvisorInput = document.getElementById("addTagAdvisorInput");
 const addTagRoInput = document.getElementById("addTagRoInput");
 const saveAddTagButton = document.getElementById("saveAddTagButton");
-const cancelAddTagButton = document.getElementById("cancelAddTagButton");
+const addTagBackButton = document.getElementById("addTagBackButton");
 
 const clearSearchButton = document.getElementById("clearSearchButton");
+const moveSearchBackButton = document.getElementById("moveSearchBackButton");
+const moveSearchBackRow = document.getElementById("moveSearchBackRow");
 
 const vehicleResultCard = document.getElementById("vehicleResultCard");
 const moveLocateMessage = document.getElementById("moveLocateMessage");
@@ -265,15 +267,25 @@ function initializeMoveLocate() {
     });
   }
 
-  if (cancelAddTagButton) {
-    cancelAddTagButton.addEventListener("click", () => {
-      hideAddTagPanel();
+  if (moveSearchBackButton) {
+    moveSearchBackButton.addEventListener("click", () => {
+      if (addTagPanel && !addTagPanel.classList.contains("hidden")) {
+        hideAddTagPanel();
+        return;
+      }
+      window.location.href = "/pages/dashboard/index.html";
     });
   }
 
   if (saveAddTagButton) {
     saveAddTagButton.addEventListener("click", async () => {
       await saveAddTag();
+    });
+  }
+
+  if (addTagBackButton) {
+    addTagBackButton.addEventListener("click", () => {
+      hideAddTagPanel();
     });
   }
 
@@ -843,6 +855,7 @@ async function findVehicle() {
   document.getElementById("addTagButton")?.classList.add("hidden");
   document.getElementById("updateLocationButton")?.classList.remove("hidden");
   document.getElementById("clearSearchButton")?.classList.remove("hidden");
+  document.getElementById("moveSearchBackRow")?.classList.add("hidden");
 
   searchVehicleButton.disabled = true;
   moveLocateMessage.classList.remove("dexp-loading");
@@ -1895,6 +1908,7 @@ function resetMoveLocateForm() {
   document.getElementById("addTagButton")?.classList.remove("hidden");
   document.getElementById("updateLocationButton")?.classList.add("hidden");
   document.getElementById("clearSearchButton")?.classList.add("hidden");
+  document.getElementById("moveSearchBackRow")?.classList.remove("hidden");
   document.querySelector(".move-search-row")?.classList.remove("hidden");
   document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
 
@@ -1981,6 +1995,7 @@ async function showAddTagPanel() {
 
   document.querySelector(".move-search-row")?.classList.add("hidden");
   document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+  document.getElementById("moveSearchBackRow")?.classList.add("hidden");
   vehicleResultCard?.classList.add("hidden");
   hideUpdateLocationPanel();
 
@@ -2021,6 +2036,7 @@ function hideAddTagPanel() {
   addTagPanel.classList.add("hidden");
   document.querySelector(".move-search-row")?.classList.remove("hidden");
   document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
+  document.getElementById("moveSearchBackRow")?.classList.remove("hidden");
   document.getElementById("addTagButton")?.classList.remove("hidden");
   document.getElementById("updateLocationButton")?.classList.add("hidden");
   clearMessage();

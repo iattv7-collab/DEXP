@@ -630,7 +630,14 @@ function renderNotificationTray(notifications = []) {
       }
 
       silenceNotificationAlert(notificationId);
-      await openNotificationRequest(notificationId);
+      try {
+        await openNotificationRequest(notificationId);
+      } catch (error) {
+        if (!String(error?.message || "").includes("already opened")) {
+          console.error(error);
+          return;
+        }
+      }
       window.location.href = buildNotificationRoute(notification);
     });
   });
@@ -733,7 +740,14 @@ function renderDesktopPopups(notifications = []) {
       renderDesktopPopups(
         currentVisibleNotifications.filter((item) => popupNotificationIds.has(item.id)),
       );
-      await openNotificationRequest(notificationId);
+      try {
+        await openNotificationRequest(notificationId);
+      } catch (error) {
+        if (!String(error?.message || "").includes("already opened")) {
+          console.error(error);
+          return;
+        }
+      }
       window.location.href = buildNotificationRoute(notification);
     });
   });

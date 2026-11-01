@@ -30,22 +30,27 @@
       <div class="dexp-admin-card">
         <h3>Create Request</h3>
 
-        <div class="form-grid">
-          <label>
-            RO Number
-            <input id="requestRoNumberInput" type="text" />
-          </label>
+        <div id="requestSearchBlock">
+          <div class="form-grid">
+            <label>
+              RO Number
+              <input id="requestRoNumberInput" type="text" />
+            </label>
 
-          <label>
-            Tag Number
-            <input id="requestTagNumberInput" type="text" />
-          </label>
-        </div>
+            <label>
+              Tag Number
+              <input id="requestTagNumberInput" type="text" />
+            </label>
+          </div>
 
-        <div class="action-row">
-          <button id="searchRequestVehicleButton" type="button">
-            Search Vehicle
-          </button>
+          <div class="action-row" style="justify-content: space-between;">
+            <button id="searchRequestVehicleButton" type="button">
+              Search Vehicle
+            </button>
+            <button id="requestSearchBackButton" type="button" class="small-button secondary">
+              Back
+            </button>
+          </div>
         </div>
 
         <div id="requestVehicleSummary" class="tool-preview hidden"></div>
@@ -65,9 +70,12 @@
             </label>
           </div>
 
-          <div class="action-row">
+          <div class="action-row" style="justify-content: space-between;">
             <button id="createRequestButton" type="button">
               Create Request
+            </button>
+            <button id="requestCreateBackButton" type="button" class="small-button secondary">
+              Back
             </button>
           </div>
         </div>
@@ -179,7 +187,7 @@
   </main>
 
   <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/requests/requests-page.js?v=9"></script>
+  <script type="module" src="/pages/requests/requests-page.js?v=13"></script>
 </body>
 
 </html>

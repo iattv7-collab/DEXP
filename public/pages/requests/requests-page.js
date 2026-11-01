@@ -38,6 +38,9 @@ const requestVehicleSummary = document.getElementById("requestVehicleSummary");
 const requestCreateControls = document.getElementById("requestCreateControls");
 const requestTypeSelect = document.getElementById("requestTypeSelect");
 const createRequestButton = document.getElementById("createRequestButton");
+const requestCreateBackButton = document.getElementById("requestCreateBackButton");
+const requestSearchBlock = document.getElementById("requestSearchBlock");
+const requestSearchBackButton = document.getElementById("requestSearchBackButton");
 
 const myRequestsToggleButton = document.getElementById(
   "myRequestsToggleButton",
@@ -135,6 +138,24 @@ function wireRequestForm() {
 
   createRequestButton?.addEventListener("click", async () => {
     await handleCreateSelectedRequest();
+  });
+
+  requestSearchBackButton?.addEventListener("click", () => {
+    window.location.href = "/pages/dashboard/index.html";
+  });
+
+  requestCreateBackButton?.addEventListener("click", () => {
+    selectedRequestRO = null;
+    if (requestRoNumberInput) requestRoNumberInput.value = "";
+    if (requestTagNumberInput) requestTagNumberInput.value = "";
+    if (requestMessageInput) requestMessageInput.value = "";
+    if (requestTypeSelect) requestTypeSelect.value = "";
+    requestVehicleSummary?.classList.add("hidden");
+    if (requestVehicleSummary) requestVehicleSummary.innerHTML = "";
+    requestCreateControls?.classList.add("hidden");
+    requestSearchBlock?.classList.remove("hidden");
+    setFormMessage("");
+    requestTagNumberInput?.focus();
   });
 }
 
@@ -287,6 +308,7 @@ async function handleSearchRequestVehicle() {
   const openRequest = findOpenRequestForRO(ro);
 
   renderRequestVehicleSummary(ro, openRequest);
+  requestSearchBlock?.classList.add("hidden");
 
   if (ro.moveStatus === "moving" || openRequest) {
     requestCreateControls.classList.add("hidden");
@@ -375,6 +397,7 @@ async function handleCreateSelectedRequest() {
     requestVehicleSummary.classList.add("hidden");
     requestVehicleSummary.innerHTML = "";
     requestCreateControls.classList.add("hidden");
+    requestSearchBlock?.classList.remove("hidden");
 
     requestViewMode = "my";
     updateToggleButtons();

@@ -14,8 +14,16 @@ import { protectRoute } from "/js/core/router.js";
 import { renderAppHeader } from "/js/shared/app-header.js";
 import { getWashSettings } from "/js/services/firestore/wash-settings-service.js";
 import { getActiveLocations, groupLocationsByArea } from "/js/services/firestore/locations-service.js";
-import { createRequest } from "/js/services/firestore/requests-service.js";
+import {
+  createRequest,
+  completeRequest,
+} from "/js/services/firestore/requests-service.js";
 import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
+import {
+  openNotificationRequest,
+  releaseNotificationRequest,
+  resolveNotificationRequest,
+} from "/js/services/firestore/notification-requests-service.js";
 
 import {
   collection,
@@ -36,9 +44,13 @@ const ACTIVE_WASH_STATUSES = [
   "washing",
 ];
 
+const finishParams = new URLSearchParams(window.location.search);
+const finishRequestId = String(finishParams.get("requestId") || "").trim();
+const finishNotificationId = String(finishParams.get("notificationId") || "").trim();
+
 document.addEventListener("DOMContentLoaded", async () => {
   protectRoute({
-    allowedModules: ["send-to-wash"],
+    allowedModules: finishRequestId ? [] : ["send-to-wash"],
   });
 
   renderAppHeader();
@@ -56,6 +68,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const locationLotSelect = $("locationLotSelect");
   const locationBlockingInput = $("locationBlockingInput");
   const saveBtn = $("saveBtn");
+  const finishActions = $("finishActions");
+  const finishBtn = $("finishBtn");
+  const cancelBtn = $("cancelBtn");
 
   const previewCard = $("previewCard");
   const alreadyInWashMsg = $("alreadyInWashMsg");
@@ -71,6 +86,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentSession = await waitForSession();
   let currentDealerId = currentSession?.dealerId || "";
   let washIsOpen = true;
+  let finishMode = false;
+  let activeRequest = null;
+  let activeNotificationId = "";
 
   await refreshWashOpen();
 
@@ -529,6 +547,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           targetGroupName: washType.targetGroupName || "",
           title: washType.name || "Move to Wash",
           message: `Tag ${tag} — take key to wash`,
+          route: "/pages/send-to-wash/send-to-wash.html",
         });
 
         setMsg("Request sent. Key will land on wash board when it is finished.");
@@ -544,5 +563,171 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  resetPreview();
+  function enterFinishChrome() {
+    const findRow = document.querySelector(".form-row");
+    if (findRow) findRow.style.display = "none";
+    if (keyAlreadyAtWashCheck) {
+      const label = keyAlreadyAtWashCheck.closest("label");
+      if (label) label.style.display = "none";
+    }
+    if (saveBtn) saveBtn.style.display = "none";
+    if (finishActions) finishActions.style.display = "block";
+    const heading = document.querySelector("h1");
+    if (heading) heading.textContent = "Take key to wash";
+  }
+
+  function goHome() {
+    window.location.replace("/pages/dashboard/index.html");
+  }
+
+  async function loadFinishRequest() {
+    if (!finishRequestId) return;
+
+    finishMode = true;
+    enterFinishChrome();
+    setMsg("Loading key...");
+
+    try {
+      const requestSnap = await getDoc(doc(db, "requests", finishRequestId));
+      if (!requestSnap.exists()) {
+        setMsg("This key request is gone.", false);
+        if (finishActions) finishActions.style.display = "none";
+        window.setTimeout(goHome, 1800);
+        return;
+      }
+
+      activeRequest = { id: requestSnap.id, ...requestSnap.data() };
+      activeNotificationId =
+        finishNotificationId || clean(activeRequest.notificationRequestId);
+
+      if (clean(activeRequest.status) === "completed") {
+        setMsg("Someone already finished this key.", false);
+        if (finishActions) finishActions.style.display = "none";
+        window.setTimeout(goHome, 1800);
+        return;
+      }
+
+      if (activeNotificationId) {
+        const noteSnap = await getDoc(
+          doc(db, "notificationRequests", activeNotificationId),
+        );
+        const note = noteSnap.exists() ? noteSnap.data() || {} : {};
+        const openedBy = clean(note.openedBy);
+        const me = clean(currentSession?.uid || auth.currentUser?.uid);
+
+        if (openedBy && openedBy !== me) {
+          setMsg(
+            `Someone else already has this key (${note.openedByName || "another valet"}).`,
+            false,
+          );
+          if (finishActions) finishActions.style.display = "none";
+          window.setTimeout(goHome, 2200);
+          return;
+        }
+
+        try {
+          await openNotificationRequest(activeNotificationId);
+        } catch (error) {
+          if (String(error?.message || "").includes("already opened")) {
+            setMsg("Someone else already has this key.", false);
+            if (finishActions) finishActions.style.display = "none";
+            window.setTimeout(goHome, 2200);
+            return;
+          }
+          throw error;
+        }
+      }
+
+      if (!activeRequest.roId) {
+        setMsg("No RO on this request.", false);
+        return;
+      }
+
+      const roSnap = await getDoc(doc(db, "ros", activeRequest.roId));
+      if (!roSnap.exists()) {
+        setMsg("This RO no longer exists.", false);
+        return;
+      }
+
+      fillPreview({ id: roSnap.id, ...roSnap.data() });
+      setMsg("Take the key to wash, then Finish.");
+    } catch (error) {
+      console.error(error);
+      setMsg(error?.message || "Could not open this key.", false);
+    }
+  }
+
+  finishBtn?.addEventListener("click", async () => {
+    if (!finishMode || !selectedTicket || !activeRequest) return;
+
+    try {
+      if (finishBtn) finishBtn.disabled = true;
+      if (cancelBtn) cancelBtn.disabled = true;
+
+      const open = await refreshWashOpen();
+      if (!open) {
+        setMsg("Wash is closed. This car will wait until the next open day.");
+      }
+
+      let freshTicket = selectedTicket;
+      freshTicket = await updateLocationIfChanged(freshTicket);
+      selectedTicket = freshTicket;
+      fillPreview(freshTicket);
+
+      const blockMsg = await locationBlocksWash(freshTicket);
+      if (blockMsg) {
+        setMsg("Update location. " + blockMsg, false);
+        if (finishBtn) finishBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        return;
+      }
+
+      if (!isActiveWash(freshTicket)) {
+        await createWashTicket(freshTicket, {
+          waiter: isWaiterTicket(freshTicket),
+          notes: clean(notesEl.value),
+        });
+      }
+
+      await completeRequest(activeRequest.id);
+      if (activeNotificationId) {
+        await resolveNotificationRequest(activeNotificationId);
+      }
+
+      setMsg("Key at wash. Sent to the wash board.");
+      window.setTimeout(goHome, 1400);
+    } catch (error) {
+      console.error(error);
+      if (finishBtn) finishBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+      setMsg(error?.message || "Could not finish.", false);
+    }
+  });
+
+  cancelBtn?.addEventListener("click", async () => {
+    if (!finishMode) return;
+
+    try {
+      if (cancelBtn) cancelBtn.disabled = true;
+      if (finishBtn) finishBtn.disabled = true;
+
+      if (activeNotificationId) {
+        await releaseNotificationRequest(activeNotificationId);
+      }
+
+      setMsg("Sent back to the group.");
+      window.setTimeout(goHome, 1000);
+    } catch (error) {
+      console.error(error);
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (finishBtn) finishBtn.disabled = false;
+      setMsg(error?.message || "Could not cancel.", false);
+    }
+  });
+
+  if (finishRequestId) {
+    await loadFinishRequest();
+  } else {
+    resetPreview();
+  }
 });
