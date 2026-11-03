@@ -46,7 +46,15 @@ import {
   escapeHtml,
 } from "./move-locate-helpers.js";
 
-import { renderParkingAvailability as renderParkingAvailabilityView } from "./move-locate-parking.js";
+import { saveVehicleLocation } from "./move-locate-location.js?v=1";
+
+import { renderParkingAvailability as renderParkingAvailabilityView } from "./move-locate-parking.js?v=3";
+import {
+  initLotTagList,
+  openLotTagList,
+  refreshLotTagList,
+  hideLotTagList,
+} from "./move-locate-lot-list.js?v=3";
 
 import {
   renderMyMovesList,
@@ -232,6 +240,7 @@ function initializeMoveLocate() {
   if (updateLocationAreaSelect) {
     updateLocationAreaSelect.addEventListener("change", () => {
       fillUpdateLocationLots();
+      if (updateLocationBlockingInput) updateLocationBlockingInput.value = "";
     });
   }
 
@@ -243,6 +252,7 @@ function initializeMoveLocate() {
 
   if (updateLocationLotSelect) {
     updateLocationLotSelect.addEventListener("change", () => {
+      if (updateLocationBlockingInput) updateLocationBlockingInput.value = "";
       saveUpdatedLocationButton.disabled = !updateLocationLotSelect.value;
     });
   }
@@ -340,6 +350,27 @@ function initializeMoveLocate() {
 
   loadLocationCatalog();
   loadDealerROs();
+
+  initLotTagList({
+    getROs: () => lastROs,
+    helpers: {
+      getROTag,
+      getROArea,
+      getROLot,
+      normalizeTag,
+      formatAreaLot,
+      escapeHtml,
+    },
+    onUpdateLocation: (ro) => {
+      if (isMoving(ro)) {
+        showMessage("This car is in a move. Finish or cancel that move before updating the lot.");
+        return;
+      }
+      currentRO = ro;
+      hideLotTagList();
+      showUpdateLocationPanel();
+    },
+  });
 
   loadNotificationRouteParams();
 
@@ -549,7 +580,12 @@ function loadDealerROs() {
       ros: lastROs,
       getROArea,
       getROLot,
+      onLotDoubleTap: (area, lot) => {
+        window.location.href = `/pages/move-locate/move-locate-lot.html?area=${encodeURIComponent(area)}&lot=${encodeURIComponent(lot)}`;
+      },
     });
+
+    refreshLotTagList();
 
     if (pendingRouteTag && !currentRO?.id) {
       findVehicle();
@@ -719,36 +755,12 @@ async function saveUpdatedLocation() {
   saveUpdatedLocationButton.disabled = true;
 
   try {
-    await clearCarsBlockedByTag(getROTag(freshRO));
-
-    await updateRO(
-      freshRO.id,
-      {
-        [ROS_FIELDS.currentLocation]: finalLot,
-        currentLocation: finalLot,
-        currentLocationArea: finalArea,
-        locationUpdatedAt: Date.now(),
-      },
-      {
-        eventType: "location_updated",
-        module: "move-locate",
-        message: `Location updated to ${formatAreaLot(finalArea, finalLot)}`,
-      },
-    );
-
-    if (blockingTag) {
-      await saveBlockingRelationship({
-        blockerRO: {
-          ...freshRO,
-          [ROS_FIELDS.currentLocation]: finalLot,
-          currentLocation: finalLot,
-          currentLocationArea: finalArea,
-        },
-        blockedTag: blockingTag,
-        area: finalArea,
-        lot: finalLot,
-      });
-    }
+    await saveVehicleLocation({
+      ro: freshRO,
+      area: finalArea,
+      lot: finalLot,
+      blockingTag,
+    });
 
     lastROs = await getDealerROs();
     currentRO = lastROs.find((ro) => ro.id === freshRO.id) || freshRO;
@@ -818,7 +830,7 @@ async function findVehicle() {
       (await findActiveROByNumber(searchValue));
   }
 
-  if (!match || String(match.status || "").toLowerCase() === "archived") {
+  if (!match) {
     currentRO = null;
     currentMoveGroup = [];
     vehicleResultCard.classList.add("hidden");
@@ -832,10 +844,37 @@ async function findVehicle() {
     }
 
     renderMoveDestination(null);
+    showMessage("Vehicle not found.");
+    return;
+  }
+
+  if (String(match.status || "").toLowerCase() === "archived") {
+    currentRO = match;
+    currentMoveGroup = [];
+    renderSelectedVehicle(match);
+    vehicleResultCard.classList.remove("hidden");
+    vehicleDetailsPanel.classList.add("hidden");
+    finalLocationPanel.classList.add("hidden");
+    cancelMoveButton.classList.add("hidden");
+    overrideCancelMoveButton.classList.add("hidden");
+    startMoveButton.classList.add("hidden");
+
+    if (takeOverMoveButton) {
+      takeOverMoveButton.classList.add("hidden");
+    }
+
+    document.getElementById("updateLocationButton")?.classList.add("hidden");
+    document.getElementById("addTagButton")?.classList.add("hidden");
+    document.getElementById("clearSearchButton")?.classList.remove("hidden");
+    document.getElementById("moveSearchBackRow")?.classList.add("hidden");
+    searchVehicleButton.disabled = true;
+    renderMoveDestination(null);
+
+    const where = formatAreaLot(getROArea(match), getROLot(match));
     showMessage(
-      match
-        ? "This RO is archived. Moves are only allowed on active Tracker ROs."
-        : "Vehicle not found.",
+      where
+        ? `Archived — last location: ${where}. Moves are not allowed.`
+        : "Archived — no location recorded. Moves are not allowed.",
     );
     return;
   }

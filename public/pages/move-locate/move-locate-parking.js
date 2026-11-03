@@ -10,6 +10,7 @@ export function renderParkingAvailability({
   ros,
   getROArea,
   getROLot,
+  onLotDoubleTap,
 }) {
   if (!parkingAvailabilityList) {
     return;
@@ -55,6 +56,19 @@ export function renderParkingAvailability({
         ${itemData.available}
       </span>
     `;
+
+    let lastTap = 0;
+    item.addEventListener("click", () => {
+      const now = Date.now();
+      if (now - lastTap < 400) {
+        lastTap = 0;
+        const area = String(itemData.location?.area || "").trim();
+        const lot = String(itemData.lot || "").trim();
+        onLotDoubleTap?.(area, lot);
+        return;
+      }
+      lastTap = now;
+    });
 
     parkingAvailabilityList.appendChild(item);
   });

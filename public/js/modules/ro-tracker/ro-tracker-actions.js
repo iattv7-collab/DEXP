@@ -537,6 +537,11 @@ async function handleButtonClick(button, getROById) {
   }
 
   if (action === "archive") {
+    if (!ro.pickedUpAtMs) {
+      alert("Mark this RO Picked Up before archiving.");
+      return;
+    }
+
     const confirmed = confirm("Archive this RO?");
 
     if (!confirmed) {

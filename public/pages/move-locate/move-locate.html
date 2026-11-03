@@ -12,7 +12,7 @@
 
   <link rel="stylesheet" href="/css/core/base.css" />
   <link rel="stylesheet" href="/css/components/loading.css" />
-  <link rel="stylesheet" href="/css/modules/move-locate.css?v=9" />
+  <link rel="stylesheet" href="/css/modules/move-locate.css?v=10" />
 </head>
 
 <body>
@@ -23,6 +23,28 @@
 
         <div id="parkingAvailabilityList" class="parking-availability-list"></div>
       </div>
+
+      <section id="lotTagListPanel" class="tool-card hidden">
+        <div class="lot-list-header">
+          <h3 id="lotTagListTitle">Lot</h3>
+          <button id="lotTagListBack" type="button" class="small-button secondary">Back</button>
+        </div>
+        <input id="lotTagSearchInput" type="search" placeholder="Search tag" />
+        <p class="tool-help">Double-tap a row to update location.</p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tag</th>
+                <th>Location</th>
+                <th>Blocked by</th>
+                <th>Blocking</th>
+              </tr>
+            </thead>
+            <tbody id="lotTagListBody"></tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="tool-card move-workflow-card">
         <div class="move-card-header">
@@ -240,7 +262,7 @@
   </script>
 
   <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/move-locate/move-locate.js?v=29"></script>
+  <script type="module" src="/pages/move-locate/move-locate.js?v=35"></script>
 </body>
 
 </html>

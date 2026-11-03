@@ -19,7 +19,7 @@ import {
   initAppointmentsTab,
   syncAppointmentsTabContext,
   hasAppointmentsAccess,
-} from "/js/modules/appointments/appointments-tab.js";
+} from "/js/modules/appointments/appointments-tab.js?v=3";
 
 protectRoute({
   allowedModules: [MODULES.OPERATIONS, MODULES.APPOINTMENTS],

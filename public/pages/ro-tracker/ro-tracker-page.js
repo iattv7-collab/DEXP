@@ -28,7 +28,7 @@ import {
   saveROTrackerColumnSettings,
 } from "/js/modules/ro-tracker/ro-tracker-settings.js";
 
-import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js?v=12";
+import { setupROTrackerActions } from "/js/modules/ro-tracker/ro-tracker-actions.js?v=13";
 
 import { openROTrackerSharingModal } from "/js/modules/ro-tracker-sharing/ro-tracker-sharing-ui.js?v=2";
 

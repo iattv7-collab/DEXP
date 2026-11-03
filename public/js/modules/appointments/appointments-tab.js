@@ -28,6 +28,7 @@ import { pickDateTimeMs } from "/js/shared/date-time-picker.js";
 let selectedDate = formatAppointmentDate(new Date());
 let transportFilter = "all";
 let advisorFilter = String(getSession()?.companyId || "").trim() || "all";
+let appointmentSearch = "";
 let liveRows = [];
 let previewRows = [];
 let previewDate = "";
@@ -158,6 +159,11 @@ function renderShell() {
         <select id="appointmentsAdvisorSelect" class="small-button secondary">
           <option value="all">All</option>
         </select>
+        <input
+          id="appointmentsSearchInput"
+          type="search"
+          placeholder="Search name, VIN, or phone"
+        />
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -302,6 +308,11 @@ function wire(root) {
     renderBoard();
   });
 
+  document.getElementById("appointmentsSearchInput")?.addEventListener("input", (event) => {
+    appointmentSearch = String(event.target.value || "").trim();
+    renderBoard();
+  });
+
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", handleBoardClick);
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-id]");
@@ -440,6 +451,20 @@ function startWatch() {
   });
 }
 
+function matchesAppointmentSearch(row = {}) {
+  const q = String(appointmentSearch || "").trim().toLowerCase();
+  if (!q) return true;
+
+  const name = String(row.customerName || "").toLowerCase();
+  const vin = String(row.vin || "").toLowerCase();
+  const phone = String(row.phone || "").toLowerCase();
+  const phoneDigits = phone.replace(/\D/g, "");
+  const qDigits = q.replace(/\D/g, "");
+
+  if (name.includes(q) || vin.includes(q) || phone.includes(q)) return true;
+  return Boolean(qDigits) && phoneDigits.includes(qDigits);
+}
+
 function matchesAdvisorFilter(row = {}) {
   const code = String(row.advisorCode || "").trim();
   if (advisorFilter === "all") return true;
@@ -490,11 +515,12 @@ function renderBoard() {
     if (transportFilter !== "all" && String(row.transportationType || "none") !== transportFilter) {
       return false;
     }
-    return matchesAdvisorFilter(row);
+    if (!matchesAdvisorFilter(row)) return false;
+    return matchesAppointmentSearch(row);
   });
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="11">No appointments loaded for this date.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11">${appointmentSearch ? "No appointments match that search." : "No appointments loaded for this date."}</td></tr>`;
     return;
   }
 

@@ -327,3 +327,76 @@
 #moveLocatePage .move-secondary-actions button.hidden {
   display: none;
 }
+
+#moveLocatePage .lot-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+#moveLocatePage #lotTagSearchInput {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+  margin: 8px 0;
+}
+
+#moveLocatePage #lotTagListBody tr {
+  cursor: pointer;
+}
+
+#moveLocatePage .parking-availability-item {
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  #moveLocatePage #lotTagListPanel .table-wrap {
+    overflow-x: auto;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table,
+  #moveLocatePage #lotTagListPanel .data-table thead,
+  #moveLocatePage #lotTagListPanel .data-table tbody,
+  #moveLocatePage #lotTagListPanel .data-table tr,
+  #moveLocatePage #lotTagListPanel .data-table td,
+  #moveLocatePage #lotTagListPanel .data-table th {
+    display: table;
+    width: auto;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table {
+    display: table;
+    width: 100%;
+    min-width: 100%;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table thead {
+    display: table-header-group;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table tbody {
+    display: table-row-group;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table tr {
+    display: table-row;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table th,
+  #moveLocatePage #lotTagListPanel .data-table td {
+    display: table-cell;
+    width: auto;
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+    white-space: nowrap;
+  }
+
+  #moveLocatePage #lotTagListPanel .data-table td::before {
+    content: none;
+  }
+}

@@ -299,11 +299,24 @@ async function handleSearchRequestVehicle() {
   });
 
   if (!ro) {
-    setFormMessage("No active RO found for that RO/tag.");
+    setFormMessage("No RO found for that RO/tag.");
     return;
   }
 
   selectedRequestRO = ro;
+
+  if (String(ro.status || "").toLowerCase() === "archived") {
+    const where = String(ro.currentLocation || "").trim();
+    renderRequestVehicleSummary(ro, null);
+    requestSearchBlock?.classList.add("hidden");
+    requestCreateControls.classList.add("hidden");
+    setFormMessage(
+      where
+        ? `Archived — last location: ${where}. Requests are not allowed.`
+        : "Archived — no location recorded. Requests are not allowed.",
+    );
+    return;
+  }
 
   const openRequest = findOpenRequestForRO(ro);
 
@@ -590,18 +603,12 @@ function findOpenRequestForRO(ro = {}) {
 async function findMatchingRO({ roNumber, tagNumber }) {
   if (roNumber) {
     const ro = await findActiveROByNumber(roNumber);
-
-    if (ro && String(ro.status || "").toLowerCase() !== "archived") {
-      return ro;
-    }
+    if (ro) return ro;
   }
 
   if (tagNumber) {
     const ro = await findActiveROByTag(tagNumber);
-
-    if (ro && String(ro.status || "").toLowerCase() !== "archived") {
-      return ro;
-    }
+    if (ro) return ro;
   }
 
   return null;

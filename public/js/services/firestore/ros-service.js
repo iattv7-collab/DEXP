@@ -11,6 +11,7 @@ import {
   query,
   where,
   limit,
+  orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp,
@@ -127,6 +128,49 @@ export async function createRO(data = {}, options = {}) {
   });
 
   return roData;
+}
+
+export async function updateROLocation(roId, updates = {}, options = {}) {
+  const session = requireDealerSession();
+  const roRef = doc(db, ROS_COLLECTION, roId);
+  const snapshot = await getDoc(roRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("RO not found.");
+  }
+
+  const before = snapshot.data();
+
+  if (before[ROS_FIELDS.dealerId] !== session.dealerId) {
+    throw new Error("RO not found or access denied.");
+  }
+
+  if (String(before[ROS_FIELDS.status] || "").toLowerCase() === ROS_STATUS.ARCHIVED) {
+    throw new Error("This RO is archived. Location updates are only for active Tracker ROs.");
+  }
+
+  const updateData = {
+    [ROS_FIELDS.currentLocation]: updates.currentLocation || updates[ROS_FIELDS.currentLocation] || "",
+    currentLocation: updates.currentLocation || updates[ROS_FIELDS.currentLocation] || "",
+    currentLocationArea: updates.currentLocationArea || "",
+    locationUpdatedAt: updates.locationUpdatedAt || Date.now(),
+    [ROS_FIELDS.updatedBy]: session.uid,
+    [ROS_FIELDS.updatedAt]: serverTimestamp(),
+  };
+
+  if (Object.prototype.hasOwnProperty.call(updates, "blockedByTag")) {
+    updateData.blockedByTag = updates.blockedByTag || "";
+  }
+
+  await updateDoc(roRef, updateData);
+
+  await addROActivity(roId, {
+    eventType: options.eventType || "location_updated",
+    module: options.module || "move-locate",
+    message: options.message || "Location updated",
+    before,
+    after: { ...before, ...updateData },
+  });
 }
 
 export async function updateRO(roId, updates = {}, options = {}) {
@@ -520,7 +564,7 @@ function buildROVisibilityQuery(rosRef, session, options = {}) {
       constraints.push(where(ROS_FIELDS.advisorId, "==", advisorId));
     }
 
-    constraints.push(limit(100));
+    constraints.push(orderBy("archivedAtMs", "desc"));
 
     return query(rosRef, ...constraints);
   }
