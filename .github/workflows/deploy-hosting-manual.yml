@@ -1,0 +1,40 @@
+name: Deploy DEXP Hosting (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dexp-production-hosting
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Firebase Hosting to dexp-5056c
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          persist-credentials: false
+
+      - name: Confirm Firebase deployment credentials
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEXP_5056C }}
+        run: |
+          if [ -z "$FIREBASE_CREDENTIALS" ]; then
+            echo "::error::Set repository secret FIREBASE_SERVICE_ACCOUNT_DEXP_5056C before deploying."
+            exit 1
+          fi
+
+      - name: Deploy only Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEXP_5056C }}
+          projectId: dexp-5056c
+          channelId: live
+          entryPoint: .
