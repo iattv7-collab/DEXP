@@ -400,3 +400,33 @@
     content: none;
   }
 }
+
+#moveLocatePage #lotUpdatePanel label,
+#moveLocatePage #updateLocationPanel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+#moveLocatePage #lotUpdatePanel select,
+#moveLocatePage #lotUpdatePanel input,
+#moveLocatePage #updateLocationPanel select,
+#moveLocatePage #updateLocationPanel input {
+  width: 100%;
+}
+
+#moveLocatePage #lotUpdateSaveButton,
+#moveLocatePage #saveUpdatedLocationButton {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.move-search-back-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.move-search-back-row.hidden {
+  display: none;
+}

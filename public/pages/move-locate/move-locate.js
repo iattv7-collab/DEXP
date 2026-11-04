@@ -867,6 +867,7 @@ async function findVehicle() {
     document.getElementById("addTagButton")?.classList.add("hidden");
     document.getElementById("clearSearchButton")?.classList.remove("hidden");
     document.getElementById("moveSearchBackRow")?.classList.add("hidden");
+    document.getElementById("moveSearchBackRow")?.classList.add("hidden");
     searchVehicleButton.disabled = true;
     renderMoveDestination(null);
 
