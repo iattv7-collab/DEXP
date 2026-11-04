@@ -150,3 +150,14 @@
   background: #ffd0d0;
   border-color: #d45b5b;
 }
+
+.appointments-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.appointments-toolbar #appointmentsUploadToggle {
+  margin-left: auto;
+}

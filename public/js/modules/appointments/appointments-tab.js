@@ -117,53 +117,52 @@ function renderShell() {
   return `
     <div class="dexp-admin-card appointments-card">
       <h3>Appointments</h3>
-      <p class="tool-help">
-        Upload tonight or tomorrow morning's printed sheet.
-        Review the grid, then save. Arrived cars stay if you upload again.
-      </p>
       <div class="action-row appointments-toolbar">
         <input id="appointmentsDateInput" type="date" value="${escapeHtml(toDateInputValue(selectedDate))}" />
-        <label class="small-button secondary">
-          Photo of sheet
-          <input id="appointmentsPhotoInput" type="file" accept="image/*" capture="environment" hidden />
-        </label>
-        <button type="button" class="small-button" id="appointmentsSavePreview" disabled>Save preview</button>
-        <button type="button" class="small-button secondary" id="appointmentsAddLive">Add appointment</button>
+        <input id="appointmentsSearchInput" type="search" placeholder="Search name, VIN, or phone" />
+        <select id="appointmentsAdvisorSelect" class="small-button secondary">
+          <option value="all">All</option>
+        </select>
+        <button type="button" class="small-button secondary" id="appointmentsUploadToggle">Upload list</button>
       </div>
 
-      <p id="appointmentsStatusMsg" class="tool-help"></p>
-      <div id="appointmentsPreviewWrap" class="hidden">
-        <h4>Review before save</h4>
-        <button type="button" class="small-button secondary" id="appointmentsAddPreviewRow">Add row</button>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Time</th><th>Transport</th><th>Adv</th><th>Customer</th>
-                <th>Vehicle</th><th>VIN</th><th>Phone</th><th>Concern</th>
-              </tr>
-            </thead>
-            <tbody id="appointmentsPreviewBody"></tbody>
-          </table>
+      <div id="appointmentsUploadPanel" class="hidden">
+        <p class="tool-help">
+          Upload tonight or tomorrow morning's printed sheet.
+          Review the grid, then save. Arrived cars stay if you upload again.
+        </p>
+        <div class="action-row">
+          <label class="small-button secondary">
+            Photo of sheet
+            <input id="appointmentsPhotoInput" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <button type="button" class="small-button" id="appointmentsSavePreview" disabled>Save preview</button>
+          <button type="button" class="small-button secondary" id="appointmentsAddLive">Add appointment</button>
+        </div>
+        <p id="appointmentsStatusMsg" class="tool-help"></p>
+        <div id="appointmentsPreviewWrap" class="hidden">
+          <h4>Review before save</h4>
+          <button type="button" class="small-button secondary" id="appointmentsAddPreviewRow">Add row</button>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Transport</th><th>Adv</th><th>Customer</th>
+                  <th>Vehicle</th><th>VIN</th><th>Phone</th><th>Concern</th>
+                </tr>
+              </thead>
+              <tbody id="appointmentsPreviewBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div class="action-row" id="appointmentsCounts"></div>
-      <div class="action-row">
+      <div class="action-row hidden">
         <button type="button" class="small-button js-transport" data-transport="all">All</button>
         <button type="button" class="small-button secondary js-transport" data-transport="loaner">Loaner</button>
         <button type="button" class="small-button secondary js-transport" data-transport="waiter">Waiter</button>
         <button type="button" class="small-button secondary js-transport" data-transport="valet">Valet</button>
         <button type="button" class="small-button secondary js-transport" data-transport="none">None</button>
-      </div>
-      <div class="action-row">
-        <select id="appointmentsAdvisorSelect" class="small-button secondary">
-          <option value="all">All</option>
-        </select>
-        <input
-          id="appointmentsSearchInput"
-          type="search"
-          placeholder="Search name, VIN, or phone"
-        />
       </div>
       <div class="table-wrap">
         <table class="data-table">
@@ -197,6 +196,10 @@ function wire(root) {
     selectedDate = fromDateInputValue(event.target.value) || selectedDate;
     syncDateInput();
     startWatch();
+  });
+
+  document.getElementById("appointmentsUploadToggle")?.addEventListener("click", () => {
+    document.getElementById("appointmentsUploadPanel")?.classList.toggle("hidden");
   });
 
   document.getElementById("appointmentsPhotoInput")?.addEventListener("change", async (event) => {
