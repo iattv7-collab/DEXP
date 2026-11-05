@@ -59,7 +59,6 @@ import {
 import {
   renderMyMovesList,
   findBlockingOwnedMove,
-  wireLeaveMoveNag,
   startOwnedMovesWatch,
 } from "./move-locate-my-moves.js";
 
@@ -174,6 +173,7 @@ let activeNotificationId = "";
 let activeRequestId = "";
 let pendingRouteTag = "";
 let pendingRouteTitle = "";
+let ownedOpenMoves = [];
 
 const DEVICE_ID_KEY = "dexp_device_id";
 
@@ -374,10 +374,6 @@ function initializeMoveLocate() {
 
   loadNotificationRouteParams();
 
-  wireLeaveMoveNag({
-    getROs: () => lastROs,
-  });
-
   startOwnedMovesWatch({
     listEl: myMovesList,
     getROArea,
@@ -389,6 +385,7 @@ function initializeMoveLocate() {
       vehicleSearchInput.value = tag;
       findVehicle();
     },
+    onChange: applyOpenMoveLock,
   });
 }
 
@@ -789,8 +786,27 @@ async function saveUpdatedLocation() {
   }
 }
 
+function applyOpenMoveLock(moves = []) {
+  ownedOpenMoves = Array.isArray(moves) ? moves : [];
+  const locked = ownedOpenMoves.length > 0;
+
+  document.querySelector(".move-search-row")?.classList.toggle("hidden", locked);
+  document.getElementById("moveSecondaryActions")?.classList.toggle("hidden", locked);
+  if (addTagButton) addTagButton.classList.toggle("hidden", locked);
+  document.getElementById("updateLocationButton")?.classList.toggle("hidden", locked);
+}
+
 async function findVehicle() {
   clearMessage();
+
+  if (ownedOpenMoves.length) {
+    const openTag = String(getROTag(ownedOpenMoves[0]) || ownedOpenMoves[0].tagNumber || "").toUpperCase();
+    const typed = vehicleSearchInput.value.trim().toUpperCase();
+    if (typed !== openTag) {
+      showMessage(`Finish tag ${openTag} before searching.`);
+      return;
+    }
+  }
 
   const searchValue = vehicleSearchInput.value.trim().toUpperCase();
 
@@ -893,9 +909,16 @@ async function findVehicle() {
   renderSelectedVehicle(match);
   vehicleResultCard.classList.remove("hidden");
   document.getElementById("addTagButton")?.classList.add("hidden");
-  document.getElementById("updateLocationButton")?.classList.remove("hidden");
   document.getElementById("clearSearchButton")?.classList.remove("hidden");
   document.getElementById("moveSearchBackRow")?.classList.add("hidden");
+
+  if (isMoving(match) && isMoveOwner(match)) {
+    document.querySelector(".move-search-row")?.classList.add("hidden");
+    document.getElementById("updateLocationButton")?.classList.add("hidden");
+    document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+  } else {
+    document.getElementById("updateLocationButton")?.classList.remove("hidden");
+  }
 
   searchVehicleButton.disabled = true;
   moveLocateMessage.classList.remove("dexp-loading");
@@ -947,6 +970,10 @@ function renderSelectedVehicle(ro) {
 
   if (isMoving(ro)) {
     startMoveButton.classList.add("hidden");
+    document.querySelector(".move-search-row")?.classList.add("hidden");
+    document.querySelector(".move-card-header .tool-help")?.classList.add("hidden");
+    document.getElementById("updateLocationButton")?.classList.add("hidden");
+    document.getElementById("moveSecondaryActions")?.classList.add("hidden");
 
     if (isMoveOwner(ro)) {
       finalLocationPanel.classList.remove("hidden");
@@ -1942,15 +1969,19 @@ function resetMoveLocateForm() {
   currentMoveGroup = [];
   setArrivedFromRequest(false);
   setArrivedFromRequest(false);
-
   vehicleSearchInput.value = "";
   searchVehicleButton.disabled = true;
-  document.getElementById("addTagButton")?.classList.remove("hidden");
   document.getElementById("updateLocationButton")?.classList.add("hidden");
   document.getElementById("clearSearchButton")?.classList.add("hidden");
   document.getElementById("moveSearchBackRow")?.classList.remove("hidden");
-  document.querySelector(".move-search-row")?.classList.remove("hidden");
-  document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
+
+  if (ownedOpenMoves.length) {
+    applyOpenMoveLock(ownedOpenMoves);
+  } else {
+    document.getElementById("addTagButton")?.classList.remove("hidden");
+    document.querySelector(".move-search-row")?.classList.remove("hidden");
+    document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
+  }
 
   vehicleResultCard.classList.add("hidden");
   vehicleDetailsPanel.classList.add("hidden");
@@ -2074,12 +2105,16 @@ async function showAddTagPanel() {
 function hideAddTagPanel() {
   if (!addTagPanel) return;
   addTagPanel.classList.add("hidden");
-  document.querySelector(".move-search-row")?.classList.remove("hidden");
-  document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
   document.getElementById("moveSearchBackRow")?.classList.remove("hidden");
-  document.getElementById("addTagButton")?.classList.remove("hidden");
   document.getElementById("updateLocationButton")?.classList.add("hidden");
   clearMessage();
+  if (ownedOpenMoves.length) {
+    applyOpenMoveLock(ownedOpenMoves);
+    return;
+  }
+  document.querySelector(".move-search-row")?.classList.remove("hidden");
+  document.getElementById("moveSecondaryActions")?.classList.remove("hidden");
+  document.getElementById("addTagButton")?.classList.remove("hidden");
 }
 
 async function saveAddTag() {

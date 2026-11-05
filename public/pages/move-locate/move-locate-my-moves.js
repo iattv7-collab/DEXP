@@ -120,6 +120,7 @@ export function startOwnedMovesWatch({
   getROLot,
   getROTag,
   onResume,
+  onChange,
 }) {
   const session = getSession();
 
@@ -154,6 +155,7 @@ export function startOwnedMovesWatch({
         getROTag,
         onResume,
       });
+      if (typeof onChange === "function") onChange(ros);
     },
     (error) => {
       console.error("My Moves watch failed:", error);
@@ -163,7 +165,11 @@ export function startOwnedMovesWatch({
   );
 }
 
-export async function stampOwnedMovesLeft(ros = []) {
+export async function stampOwnedMovesLeft() {
+  return;
+}
+
+export async function stampOwnedMovesLeftUnused(ros = []) {
   const session = getSession();
   let mine = getOwnedMovingROs(ros);
 

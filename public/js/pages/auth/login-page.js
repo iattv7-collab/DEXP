@@ -7,6 +7,8 @@ import {
   sendResetPasswordEmail,
   logoutUser,
 } from "/js/services/firebase/auth-service.js";
+import { getSession } from "/js/core/session.js";
+import { unregisterCurrentDeviceForNotifications } from "/js/services/firebase/messaging-service.js";
 
 import { getDealer } from "/js/services/firestore/dealers-service.js";
 
@@ -65,6 +67,13 @@ document.getElementById("loginForm")?.addEventListener("submit", async (event) =
   }
 
   try {
+    if (getSession()?.uid) {
+      try {
+        await unregisterCurrentDeviceForNotifications();
+      } catch (error) {
+        console.error("Could not detach this device from the previous user.", error);
+      }
+    }
     await loginWithEmail(email, password);
 
     rememberDealerId(dealerIdFromEntry);
