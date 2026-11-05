@@ -277,6 +277,10 @@ function initializeMoveLocate() {
     });
   }
 
+  document.getElementById("moveFinishBackButton")?.addEventListener("click", () => {
+    resetMoveLocateForm();
+  });
+
   if (moveSearchBackButton) {
     moveSearchBackButton.addEventListener("click", () => {
       if (addTagPanel && !addTagPanel.classList.contains("hidden")) {
@@ -909,14 +913,15 @@ async function findVehicle() {
   renderSelectedVehicle(match);
   vehicleResultCard.classList.remove("hidden");
   document.getElementById("addTagButton")?.classList.add("hidden");
-  document.getElementById("clearSearchButton")?.classList.remove("hidden");
   document.getElementById("moveSearchBackRow")?.classList.add("hidden");
 
   if (isMoving(match) && isMoveOwner(match)) {
     document.querySelector(".move-search-row")?.classList.add("hidden");
     document.getElementById("updateLocationButton")?.classList.add("hidden");
     document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+    document.getElementById("clearSearchButton")?.classList.add("hidden");
   } else {
+    document.getElementById("clearSearchButton")?.classList.remove("hidden");
     document.getElementById("updateLocationButton")?.classList.remove("hidden");
   }
 
@@ -978,6 +983,7 @@ function renderSelectedVehicle(ro) {
     if (isMoveOwner(ro)) {
       finalLocationPanel.classList.remove("hidden");
       cancelMoveButton.classList.remove("hidden");
+      document.getElementById("clearSearchButton")?.classList.add("hidden");
       overrideCancelMoveButton.classList.add("hidden");
 
       if (takeOverMoveButton) {
@@ -1197,15 +1203,7 @@ function renderUnifiedMoveCards() {
     card.style.marginBottom = "10px";
 
     card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
-        <div>
-          <div><b>TAG</b> ${getROTag(ro)}</div>
-          <div><b>RO</b> ${ro[ROS_FIELDS.roNumber] || ""}</div>
-          <div><b>Current Area/Lot:</b> ${formatAreaLot(getROArea(ro), getROLot(ro)) || ""}</div>
-          <div><b>Status:</b> ${ro.moveStatus || ""}</div>
-        </div>
-
-        <div>
+      <div>
           <label>
             Final Area
             <select class="group-area-select" data-id="${ro.id}">
@@ -1237,7 +1235,6 @@ function renderUnifiedMoveCards() {
               placeholder="Tag this car is blocking"
             />
           </label>
-        </div>
       </div>
     `;
 

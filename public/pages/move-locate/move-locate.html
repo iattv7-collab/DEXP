@@ -12,11 +12,11 @@
 
   <link rel="stylesheet" href="/css/core/base.css" />
   <link rel="stylesheet" href="/css/components/loading.css" />
-  <link rel="stylesheet" href="/css/modules/move-locate.css?v=13" />
+  <link rel="stylesheet" href="/css/modules/move-locate.css?v=19" />
 </head>
 
 <body>
-  <main id="moveLocatePage" class="full-page"></main>
+    <main id="moveLocatePage" class="full-page">
     <section class="page-shell full-page">
       <div class="parking-availability-wrap">
         <div class="parking-availability-title">Available Parking</div>
@@ -81,7 +81,7 @@
         </div>
 
         <div id="moveSearchBackRow" class="move-search-back-row">
-          <button id="moveSearchBackButton" type="button" class="small-button secondary" style="width:auto; min-width:88px;">
+          <button id="moveSearchBackButton" type="button" class="small-button secondary">
             Back
           </button>
         </div>
@@ -108,7 +108,7 @@
 
           <button id="saveAddTagButton" type="button">Save Tag</button>
           <div style="display:flex; justify-content:flex-end;">
-            <button id="addTagBackButton" type="button" class="small-button secondary" style="width:auto; min-width:88px; min-height:40px; font-size:14px;">
+            <button id="addTagBackButton" type="button" class="small-button secondary">
               Back
             </button>
           </div>
@@ -207,7 +207,7 @@
         </div>
 
         <div style="display:flex; justify-content:flex-end;">
-          <button id="clearSearchButton" type="button" class="small-button secondary hidden" style="width:auto; min-width:88px;">
+          <button id="clearSearchButton" type="button" class="small-button secondary hidden">
             Back
           </button>
         </div>
@@ -223,9 +223,12 @@
         <div id="finalLocationPanel" class="hidden">
           <div id="groupFinalLocationList"></div>
 
-          <div id="groupSaveLocationRow" class="tool-row hidden">
+          <div id="groupSaveLocationRow" class="tool-row hidden" style="display:flex; justify-content:space-between; align-items:center;">
             <button id="saveGroupLocationsButton" type="button" disabled>
               Save
+            </button>
+            <button id="moveFinishBackButton" type="button" class="small-button secondary">
+              Back
             </button>
           </div>
         </div>
@@ -262,7 +265,7 @@
   </script>
 
   <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/move-locate/move-locate.js?v=38"></script>
+  <script type="module" src="/pages/move-locate/move-locate.js?v=41"></script>
 </body>
 
 </html>
