@@ -1120,14 +1120,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         <thead>
           <tr>
             <th>VIN</th>
+            <th>RO Number</th>
+            <th>Miles Back</th>
+            <th>Gas/Range</th>
+            <th>Date Returned</th>
+            <th>Customer</th>
             <th>Year</th>
             <th>Model</th>
-            <th>RO</th>
-            <th>Customer</th>
-            <th>Returned At</th>
             <th>Received By</th>
-            <th>Mileage</th>
-            <th>Range</th>
             <th>Damage</th>
           </tr>
         </thead>
@@ -1135,18 +1135,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     `;
 
     rows.forEach((x) => {
+      const vin = String(x.vin || "");
+      const last8 = vin.length >= 8 ? vin.slice(-8) : vin;
+      const vinPrefix = vin.length > 8 ? vin.slice(0, -8) : "";
+      const vinHtml = vin
+        ? `${escapeHtml(vinPrefix)}<span style="background:#fff3bf;font-weight:700">${escapeHtml(last8)}</span>`
+        : "";
+
       html += `
         <tr>
-          <td>${escapeHtml(x.vin || "")}</td>
-          <td>${escapeHtml(x.year || "")}</td>
-          <td>${escapeHtml(x.model || "")}</td>
-          <td>${escapeHtml(x.assignedRo || "")}</td>
-          <td>${escapeHtml(x.customerName || "")}</td>
-          <td>${escapeHtml(x.returnedAtText || "")}</td>
-          <td>${escapeHtml(x.receivedByName || "")}</td>
-          <td>${escapeHtml(x.mileage || "")}</td>
-          <td>${escapeHtml(x.fuelLevel || "")}</td>
-          <td>${escapeHtml(x.damageNotes || "")}</td>
+          <td data-label="VIN">${vinHtml}</td>
+          <td data-label="RO Number">${escapeHtml(x.assignedRo || "")}</td>
+          <td data-label="Miles Back">${escapeHtml(x.mileage || "")}</td>
+          <td data-label="Gas/Range">${escapeHtml(x.fuelLevel || "")}</td>
+          <td data-label="Date Returned">${escapeHtml(x.returnedAtText || "")}</td>
+          <td data-label="Customer">${escapeHtml(x.customerName || "")}</td>
+          <td data-label="Year">${escapeHtml(x.year || "")}</td>
+          <td data-label="Model">${escapeHtml(x.model || "")}</td>
+          <td data-label="Received By">${escapeHtml(x.receivedByName || "")}</td>
+          <td data-label="Damage">${escapeHtml(x.damageNotes || "")}</td>
         </tr>
       `;
     });
