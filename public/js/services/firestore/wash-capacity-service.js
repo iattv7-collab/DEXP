@@ -127,10 +127,17 @@ export function sortWashTickets(tickets) {
     return Number(ticket.washQueuedAtMs || ticket.createdAtMs || 0);
   }
 
+  // Claim cars share one clock. Normal cars stay last.
+  // Need By uses the promised time. Waiter and courtesy use arrival.
   function lane(ticket) {
-    if (isWaiterTicket(ticket) || ticket?.sourceType === "courtesy") return 0;
-    if (needByMs(ticket) > 0) return 1;
-    return 2;
+    if (needByMs(ticket) > 0 || isWaiterTicket(ticket) || ticket?.sourceType === "courtesy") return 0;
+    return 1;
+  }
+
+  function claimTime(ticket) {
+    const needBy = needByMs(ticket);
+    if (needBy > 0) return needBy;
+    return sentAt(ticket);
   }
 
   return [...(tickets || [])].sort((a, b) => {
@@ -144,6 +151,11 @@ export function sortWashTickets(tickets) {
     const bLane = lane(b);
 
     if (aLane !== bLane) return aLane - bLane;
+
+    const aTime = aLane === 0 ? claimTime(a) : sentAt(a);
+    const bTime = bLane === 0 ? claimTime(b) : sentAt(b);
+
+    if (aTime !== bTime) return aTime - bTime;
 
     return sentAt(a) - sentAt(b);
   });
@@ -244,6 +256,21 @@ export function projectWashQueue(tickets, settings, nowMs = Date.now()) {
         plan = next.plan;
         startMs = next.startMs;
         bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => startMs);
+      }
+
+      const needBy = needByMs(ticket);
+
+      // A Need By on a later day waits for that day, starting at open.
+      // Do not start it at the Need By time.
+      if (needBy > startMs && !sameCalendarDay(needBy, startMs)) {
+        const dayStart = new Date(needBy);
+        dayStart.setHours(0, 0, 0, 0);
+        const next = projectionWindow(settings, dayStart.getTime());
+        if (next.startMs > startMs && next.startMs < needBy) {
+          plan = next.plan;
+          startMs = next.startMs;
+          bayFreeAt = Array.from({ length: Math.max(plan.bays, 1) }, () => startMs);
+        }
       }
 
       finishMs = startMs + plan.durationMs;

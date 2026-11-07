@@ -17,6 +17,7 @@ import {
 } from "../../js/services/firebase/admin-functions-service.js";
 
 import { renderUsersTable } from "./admin-users-table.js";
+import { buildAdminRoleOptions } from "./admin-roles.js";
 
 import { getSession } from "../../js/core/session.js";
 
@@ -362,21 +363,17 @@ function attachAdminUserEvents() {
   });
 
   document.querySelectorAll(".admin-role-select").forEach((select) => {
-    select.addEventListener("change", async () => {
-      const row = select.closest("tr");
-      const approveButton = row?.querySelector(".admin-approve-btn");
+    const row = select.closest("tr");
+    const approveButton = row?.querySelector(".admin-approve-btn");
 
-      if (approveButton) {
-        return;
-      }
+    if (approveButton) {
+      return;
+    }
 
-      await setUserRole({
-        uid: select.dataset.userId,
-        role: select.value,
-      });
-
-      await loadAdminUsers();
-    });
+    select.disabled = true;
+    select.style.background = "#eef1f4";
+    select.style.color = "#667085";
+    select.style.cursor = "not-allowed";
   });
 
   document.querySelectorAll(".admin-approve-btn").forEach((button) => {
@@ -616,6 +613,12 @@ function openEditUserModal(user) {
           <input id="editUserPhone" type="text" value="${escapeAdminHtml(user.phone || "")}" style="width:100%;margin-bottom:10px;">
         </label>
 
+        <label>Position<br>
+          <select id="editUserRole" style="width:100%;margin-bottom:10px;">
+            ${buildAdminRoleOptions(user.role || "")}
+          </select>
+        </label>
+
         <label style="display:flex;align-items:center;gap:8px;margin:12px 0;">
           <input id="editUserUpdateLogin" type="checkbox">
           Also update login email (Firebase Auth)
@@ -638,6 +641,7 @@ function openEditUserModal(user) {
     const email = document.getElementById("editUserEmail").value.trim();
     const phone = document.getElementById("editUserPhone").value.trim();
     const updateLoginEmail = document.getElementById("editUserUpdateLogin").checked;
+    const role = document.getElementById("editUserRole").value;
 
     if (!displayName || !email) {
       alert("Name and email are required.");
@@ -652,6 +656,13 @@ function openEditUserModal(user) {
         phone,
         updateLoginEmail,
       });
+
+      if (role && role !== user.role) {
+        await setUserRole({
+          uid: user.id,
+          role,
+        });
+      }
       modal.remove();
       await loadAdminUsers();
       alert("User updated.");

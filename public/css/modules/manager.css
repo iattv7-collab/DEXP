@@ -10,8 +10,31 @@
 
 .report-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.report-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.report-tabs a {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid #0b3d91;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0b3d91;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.report-tabs a.is-on {
+  background: #0b3d91;
+  color: #ffffff;
 }
 
 .report-doc {
@@ -131,11 +154,16 @@
   color: #666;
 }
 
+@page {
+  margin: 0.6in;
+}
+
 @media print {
   body {
     background: #fff;
   }
 
+  #appHeader,
   .no-print {
     display: none !important;
   }
@@ -149,6 +177,17 @@
     border: 0;
     box-shadow: none;
     padding: 0;
+  }
+
+  .report-letterhead {
+    border-bottom: 2px solid #0b3d91;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+  }
+
+  .report-grid th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }
 

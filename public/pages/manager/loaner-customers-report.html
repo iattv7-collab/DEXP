@@ -1,0 +1,56 @@
+<!-- FILE: /public/pages/manager/loaner-customers-report.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loaner customers</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/manager.css?v=6" />
+  </head>
+  <body>
+    <div id="appHeader" class="no-print"></div>
+    <main class="report-shell">
+      <div class="no-print report-toolbar">
+        <div class="report-tabs">
+          <a href="/pages/manager/manager.html">Production</a>
+          <a class="is-on" href="/pages/manager/loaner-customers-report.html">Customers</a>
+          <a href="/pages/manager/loaner-miles-report.html">Miles</a>
+        </div>
+        <label>
+          Day
+          <input id="reportDay" type="date" />
+        </label>
+        <button type="button" id="printReportBtn">Print / Save PDF</button>
+      </div>
+
+      <article class="report-doc">
+        <header class="report-letterhead">
+          <div>
+            <div class="report-brand">DEXP</div>
+            <h1>Loaner customers</h1>
+            <p class="report-dealer" id="reportDealer"></p>
+          </div>
+          <div class="report-meta">
+            <div><span>Date</span><b id="reportDate"></b></div>
+          </div>
+        </header>
+
+        <section>
+          <table class="report-grid">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+              </tr>
+            </thead>
+            <tbody id="customerBody"></tbody>
+          </table>
+        </section>
+      </article>
+    </main>
+    <script type="module" src="/js/modules/manager/loaner-customers-report.js?v=2"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+<!-- FILE: /public/pages/manager/loaner-returns-report.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loaner Return Reports</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/manager.css?v=5" />
+  </head>
+  <body>
+    <div id="appHeader"></div>
+    <main class="report-shell">
+      <div class="report-toolbar">
+        <div class="report-tabs">
+          <a href="/pages/manager/manager.html">Production</a>
+          <a class="is-on" href="/pages/manager/loaner-returns-report.html">Loaner returns</a>
+        </div>
+        <label>
+          Day
+          <input id="reportDay" type="date" />
+        </label>
+        <button id="exportCustomersBtn" type="button">Export customers</button>
+        <button id="exportMilesBtn" type="button">Export miles</button>
+      </div>
+
+      <article class="report-doc">
+        <header class="report-letterhead">
+          <div>
+            <div class="report-brand">DEXP</div>
+            <h1>Loaner returns</h1>
+            <p class="report-dealer" id="reportDealer"></p>
+          </div>
+          <div class="report-meta">
+            <div><span>Date</span><b id="reportDate"></b></div>
+          </div>
+        </header>
+
+        <p id="reportMsg" class="report-note"></p>
+
+        <section>
+          <h2>Customers</h2>
+          <p class="report-note">Who returned a loaner. Attach the export to an email.</p>
+          <table class="report-grid">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>RO</th>
+                <th>VIN</th>
+              </tr>
+            </thead>
+            <tbody id="customerBody"></tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2>Miles</h2>
+          <p class="report-note">VIN and the miles written at return.</p>
+          <table class="report-grid">
+            <thead>
+              <tr>
+                <th>VIN</th>
+                <th>Miles</th>
+              </tr>
+            </thead>
+            <tbody id="milesBody"></tbody>
+          </table>
+        </section>
+      </article>
+    </main>
+    <script type="module" src="/js/modules/manager/loaner-returns-report.js?v=2"></script>
+  </body>
+</html>

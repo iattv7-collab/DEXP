@@ -1131,6 +1131,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     setCurrentView("all");
   });
 
+  $("washQueueBtn")?.addEventListener("click", () => {
+    window.location.href = "/pages/advisor/wash-queue.html";
+  });
+
   advisorFilterEl.addEventListener("change", () => {
     const advisorId = advisorFilterEl.value;
 

@@ -1,0 +1,43 @@
+<!-- FILE: /public/pages/advisor/wash-queue.html -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advisor Wash Queue</title>
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/components/date-time-picker.css?v=1" />
+    <link rel="stylesheet" href="/css/modules/advisor.css?v=3" />
+  </head>
+  <body>
+    <div id="appHeader"></div>
+
+    <main id="advisorPage" class="advisor-shell">
+      <section class="page-section">
+        <h1>Wash Queue</h1>
+        <p>Cars in wash, in wash order. Set Need By or request a rewash here.</p>
+      </section>
+
+      <section class="page-section">
+        <div id="msg" class="small-muted"></div>
+
+        <div class="form-row">
+          <button id="myRosBtn" type="button">My ROs</button>
+          <button id="allRosBtn" type="button">All ROs</button>
+          <label for="searchInput">Search:</label>
+          <input id="searchInput" type="text" placeholder="Tag, RO, or customer..." />
+        </div>
+
+        <div id="advisorViewLabel" class="small-muted" style="margin-top: 10px; font-weight: bold"></div>
+
+        <div class="table-wrap">
+          <table id="ticketsTable" class="advisor-table"></table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/js/modules/advisor/advisor-wash-queue.js?v=1"></script>
+  </body>
+</html>

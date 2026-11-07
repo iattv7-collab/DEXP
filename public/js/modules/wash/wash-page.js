@@ -510,12 +510,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       return Number(ticket.needByAtMs || 0) > 0;
     }
 
-    // Waiter, courtesy, or a set Need By holds the spot.
-    // A car with none of those can be pushed back.
+    // Claim cars share one clock. Normal cars stay last.
+    // Need By uses the promised time. Waiter and courtesy use arrival.
     function lane(ticket) {
-      if (isWaiterTicket(ticket) || isCourtesyWash(ticket)) return 0;
-      if (hasNeedBy(ticket)) return 1;
-      return 2;
+      if (hasNeedBy(ticket) || isWaiterTicket(ticket) || isCourtesyWash(ticket)) return 0;
+      return 1;
+    }
+
+    function claimTime(ticket) {
+      if (hasNeedBy(ticket)) return Number(ticket.needByAtMs || 0);
+      return sentAt(ticket);
     }
 
     return [...rows].sort((a, b) => {
@@ -529,6 +533,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       const bLane = lane(b);
 
       if (aLane !== bLane) return aLane - bLane;
+
+      const aTime = aLane === 0 ? claimTime(a) : sentAt(a);
+      const bTime = bLane === 0 ? claimTime(b) : sentAt(b);
+
+      if (aTime !== bTime) return aTime - bTime;
 
       return sentAt(a) - sentAt(b);
     });

@@ -202,6 +202,14 @@ export function renderAppHeader(options = {}) {
       .filter(([mod]) => canAccessModule(mod))
       .map(([mod, cfg]) => ({ key: mod, label: cfg.label, route: cfg.route }));
 
+    if (canAccessModule("advisor")) {
+      available.push({
+        key: "advisor-wash-queue",
+        label: "Wash Queue",
+        route: "/pages/advisor/wash-queue.html",
+      });
+    }
+
     const selected = keys
       .map((k) => available.find((m) => m.key === k))
       .filter(Boolean);
@@ -231,6 +239,13 @@ export function renderAppHeader(options = {}) {
     const available = Object.entries(MODULE_CONFIG)
       .filter(([mod]) => canAccessModule(mod))
       .map(([mod, cfg]) => ({ key: mod, label: cfg.label }));
+
+    if (canAccessModule("advisor")) {
+      available.push({
+        key: "advisor-wash-queue",
+        label: "Wash Queue",
+      });
+    }
 
     const box = document.createElement("div");
     box.style.cssText =
