@@ -247,7 +247,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateSendButton();
   }
 
+  function isNativeApp() {
+    try {
+      return !!(
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === "function" &&
+        window.Capacitor.isNativePlatform()
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
   scanVinBtn.addEventListener("click", async () => {
+    if (isNativeApp()) {
+      sessionStorage.setItem(
+        "dexp_scan_return",
+        "/pages/courtesy-wash/courtesy-wash.html",
+      );
+      location.href = "/pages/vin-scan-test/index.html";
+      return;
+    }
+
     setMsg("");
     scannerStatus.textContent = "";
 
@@ -373,6 +394,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   clearForm();
+
+  const pendingNativeVin = sessionStorage.getItem("dexp_scan_vin");
+  if (pendingNativeVin) {
+    sessionStorage.removeItem("dexp_scan_vin");
+    processVin(pendingNativeVin);
+  }
 
   try {
     const washSettings = await getWashSettings();

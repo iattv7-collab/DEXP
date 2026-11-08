@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let currentSession = getSession();
   let currentDealerId = currentSession?.dealerId || "";
+  const NATIVE_VIN_KEY = "dexp_scan_vin";
   let unsubscribeReturns = null;
   let unsubscribeFleetCounts = null;
   const RETURN_FORM_FIELD_IDS = [
@@ -673,7 +674,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   savedReturnSnapshot = getReturnFormSnapshot();
   updateSaveReturnButton();
 
+  function isNativeApp() {
+    try {
+      return !!(
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === "function" &&
+        window.Capacitor.isNativePlatform()
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
   $("scanReturnBtn").addEventListener("click", async () => {
+    if (isNativeApp()) {
+      sessionStorage.setItem(
+        "dexp_scan_return",
+        "/pages/loaner-returns/loaner-returns.html",
+      );
+      location.href = "/pages/vin-scan-test/index.html";
+      return;
+    }
+
     try {
       status.textContent = "Scanning VIN...";
       openScannerFullscreen();
@@ -1214,6 +1236,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   await load();
   await updateCounts();
   showLoanerFilesTab();
+
+  const pendingNativeVin = sessionStorage.getItem(NATIVE_VIN_KEY);
+  if (pendingNativeVin) {
+    sessionStorage.removeItem(NATIVE_VIN_KEY);
+    fillReturnFromVin(pendingNativeVin);
+  }
 
   window.addEventListener("beforeunload", () => {
     if (unsubscribeReturns) {
