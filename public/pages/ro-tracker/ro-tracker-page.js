@@ -294,19 +294,100 @@ function updateSharingStatusLabel(sharing) {
   }
 }
 
+function columnWidthsKey() {
+  const uid = getSession()?.uid || "local";
+  return `dexp_ro_tracker_col_widths_${uid}`;
+}
+
+function loadColumnWidths() {
+  try {
+    return JSON.parse(localStorage.getItem(columnWidthsKey()) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveColumnWidth(key, width) {
+  const all = loadColumnWidths();
+  all[key] = Math.round(width);
+  localStorage.setItem(columnWidthsKey(), JSON.stringify(all));
+}
+
+function clearColumnWidth(key) {
+  const all = loadColumnWidths();
+  delete all[key];
+  localStorage.setItem(columnWidthsKey(), JSON.stringify(all));
+}
+
+function startColumnResize(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const handle = event.currentTarget;
+  const th = handle.parentElement;
+  const key = handle.dataset.colKey;
+  if (!th || !key) return;
+
+  const startX = event.clientX;
+  const startWidth = th.getBoundingClientRect().width;
+  const index = [...th.parentElement.children].indexOf(th);
+
+  document.body.classList.add("rt-col-resizing");
+
+  function applyWidth(px) {
+    th.style.width = `${px}px`;
+    tableBody.querySelectorAll("tr").forEach((row) => {
+      const cell = row.children[index];
+      if (cell) cell.style.width = `${px}px`;
+    });
+  }
+
+  function onMove(moveEvent) {
+    applyWidth(Math.max(48, startWidth + (moveEvent.clientX - startX)));
+  }
+
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    document.body.classList.remove("rt-col-resizing");
+    saveColumnWidth(key, th.getBoundingClientRect().width);
+  }
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+}
+
 function buildColumns() {
   tableHead.innerHTML = "";
+  const widths = loadColumnWidths();
 
   visibleColumns.forEach((column) => {
     const th = document.createElement("th");
 
     th.textContent = column.label;
+    th.dataset.colKey = column.key;
 
     const columnClass = getROTrackerColumnClass(column.key);
 
     if (columnClass) {
       th.classList.add(columnClass);
     }
+
+    const saved = Number(widths[column.key] || 0);
+    if (saved > 0) th.style.width = `${saved}px`;
+
+    const handle = document.createElement("span");
+    handle.className = "rt-col-resize";
+    handle.dataset.colKey = column.key;
+    handle.title = "Drag to resize. Double-click to reset.";
+    handle.addEventListener("mousedown", startColumnResize);
+    handle.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearColumnWidth(column.key);
+      th.style.width = "";
+    });
+    th.appendChild(handle);
 
     tableHead.appendChild(th);
   });
@@ -335,6 +416,7 @@ function getROTrackerColumnClass(key) {
     loanerVin: "col-loanerlast6",
     techDone: "col-repairdone",
     textSent: "col-text",
+    advisorActions: "col-advisor-actions",
     actions: "col-archive",
   };
 

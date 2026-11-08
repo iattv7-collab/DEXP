@@ -314,7 +314,7 @@
 }
 
 .col-archive {
-  width: 78px;
+  width: 90px;
 }
 
 /* FREEZE RO COLUMN */
@@ -510,7 +510,7 @@
 }
 
 .col-advisor-actions {
-  width: 90px;
+  width: 110px;
 }
 
 .ro-actions-wrap {
@@ -553,4 +553,29 @@
 
 .ro-actions-menu button:hover {
   background: #e6e4e4;
+}
+
+.ro-tracker-table th {
+  position: sticky;
+}
+
+.rt-col-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 6;
+}
+
+.rt-col-resize:hover,
+body.rt-col-resizing .rt-col-resize {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+body.rt-col-resizing {
+  cursor: col-resize;
+  user-select: none;
 }

@@ -141,6 +141,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     return ticket?.isWaiter === true || ticket?.customerWaiting === true;
   }
 
+  function isPickedUp(ticket) {
+    return Boolean(ticket?.pickedUpAtMs);
+  }
+
   function setMsg(text, ok = true) {
     msgEl.textContent = text || "";
     msgEl.style.color = ok ? "green" : "crimson";
@@ -177,11 +181,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function applyPreviewLocks(ticket) {
     const alreadyInWash = isActiveWash(ticket);
+    const pickedUp = isPickedUp(ticket);
 
     alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
 
     if (!washIsOpen) {
       setMsg("Wash is closed. This car will wait until the next open day.", true);
+    }
+
+    if (pickedUp) {
+      if (saveBtn) saveBtn.disabled = true;
+      setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
+      return { alreadyInWash, canSend: false };
     }
 
     if (alreadyInWash) {
@@ -339,6 +350,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!user) {
       throw new Error("Not authenticated.");
+    }
+
+    if (isPickedUp(ticket)) {
+      throw new Error("This vehicle is already picked up. It cannot be sent to wash.");
     }
 
     const tag = tagValue(ticket);
@@ -505,6 +520,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       freshTicket = await updateLocationIfChanged(freshTicket);
       selectedTicket = freshTicket;
       fillPreview(freshTicket);
+
+      if (isPickedUp(freshTicket)) {
+        setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
+        if (saveBtn) saveBtn.disabled = false;
+        return;
+      }
 
       if (isActiveWash(freshTicket)) {
         return;
@@ -677,6 +698,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const blockMsg = await locationBlocksWash(freshTicket);
       if (blockMsg) {
         setMsg("Update location. " + blockMsg, false);
+        if (finishBtn) finishBtn.disabled = false;
+        if (cancelBtn) cancelBtn.disabled = false;
+        return;
+      }
+
+      if (isPickedUp(freshTicket)) {
+        setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
         if (finishBtn) finishBtn.disabled = false;
         if (cancelBtn) cancelBtn.disabled = false;
         return;

@@ -13,6 +13,7 @@ import {
   shiftAppointmentDate,
   undoAppointmentArrived,
   upsertAppointmentsForDate,
+  updateAppointment,
   watchAppointmentsForDate,
 } from "/js/services/firestore/appointments-service.js";
 import {
@@ -317,6 +318,8 @@ function wire(root) {
   });
 
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", handleBoardClick);
+  document.getElementById("appointmentsLiveBody")?.addEventListener("dblclick", openLiveEdit);
+  document.getElementById("appointmentsLiveBody")?.addEventListener("blur", handleLiveEdit, true);
   document.getElementById("appointmentsLiveBody")?.addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-id]");
     if (!row) return;
@@ -501,6 +504,7 @@ function renderBoard() {
   const body = document.getElementById("appointmentsLiveBody");
   const counts = document.getElementById("appointmentsCounts");
   if (!body) return;
+  if (body.querySelector("input.js-appt-edit")) return;
 
   const arrivedCount = liveRows.filter((row) => row.status === APPOINTMENT_STATUS.ARRIVED).length;
 
@@ -549,14 +553,14 @@ function renderLiveRow(row) {
     row.status === APPOINTMENT_STATUS.ARRIVED && !row.roId && !row.roNumber;
 
   return `<tr class="${appointmentRowClass(row)}" data-id="${escapeHtml(row.id)}">
-    <td>${escapeHtml(row.appointmentTime || "")}</td>
-    <td>${escapeHtml(row.transportationType || "")}</td>
-    <td>${escapeHtml(row.advisorCode || "")}</td>
-    <td>${escapeHtml(row.customerName || "")}</td>
-    <td>${escapeHtml(row.vehicle || "")}</td>
-    <td>${escapeHtml(row.vin || "")}</td>
-    <td>${escapeHtml(row.phone || "")}</td>
-    <td>${escapeHtml(row.concern || "")}</td>
+    <td class="js-appt-cell" data-field="appointmentTime" data-id="${escapeHtml(row.id)}">${escapeHtml(row.appointmentTime || "")}</td>
+    <td class="js-appt-cell" data-field="transportationType" data-id="${escapeHtml(row.id)}">${escapeHtml(row.transportationType || "")}</td>
+    <td class="js-appt-cell" data-field="advisorCode" data-id="${escapeHtml(row.id)}">${escapeHtml(row.advisorCode || "")}</td>
+    <td class="js-appt-cell" data-field="customerName" data-id="${escapeHtml(row.id)}">${escapeHtml(row.customerName || "")}</td>
+    <td class="js-appt-cell" data-field="vehicle" data-id="${escapeHtml(row.id)}">${escapeHtml(row.vehicle || "")}</td>
+    <td class="js-appt-cell" data-field="vin" data-id="${escapeHtml(row.id)}">${escapeHtml(row.vin || "")}</td>
+    <td class="js-appt-cell" data-field="phone" data-id="${escapeHtml(row.id)}">${escapeHtml(row.phone || "")}</td>
+    <td class="js-appt-cell" data-field="concern" data-id="${escapeHtml(row.id)}">${escapeHtml(row.concern || "")}</td>
     <td>${escapeHtml(row.status || "")}</td>
     <td>${escapeHtml(roLabel)}</td>
     <td>
@@ -623,6 +627,54 @@ async function handleBoardClick(event) {
     }
   } catch (error) {
     alert(error?.message || "Could not update appointment.");
+  }
+}
+
+function openLiveEdit(event) {
+  const cell = event.target.closest(".js-appt-cell");
+  if (!cell || cell.querySelector("input")) return;
+
+  const field = String(cell.dataset.field || "").trim();
+  const id = String(cell.dataset.id || "").trim();
+  const current = String(cell.textContent || "").trim();
+
+  cell.innerHTML = `<input class="js-appt-edit" data-field="${escapeHtml(field)}" data-id="${escapeHtml(id)}" value="${escapeHtml(current)}" style="width:100%;" />`;
+  const input = cell.querySelector("input");
+  input?.focus();
+  input?.select();
+}
+
+async function handleLiveEdit(event) {
+  const input = event.target.closest(".js-appt-edit");
+  if (!input) return;
+
+  const id = String(input.dataset.id || "").trim();
+  const field = String(input.dataset.field || "").trim();
+  if (!id || !field) return;
+
+  const row = liveRows.find((item) => item.id === id);
+  if (!row) return;
+
+  let value = String(input.value || "").trim();
+  if (field === "vin") value = value.toUpperCase();
+  if (field === "transportationType") value = value.toLowerCase() || "none";
+
+  const previous = String(row[field] || "").trim();
+  const cell = input.parentElement;
+  if (cell) cell.textContent = value;
+
+  if (value === previous) return;
+
+  try {
+    const updates = { [field]: value };
+    if (field === "transportationType") {
+      updates.loanerRequired = value === "loaner";
+    }
+    await updateAppointment(id, updates);
+    setMsg("Saved.");
+  } catch (error) {
+    setMsg(error?.message || "Could not save.");
+    if (cell) cell.textContent = previous;
   }
 }
 

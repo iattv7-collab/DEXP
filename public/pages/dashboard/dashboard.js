@@ -11,6 +11,8 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase
 
 protectRoute();
 
+let dashboardReady = false;
+
 const welcomeText = document.getElementById("welcomeText");
 
 const modulesContainer = document.getElementById("modulesContainer");
@@ -25,6 +27,9 @@ if (getSession()) {
 }
 
 function initializeDashboard() {
+  if (dashboardReady) return;
+  dashboardReady = true;
+
   const session = getSession();
 
   if (!session) {
