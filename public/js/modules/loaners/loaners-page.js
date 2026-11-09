@@ -188,7 +188,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("vin")?.focus();
   });
 
+  function isNativeApp() {
+    try {
+      return !!(
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === "function" &&
+        window.Capacitor.isNativePlatform()
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
   if ($("scanFleetBtn")) $("scanFleetBtn").onclick = async () => {
+    if (isNativeApp()) {
+      sessionStorage.setItem(
+        "dexp_scan_return",
+        "/pages/loaner-fleet/loaner-fleet.html",
+      );
+      location.href = "/pages/vin-scan-test/index.html";
+      return;
+    }
+
     try {
       status.textContent = "Scanning VIN...";
       openScannerFullscreen();
@@ -964,6 +985,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   showLoanerFilesTab();
 
   await load();
+
+  const pendingNativeVin = sessionStorage.getItem("dexp_scan_vin");
+  if (pendingNativeVin) {
+    sessionStorage.removeItem("dexp_scan_vin");
+    $("addLoanerSection").style.display = "block";
+    if ($("toggleAddLoanerBtn")) $("toggleAddLoanerBtn").style.display = "none";
+    fill(pendingNativeVin);
+  }
 
   window.addEventListener("beforeunload", () => {
     if (unsubscribeFleet) {

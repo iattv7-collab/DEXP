@@ -320,7 +320,28 @@ function wireAddForm() {
     if (target) target.style.display = "none";
   }
 
+  function isNativeApp() {
+    try {
+      return !!(
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === "function" &&
+        window.Capacitor.isNativePlatform()
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
   $("scanFleetBtn")?.addEventListener("click", async () => {
+    if (isNativeApp()) {
+      sessionStorage.setItem(
+        "dexp_scan_return",
+        "/pages/loaner-fleet/loaner-manage.html",
+      );
+      location.href = "/pages/vin-scan-test/index.html";
+      return;
+    }
+
     try {
       status.textContent = "Scanning VIN...";
       openScanner();
@@ -384,6 +405,12 @@ function wireAddForm() {
       updateSave();
     }
   });
+
+  const pendingNativeVin = sessionStorage.getItem("dexp_scan_vin");
+  if (pendingNativeVin) {
+    sessionStorage.removeItem("dexp_scan_vin");
+    fill(pendingNativeVin);
+  }
 }
 
 function wireImport() {
