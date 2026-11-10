@@ -178,12 +178,17 @@ function initializeScannerRO() {
     title: "Scan Repair Order",
   });
 
-  roImageInput.addEventListener("click", async (event) => {
-    if (!isCapacitorNative()) {
-      return;
+  const scanLabel = roImageInput?.closest("label");
+
+  async function handleScanClick(event) {
+    const Camera = window.Capacitor?.Plugins?.Camera;
+
+    if (!isCapacitorNative() || !Camera?.getPhoto) {
+      return; // let the normal file picker run
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
     try {
       showMessage("Opening camera...");
@@ -195,8 +200,15 @@ function initializeScannerRO() {
           ? `Camera error. ${error.message}`
           : "Camera error.",
       );
+      // fall back so the user still gets a picker
+      setTimeout(() => roImageInput.click(), 50);
     }
-  });
+  }
+
+  roImageInput.addEventListener("click", handleScanClick);
+  if (scanLabel) {
+    scanLabel.addEventListener("click", handleScanClick);
+  }
 
   roImageInput.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
