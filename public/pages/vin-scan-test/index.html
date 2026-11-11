@@ -51,6 +51,22 @@ public/pages/vin-scan-test/index.html
         body.failed .rescan-wrap {
             display: block;
         }
+        .scan-back {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 30;
+            background: #1E40AF;
+            color: #fff;
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 16px;
+        }
+        body.scanner-on .scan-back {
+            display: block;
+        }
         #rescanBtn {
             font-size: 18px;
             padding: 12px 18px;
@@ -63,6 +79,7 @@ public/pages/vin-scan-test/index.html
         <div class="v"></div>
         <div class="h"></div>
     </div>
+    <button id="scanBackBtn" type="button" class="scan-back">Back</button>
     <main class="page-shell">
         <div class="page-card">
             <div class="page-title-row">
@@ -73,6 +90,6 @@ public/pages/vin-scan-test/index.html
             </div>
         </div>
     </main>
-    <script type="module" src="/js/modules/loaners/vin-scan-native.js?v=2"></script>
+    <script type="module" src="/js/modules/loaners/vin-scan-native.js?v=3"></script>
 </body>
 </html>

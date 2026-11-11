@@ -17,15 +17,6 @@
   <div id="appHeader"></div>
 
   <main class="page-shell">
-    <section class="page-section">
-      <div class="page-title-row">
-        <div>
-          <h2>Requests</h2>
-          <p>Create and track interdepartmental requests.</p>
-        </div>
-      </div>
-    </section>
-
     <section id="requestsCreateSection" class="page-section">
       <div class="dexp-admin-card">
         <h3>Create Request</h3>
@@ -54,6 +45,12 @@
         </div>
 
         <div id="requestVehicleSummary" class="tool-preview hidden"></div>
+
+        <div id="requestFoundBackRow" class="hidden action-row" style="justify-content:flex-end; margin-top:8px;">
+          <button id="requestFoundBackButton" type="button" class="small-button secondary">
+            Back
+          </button>
+        </div>
 
         <div id="requestCreateControls" class="hidden">
           <div class="form-grid">
@@ -187,7 +184,7 @@
   </main>
 
   <script type="module" src="/js/core/app.js"></script>
-  <script type="module" src="/pages/requests/requests-page.js?v=13"></script>
+  <script type="module" src="/pages/requests/requests-page.js?v=15"></script>
 </body>
 
 </html>

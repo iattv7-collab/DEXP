@@ -41,6 +41,8 @@ const createRequestButton = document.getElementById("createRequestButton");
 const requestCreateBackButton = document.getElementById("requestCreateBackButton");
 const requestSearchBlock = document.getElementById("requestSearchBlock");
 const requestSearchBackButton = document.getElementById("requestSearchBackButton");
+const requestFoundBackRow = document.getElementById("requestFoundBackRow");
+const requestFoundBackButton = document.getElementById("requestFoundBackButton");
 
 const myRequestsToggleButton = document.getElementById(
   "myRequestsToggleButton",
@@ -153,9 +155,14 @@ function wireRequestForm() {
     requestVehicleSummary?.classList.add("hidden");
     if (requestVehicleSummary) requestVehicleSummary.innerHTML = "";
     requestCreateControls?.classList.add("hidden");
+    requestFoundBackRow?.classList.add("hidden");
     requestSearchBlock?.classList.remove("hidden");
     setFormMessage("");
     requestTagNumberInput?.focus();
+  });
+
+  requestFoundBackButton?.addEventListener("click", () => {
+    requestCreateBackButton?.click();
   });
 }
 
@@ -284,12 +291,13 @@ async function handleSearchRequestVehicle() {
   requestVehicleSummary.classList.add("hidden");
   requestVehicleSummary.innerHTML = "";
   requestCreateControls.classList.add("hidden");
+  requestFoundBackRow?.classList.add("hidden");
 
   const roNumber = requestRoNumberInput.value.trim();
   const tagNumber = requestTagNumberInput.value.trim();
 
   if (!roNumber && !tagNumber) {
-    setFormMessage("Enter an RO number or tag number.");
+    setFormMessage("Enter an RO number or tag number.", "fail");
     return;
   }
 
@@ -299,7 +307,7 @@ async function handleSearchRequestVehicle() {
   });
 
   if (!ro) {
-    setFormMessage("No RO found for that RO/tag.");
+    setFormMessage("No RO found for that RO/tag.", "fail");
     return;
   }
 
@@ -307,13 +315,16 @@ async function handleSearchRequestVehicle() {
 
   if (String(ro.status || "").toLowerCase() === "archived") {
     const where = String(ro.currentLocation || "").trim();
-    renderRequestVehicleSummary(ro, null);
+    requestVehicleSummary?.classList.add("hidden");
+    if (requestVehicleSummary) requestVehicleSummary.innerHTML = "";
     requestSearchBlock?.classList.add("hidden");
     requestCreateControls.classList.add("hidden");
+    requestFoundBackRow?.classList.remove("hidden");
     setFormMessage(
       where
-        ? `Archived — last location: ${where}. Requests are not allowed.`
-        : "Archived — no location recorded. Requests are not allowed.",
+        ? `This car was picked up. Last location: ${where}.`
+        : "This car was picked up.",
+      "fail",
     );
     return;
   }
@@ -325,9 +336,11 @@ async function handleSearchRequestVehicle() {
 
   if (ro.moveStatus === "moving" || openRequest) {
     requestCreateControls.classList.add("hidden");
+    requestFoundBackRow?.classList.remove("hidden");
     return;
   }
 
+  requestFoundBackRow?.classList.add("hidden");
   requestCreateControls.classList.remove("hidden");
 }
 
@@ -336,7 +349,7 @@ async function handleCreateSelectedRequest() {
     setFormMessage("");
 
     if (!selectedRequestRO) {
-      setFormMessage("Search and select a vehicle first.");
+      setFormMessage("Search and select a vehicle first.", "fail");
       return;
     }
 
@@ -346,7 +359,7 @@ async function handleCreateSelectedRequest() {
     );
 
     if (!selectedRequestType) {
-      setFormMessage("Select request type.");
+      setFormMessage("Select request type.", "fail");
       return;
     }
 
@@ -415,10 +428,10 @@ async function handleCreateSelectedRequest() {
     requestViewMode = "my";
     updateToggleButtons();
 
-    setFormMessage("Request created.");
+    setFormMessage("Request created.", "ok");
   } catch (error) {
     console.error(error);
-    setFormMessage(error.message || "Failed to create request.");
+    setFormMessage(error.message || "Failed to create request.", "fail");
   }
 }
 
@@ -627,8 +640,11 @@ function findTargetGroupByName(groupName) {
   });
 }
 
-function setFormMessage(message) {
+function setFormMessage(message, kind = "") {
+  if (!requestFormMessage) return;
   requestFormMessage.textContent = message || "";
+  requestFormMessage.classList.remove("ok", "fail");
+  if (kind) requestFormMessage.classList.add(kind);
 }
 
 function listenToRequests() {

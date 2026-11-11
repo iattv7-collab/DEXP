@@ -411,9 +411,23 @@ button:hover {
 
 .page-message {
   margin-top: 10px;
-  color: var(--blue);
   font-weight: bold;
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.page-message.ok {
+  color: var(--blue);
+}
+
+.page-message.fail {
+  color: #b00020;
+}
+
+@media (max-width: 700px) {
+  .page-message {
+    font-size: 18px;
+  }
 }
 
 .hidden {
@@ -483,9 +497,23 @@ button:hover {
 
 .tool-message {
   margin: 6px 0 8px;
-  color: #03b014;
-  font-weight: normal;
-  font-size: 14px;
+  font-weight: bold;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.tool-message.ok {
+  color: var(--blue);
+}
+
+.tool-message.fail {
+  color: #b00020;
+}
+
+@media (max-width: 700px) {
+  .tool-message {
+    font-size: 18px;
+  }
 }
 
 .tool-details {
@@ -795,4 +823,47 @@ select {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-sizing: border-box;
+}
+
+/* Consistent headings on small screens */
+@media (max-width: 700px) {
+  .page-section h1,
+  .page-title-row h2,
+  .page-card h1,
+  .page-card h2 {
+    font-size: 20px;
+    margin: 0 0 6px;
+    line-height: 1.2;
+  }
+
+  .page-section h2,
+  .page-card h3,
+  .tool-card h3 {
+    font-size: 16px;
+    margin: 0 0 6px;
+    line-height: 1.2;
+  }
+
+  .page-section p,
+  .page-title-row p {
+    font-size: 14px;
+    margin: 0 0 8px;
+  }
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.form-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-row button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }

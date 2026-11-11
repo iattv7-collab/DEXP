@@ -174,6 +174,7 @@ let activeRequestId = "";
 let pendingRouteTag = "";
 let pendingRouteTitle = "";
 let ownedOpenMoves = [];
+let stopWatchingROs = null;
 
 const DEVICE_ID_KEY = "dexp_device_id";
 
@@ -572,7 +573,12 @@ function toggleSearchMode() {
 }
 
 function loadDealerROs() {
-  watchDealerROs((ros) => {
+  if (typeof stopWatchingROs === "function") {
+    stopWatchingROs();
+    stopWatchingROs = null;
+  }
+
+  stopWatchingROs = watchDealerROs((ros) => {
     lastROs = ros;
 
     renderParkingAvailabilityView({
@@ -602,6 +608,12 @@ function loadDealerROs() {
     }
   });
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    loadDealerROs();
+  }
+});
 
 function hideUpdateLocationPanel() {
   if (!updateLocationPanel) {
@@ -894,8 +906,8 @@ async function findVehicle() {
     const where = formatAreaLot(getROArea(match), getROLot(match));
     showMessage(
       where
-        ? `Archived — last location: ${where}. Moves are not allowed.`
-        : "Archived — no location recorded. Moves are not allowed.",
+        ? `This car was picked up. Last location: ${where}.`
+        : "This car was picked up.",
     );
     return;
   }
@@ -941,11 +953,11 @@ function renderSelectedVehicle(ro) {
   const moveStatus = ro.moveStatus || "";
   const blockedByChain = buildBlockedByChain(ro, lastROs);
 
-  previewTag.textContent = getROTag(ro) || "—";
-  previewRO.textContent = ro[ROS_FIELDS.roNumber] || "—";
-  previewLocation.textContent = formatAreaLot(area, lot) || "No location saved";
-  previewStatus.textContent = moveStatus || "Parked";
-  previewBlockedBy.textContent = blockedByChain.join(", ") || "—";
+  if (previewTag) previewTag.textContent = getROTag(ro) || "—";
+  if (previewRO) previewRO.textContent = ro[ROS_FIELDS.roNumber] || "—";
+  if (previewLocation) previewLocation.textContent = formatAreaLot(area, lot) || "No location saved";
+  if (previewStatus) previewStatus.textContent = moveStatus || "Parked";
+  if (previewBlockedBy) previewBlockedBy.textContent = blockedByChain.join(", ") || "—";
 
   moveChainPanel.classList.add("hidden");
   moveChainList.innerHTML = "";
@@ -2025,6 +2037,14 @@ function setArrivedFromRequest(on) {
 
 function showMessage(message) {
   moveLocateMessage.textContent = message;
+  const fail =
+    message === "Vehicle not found." ||
+    message.startsWith("Could not") ||
+    message.startsWith("This car was picked up") ||
+    message.includes("not allowed") ||
+    message.includes("in a move");
+  moveLocateMessage.classList.toggle("fail", fail);
+  moveLocateMessage.classList.toggle("ok", !fail && Boolean(message));
   moveLocateMessage.classList.toggle(
     "move-found-message",
     message === "Vehicle found.",

@@ -190,8 +190,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (pickedUp) {
+      previewCard.style.display = "none";
       if (saveBtn) saveBtn.disabled = true;
-      setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
+      setMsg("This car was picked up.", false);
       return { alreadyInWash, canSend: false };
     }
 
