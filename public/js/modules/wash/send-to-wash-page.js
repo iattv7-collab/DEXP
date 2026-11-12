@@ -183,7 +183,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const alreadyInWash = isActiveWash(ticket);
     const pickedUp = isPickedUp(ticket);
 
-    alreadyInWashMsg.style.display = alreadyInWash ? "block" : "none";
+    alreadyInWashMsg.style.display =
+      alreadyInWash && !finishMode ? "block" : "none";
 
     if (!washIsOpen) {
       setMsg("Wash is closed. This car will wait until the next open day.", true);
@@ -196,7 +197,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return { alreadyInWash, canSend: false };
     }
 
-    if (alreadyInWash) {
+    if (alreadyInWash && !finishMode) {
       if (saveBtn) saveBtn.disabled = true;
       setMsg("This ticket is already in the Wash queue.", false);
       return { alreadyInWash, canSend: false };
@@ -718,9 +719,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
       }
 
+      if (freshTicket.keyMissingAtWash) {
+        const user = auth.currentUser;
+        await updateDoc(doc(db, "ros", freshTicket.id), {
+          keyMissingAtWash: false,
+          keyMissingAtWashAtMs: null,
+          keyMissingAtWashBy: null,
+          keyMissingAtWashByName: null,
+          updatedAt: serverTimestamp(),
+          updatedByUid: user?.uid || "",
+          updatedByName: clean(user?.displayName || ""),
+          updatedByEmail: clean(user?.email || ""),
+          lastEditedAtMs: Date.now(),
+          lastEditedBy: user?.uid || "",
+          lastEditedRole: currentSession?.role || "unknown",
+          lastEditedFields: [
+            "keyMissingAtWash",
+            "keyMissingAtWashAtMs",
+            "keyMissingAtWashBy",
+            "keyMissingAtWashByName",
+          ],
+        });
+      }
+
       await completeRequest(activeRequest.id);
       if (activeNotificationId) {
         await resolveNotificationRequest(activeNotificationId);
+      }
+
+      const advisorAlertId = `key-missing-advisor-${freshTicket.id}`;
+      const advisorAlert = await getDoc(doc(db, "notificationRequests", advisorAlertId));
+      if (advisorAlert.exists() && advisorAlert.data()?.status === "active") {
+        await resolveNotificationRequest(advisorAlertId);
       }
 
       setMsg("Key at wash. Sent to the wash board.");

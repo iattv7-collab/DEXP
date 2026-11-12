@@ -30,6 +30,8 @@ import {
 } from "/js/services/firestore/courtesy-wash-service.js";
 
 import { resolveNotificationRequest } from "/js/services/firestore/notification-requests-service.js";
+import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
+import { createRequest } from "/js/services/firestore/requests-service.js";
 
 import {
   arrayUnion,
@@ -87,6 +89,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     { key: "start", label: "Start" },
     { key: "done", label: "Done" },
     { key: "remove", label: "Remove" },
+    { key: "keyNotHere", label: "Key not here" },
   ];
 
   const washColumnStorageKey = `dexp_wash_columns_${currentSession?.uid || "local"}`;
@@ -369,6 +372,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       washQueuedAtMs: null,
       washQueuedBy: null,
 
+      keyMissingAtWash: false,
+      keyMissingAtWashAtMs: null,
+      keyMissingAtWashBy: null,
+      keyMissingAtWashByName: null,
+
       washingStartedAt: null,
       washingStartedAtMs: null,
       washingStartedBy: null,
@@ -398,6 +406,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         "washQueuedAt",
         "washQueuedAtMs",
         "washQueuedBy",
+        "keyMissingAtWash",
+        "keyMissingAtWashAtMs",
+        "keyMissingAtWashBy",
+        "keyMissingAtWashByName",
         "washingStartedAt",
         "washingStartedAtMs",
         "washingStartedBy",
@@ -605,6 +617,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           start: `<button class="startWashBtn" ${startDisabled}>Start</button>`,
           done: `<button class="markWashedBtn" ${doneDisabled}>Done</button>`,
           remove: `<button class="removeWashBtn">Remove</button>`,
+          keyNotHere: courtesy || ticket.keyMissingAtWash
+            ? ""
+            : `<button class="keyNotHereBtn">Key not here</button>`,
         };
 
         return `
@@ -941,9 +956,115 @@ document.addEventListener("DOMContentLoaded", async () => {
           await removeCourtesyWashFromQueue(ticketId);
         } else {
           await removeRoFromWashQueue(ticketId);
+          const advisorAlertId = `key-missing-advisor-${ticketId}`;
+          const advisorAlert = await getDoc(doc(db, "notificationRequests", advisorAlertId));
+          if (advisorAlert.exists() && advisorAlert.data()?.status === "active") {
+            await resolveNotificationRequest(advisorAlertId);
+          }
         }
 
         setMsg("Vehicle removed from wash queue.");
+      }
+
+      if (button.classList.contains("keyNotHereBtn")) {
+        if (courtesy) {
+          return;
+        }
+
+        const ticket = roWashRows.find((row) => row.id === ticketId);
+        if (!ticket || ticket.keyMissingAtWash) {
+          return;
+        }
+
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error("Not signed in.");
+        }
+
+        const nowMs = Date.now();
+        const advisorId = clean(ticket.advisorId);
+        const roNumber = roValue(ticket);
+        const tag = tagValue(ticket);
+        const message = `RO ${roNumber} Tag ${tag} is marked at wash but the key is not here.`;
+
+        await updateDoc(doc(db, "ros", ticketId), {
+          keyMissingAtWash: true,
+          keyMissingAtWashAtMs: nowMs,
+          keyMissingAtWashBy: user.uid,
+          keyMissingAtWashByName: clean(user.displayName || user.email || ""),
+          ...auditPatch(),
+          lastEditedFields: [
+            "keyMissingAtWash",
+            "keyMissingAtWashAtMs",
+            "keyMissingAtWashBy",
+            "keyMissingAtWashByName",
+          ],
+        });
+
+        if (advisorId) {
+          const advisorAlertId = `key-missing-advisor-${ticketId}`;
+          await setDoc(doc(db, "notificationRequests", advisorAlertId), {
+            id: advisorAlertId,
+            dealerId: currentDealerId,
+            module: "advisor",
+            eventType: "key_missing_at_wash",
+            title: "Key not at wash",
+            message,
+            status: "active",
+            targetType: "user",
+            targetUserId: advisorId,
+            targetUserName: clean(ticket.advisorName || ""),
+            route: "/pages/advisor/advisor.html",
+            routeParams: { roId: ticketId, roNumber },
+            relatedRoId: ticketId,
+            relatedRoNumber: roNumber,
+            relatedTagNumber: tag,
+            createdAt: serverTimestamp(),
+            createdAtMs: nowMs,
+            createdBy: user.uid,
+            createdByName: clean(user.displayName || ""),
+            updatedAt: serverTimestamp(),
+            updatedAtMs: nowMs,
+            resolvedAt: null,
+            resolvedAtMs: null,
+            openedBy: "",
+            openedAtMs: null,
+          });
+        }
+
+        const types = await getActiveRequestTypes();
+        const washType = types.find(
+          (item) => String(item.requestType || "").trim() === "move-to-wash",
+        );
+
+        if (!washType?.targetGroupId) {
+          setMsg("Key flagged. Move to Wash request type is not set.", false);
+          return;
+        }
+
+        try {
+          await createRequest({
+            roId: ticketId,
+            roNumber,
+            tagNumber: tag,
+            requestType: washType.requestType,
+            sourceModule: "wash",
+            targetGroupId: washType.targetGroupId,
+            targetGroupName: washType.targetGroupName || "",
+            title: "Key not at wash",
+            message: `Tag ${tag} — key is not at wash. Take the key to wash.`,
+            route: "/pages/send-to-wash/send-to-wash.html",
+          });
+        } catch (error) {
+          const text = String(error?.message || "");
+          if (text.includes("already has an active request")) {
+            setMsg("Key flagged. This RO already has an open request.", false);
+            return;
+          }
+          throw error;
+        }
+
+        setMsg("Key not here noted. Advisor notified. Valet task created.");
       }
     } catch (error) {
       console.error(error);

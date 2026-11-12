@@ -756,10 +756,19 @@ function renderDesktopPopups(notifications = []) {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.popupDismissId;
       const notification = popups.find((item) => item.id === notificationId);
+      const eventType = String(notification?.eventType || "").trim();
+      const stayUntilDone =
+        eventType === "move-to-wash" || eventType === "key_missing_at_wash";
+
       silenceNotificationAlert(notificationId);
       renderDesktopPopups(
         currentVisibleNotifications.filter((item) => popupNotificationIds.has(item.id)),
       );
+
+      if (stayUntilDone) {
+        return;
+      }
+
       await handleDismissNotification(notification || { id: notificationId });
     });
   });

@@ -15,7 +15,7 @@ import {
 
 import {
   startNotificationEngine
-} from "../modules/notifications/notification-engine.js";
+} from "../modules/notifications/notification-engine.js?v=1";
 
 import {
   registerCurrentDeviceForNotifications
