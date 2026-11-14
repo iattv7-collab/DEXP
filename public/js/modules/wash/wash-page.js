@@ -31,7 +31,7 @@ import {
 
 import { resolveNotificationRequest } from "/js/services/firestore/notification-requests-service.js";
 import { getActiveRequestTypes } from "/js/services/firestore/request-types-service.js";
-import { createRequest } from "/js/services/firestore/requests-service.js";
+import { createRequest, cancelRequest } from "/js/services/firestore/requests-service.js";
 
 import {
   arrayUnion,
@@ -617,9 +617,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           start: `<button class="startWashBtn" ${startDisabled}>Start</button>`,
           done: `<button class="markWashedBtn" ${doneDisabled}>Done</button>`,
           remove: `<button class="removeWashBtn">Remove</button>`,
-          keyNotHere: courtesy || ticket.keyMissingAtWash
+          keyNotHere: courtesy
             ? ""
-            : `<button class="keyNotHereBtn">Key not here</button>`,
+            : ticket.keyMissingAtWash
+              ? `<button class="keyHereBtn">Key here</button>`
+              : `<button class="keyNotHereBtn">Key not here</button>`,
         };
 
         return `
@@ -1065,6 +1067,55 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         setMsg("Key not here noted. Advisor notified. Valet task created.");
+      }
+
+      if (button.classList.contains("keyHereBtn")) {
+        if (courtesy) {
+          return;
+        }
+
+        const ticket = roWashRows.find((row) => row.id === ticketId);
+        if (!ticket?.keyMissingAtWash) {
+          return;
+        }
+
+        await updateDoc(doc(db, "ros", ticketId), {
+          keyMissingAtWash: false,
+          keyMissingAtWashAtMs: null,
+          keyMissingAtWashBy: null,
+          keyMissingAtWashByName: null,
+          ...auditPatch(),
+          lastEditedFields: [
+            "keyMissingAtWash",
+            "keyMissingAtWashAtMs",
+            "keyMissingAtWashBy",
+            "keyMissingAtWashByName",
+          ],
+        });
+
+        const advisorAlertId = `key-missing-advisor-${ticketId}`;
+        const advisorAlert = await getDoc(doc(db, "notificationRequests", advisorAlertId));
+        if (advisorAlert.exists() && advisorAlert.data()?.status === "active") {
+          await resolveNotificationRequest(advisorAlertId);
+        }
+
+        const openQuery = query(
+          collection(db, "requests"),
+          where("dealerId", "==", currentDealerId),
+          where("status", "in", ["active", "in_progress"]),
+        );
+        const openSnap = await getDocs(openQuery);
+        for (const docSnap of openSnap.docs) {
+          const data = docSnap.data() || {};
+          if (
+            data.roId === ticketId &&
+            String(data.requestType || "").trim() === "move-to-wash"
+          ) {
+            await cancelRequest({ id: docSnap.id, ...data });
+          }
+        }
+
+        setMsg("Key here. Advisor alert cleared. Valet task cancelled.");
       }
     } catch (error) {
       console.error(error);
