@@ -529,7 +529,11 @@ function getVisibleNotifications(requests = [], session) {
       return false;
     }
 
-    if (item.openedBy) {
+    const isRequestAlert =
+      String(item.module || "").trim() === "requests" ||
+      String(item.sourceType || "").trim() === "request";
+
+    if (item.openedBy && !isRequestAlert) {
       return false;
     }
 
@@ -756,16 +760,16 @@ function renderDesktopPopups(notifications = []) {
     button.addEventListener("click", async () => {
       const notificationId = button.dataset.popupDismissId;
       const notification = popups.find((item) => item.id === notificationId);
-      const eventType = String(notification?.eventType || "").trim();
-      const stayUntilDone =
-        eventType === "move-to-wash" || eventType === "key_missing_at_wash";
+      const isRequestAlert =
+        String(notification?.module || "").trim() === "requests" ||
+        String(notification?.sourceType || "").trim() === "request";
 
       silenceNotificationAlert(notificationId);
       renderDesktopPopups(
         currentVisibleNotifications.filter((item) => popupNotificationIds.has(item.id)),
       );
 
-      if (stayUntilDone) {
+      if (isRequestAlert) {
         return;
       }
 

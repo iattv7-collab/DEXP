@@ -403,12 +403,24 @@ async function openNotificationFromRoute() {
     releaseRequestButton.classList.remove("hidden");
   }
 
+  hideLeaveButtonsWhileClaimed();
+
   try {
     await openNotificationRequest(activeNotificationId);
   } catch (error) {
     console.error("Could not mark notification opened:", error);
     showMessage(error?.message || "Could not open request.");
   }
+}
+
+function hideLeaveButtonsWhileClaimed() {
+  document.getElementById("homeButton")?.classList.add("hidden");
+  document.getElementById("refreshAppButton")?.classList.add("hidden");
+  document.getElementById("dexpLogoButton")?.classList.add("hidden");
+
+  document.getElementById("moveSearchBackRow")?.classList.add("hidden");
+  document.getElementById("clearSearchButton")?.classList.add("hidden");
+  document.getElementById("moveFinishBackButton")?.classList.add("hidden");
 }
 
 function loadNotificationRouteParams() {
@@ -933,7 +945,11 @@ async function findVehicle() {
     document.getElementById("moveSecondaryActions")?.classList.add("hidden");
     document.getElementById("clearSearchButton")?.classList.add("hidden");
   } else {
-    document.getElementById("clearSearchButton")?.classList.remove("hidden");
+    if (activeNotificationId || activeRequestId) {
+      document.getElementById("clearSearchButton")?.classList.add("hidden");
+    } else {
+      document.getElementById("clearSearchButton")?.classList.remove("hidden");
+    }
     document.getElementById("updateLocationButton")?.classList.remove("hidden");
   }
 
