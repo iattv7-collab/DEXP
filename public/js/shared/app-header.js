@@ -13,6 +13,10 @@ import {
 import { watchArchivedROs } from "/js/services/firestore/ros-service.js";
 import { MODULE_CONFIG } from "/js/config/modules.js";
 import { canAccessModule } from "/js/core/session.js";
+import {
+  initPickupRequestPanel,
+  openPickupSearch,
+} from "/js/modules/pickup-request/pickup-request-panel.js";
 
 let unsubscribeHeaderFollowUps = null;
 
@@ -58,6 +62,8 @@ export function renderAppHeader(options = {}) {
 
   const showFollowUpCounter =
     !platformMode && session?.role === "advisor" && Boolean(session?.uid);
+
+  const showRequestPickup = showFollowUpCounter;
 
   const header = document.createElement("header");
   header.id = "appHeader";
@@ -128,6 +134,19 @@ export function renderAppHeader(options = {}) {
             >
               Follow Ups
               (<span id="roReminderCounter">0</span>)
+            </button>
+          `
+      : ""
+    }
+
+      ${showRequestPickup
+      ? `
+            <button
+              id="requestPickupButton"
+              type="button"
+              title="Request a customer pickup"
+            >
+              Request Pickup
             </button>
           `
       : ""
@@ -399,6 +418,13 @@ export function renderAppHeader(options = {}) {
 
         alert("Could not open notification settings on this device.");
       }
+    });
+  }
+
+  if (showRequestPickup) {
+    initPickupRequestPanel();
+    document.getElementById("requestPickupButton")?.addEventListener("click", () => {
+      openPickupSearch();
     });
   }
 

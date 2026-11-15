@@ -69,8 +69,7 @@ async function assertNoOpenRequestForRO({
 
   if (existingRequest) {
     throw new Error(
-      `This RO already has an active request: ${
-        existingRequest.title || existingRequest.requestType || "Request"
+      `This RO already has an active request: ${existingRequest.title || existingRequest.requestType || "Request"
       }.`,
     );
   }
@@ -124,6 +123,9 @@ export async function createRequest({
 
   route = "",
   routeParams = {},
+
+  customerName = "",
+  vehicleLabel = "",
 }) {
   const session = getSession();
 
@@ -171,6 +173,9 @@ export async function createRequest({
 
     route,
     routeParams,
+
+    customerName,
+    vehicleLabel,
 
     notificationRequestId: "",
 
@@ -422,6 +427,24 @@ export async function completeRequest(requestId) {
       message: request.title || "Request completed",
     });
   }
+
+  if (request?.notificationRequestId) {
+    const notificationRef = doc(
+      db,
+      NOTIFICATION_REQUESTS_COLLECTION,
+      request.notificationRequestId,
+    );
+
+    await updateDoc(notificationRef, {
+      status: NOTIFICATION_STATUS.EXPIRED,
+      resolvedAt: serverTimestamp(),
+      resolvedAtMs: Date.now(),
+      resolvedBy: session.uid,
+      updatedAt: serverTimestamp(),
+      updatedAtMs: Date.now(),
+      updatedBy: session.uid,
+    });
+  }
 }
 
 export async function cancelRequest(request = {}) {
@@ -436,16 +459,22 @@ export async function cancelRequest(request = {}) {
   if (!request?.id) {
     throw new Error("Missing request ID.");
   }
-
   if (request.roId) {
     const roSnap = await getDoc(doc(db, "ros", request.roId));
     const ro = roSnap.exists() ? roSnap.data() || {} : {};
-    if (String(ro.moveStatus || "") === "moving") {
+    const isArchived = String(ro.status || "").toLowerCase() === "archived";
+    const isPickedUp = Boolean(ro.pickedUpAtMs);
+    if (
+      String(ro.moveStatus || "") === "moving" &&
+      !isArchived &&
+      !isPickedUp
+    ) {
       throw new Error(
         `Tag ${ro.tagNumber || request.tagNumber || ""} is already moving. Cancel the move on Move & Locate first.`,
       );
     }
   }
+
 
   const requestRef = doc(db, REQUESTS_COLLECTION, request.id);
 

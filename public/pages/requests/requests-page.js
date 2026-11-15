@@ -736,7 +736,14 @@ function renderRequestsTable() {
         return;
       }
 
-      const confirmed = confirm("Cancel this request?");
+      const session = getSession();
+      const isOwn = request.requestedByUid === session?.uid;
+      const who = request.requestedByName || "someone else";
+      const message = isOwn
+        ? "Cancel this request?"
+        : `This request was created by ${who}. Cancel it anyway?`;
+
+      const confirmed = confirm(message);
 
       if (!confirmed) {
         return;
@@ -820,7 +827,7 @@ function canCancelRequest(request = {}) {
     return true;
   }
 
-  return ["platform-admin", "admin", "manager", "dispatcher"].includes(
+  return ["platform-admin", "admin", "manager", "dispatcher", "advisor"].includes(
     session?.role,
   );
 }
