@@ -2,6 +2,7 @@
 // Initializes authentication, the DEXP session, and background services.
 
 import {
+  auth,
   watchAuthState
 } from "../services/firebase/auth-service.js";
 
@@ -38,6 +39,7 @@ import {
   getValidSession,
   clearSession
 } from "./session.js";
+
 
 const PENDING_REGISTRATION_KEY =
   "dexp_pending_registration";
@@ -709,6 +711,25 @@ watchAuthState(async (user) => {
   if (user) {
     await loadUserSession(user);
   } else {
+    const stored = localStorage.getItem("dexp_session");
+
+    if (stored) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      if (auth.currentUser) {
+        await loadUserSession(auth.currentUser);
+        initializeApp();
+        console.timeEnd(
+          "DEXP: auth state to session-ready"
+        );
+        window.dexpSessionReady = true;
+        window.dispatchEvent(
+          new CustomEvent("dexp-session-ready")
+        );
+        return;
+      }
+    }
+
     clearSession();
 
     console.log(

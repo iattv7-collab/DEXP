@@ -37,6 +37,22 @@
       </div>
 
       <section class="tool-card">
+        <h3>Customer pickup destination</h3>
+        <p class="tool-help">
+          Set once. Valet pickup notifications use this lot.
+        </p>
+        <div class="tool-row">
+          <label>
+            Destination
+            <select id="pickupDestinationSelect">
+              <option value="">Select lot...</option>
+            </select>
+          </label>
+          <button id="savePickupDestinationButton" type="button">Save</button>
+        </div>
+      </section>
+
+      <section class="tool-card">
         <h3>Add Parking Lot</h3>
 
         <p class="tool-help">
@@ -149,6 +165,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/location-settings/location-settings.js?v=4"></script>
+    <script type="module" src="/pages/location-settings/location-settings.js?v=5"></script>
   </body>
 </html>

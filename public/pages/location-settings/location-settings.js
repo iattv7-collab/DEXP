@@ -17,6 +17,10 @@ import {
   updateArea,
   deleteArea,
 } from "/js/services/firestore/areas-service.js";
+import {
+  getPickupSettings,
+  updatePickupSettings,
+} from "/js/services/firestore/pickup-settings-service.js";
 
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
@@ -62,6 +66,10 @@ function initializeLocationSettings() {
 
   loadAreas();
   loadLocations();
+  loadPickupDestination();
+  document
+    .getElementById("savePickupDestinationButton")
+    ?.addEventListener("click", savePickupDestination);
 }
 
 async function handleCreateArea() {
@@ -624,4 +632,47 @@ function showMessage(message) {
 
 function clearMessage() {
   locationSettingsMessage.textContent = "";
+}
+
+async function loadPickupDestination() {
+  const select = document.getElementById("pickupDestinationSelect");
+  if (!select) return;
+
+  const locations = (await getAllLocations()).filter(
+    (location) => location.active !== false,
+  );
+  const settings = await getPickupSettings();
+
+  select.innerHTML = `<option value="">Select lot...</option>`;
+  locations
+    .sort((a, b) => String(a.label || "").localeCompare(String(b.label || "")))
+    .forEach((location) => {
+      const option = document.createElement("option");
+      option.value = location.id;
+      option.textContent = `${formatArea(location.area)} / ${location.label}`;
+      option.dataset.label = location.label || "";
+      option.dataset.area = location.area || "";
+      select.appendChild(option);
+    });
+
+  if (settings.destinationLocationId) {
+    select.value = settings.destinationLocationId;
+  }
+}
+
+async function savePickupDestination() {
+  const select = document.getElementById("pickupDestinationSelect");
+  const option = select?.selectedOptions?.[0];
+  if (!select?.value || !option) {
+    showMessage("Select a pickup destination.");
+    return;
+  }
+
+  await updatePickupSettings({
+    destinationLocationId: select.value,
+    destinationLabel: option.dataset.label || "",
+    destinationArea: option.dataset.area || "",
+  });
+
+  showMessage("Pickup destination saved.");
 }

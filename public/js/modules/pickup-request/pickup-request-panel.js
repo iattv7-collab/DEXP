@@ -150,7 +150,7 @@ async function createFromFound(ro, close) {
       message:
         pickupType.defaultMessage ||
         `RO ${roNumber || "N/A"} • Tag ${tagNumber || "N/A"}`,
-      route: pickupType.route || "/pages/move-locate/move-locate.html",
+      route: "/pages/pickup-finish/index.html",
       routeParams: {
         tagNumber,
         title: pickupType.name || "Customer pickup",

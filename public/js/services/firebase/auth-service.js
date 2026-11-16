@@ -1,11 +1,13 @@
 // public/js/services/firebase/auth-service.js
 
 import {
+  browserLocalPersistence,
   createUserWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  setPersistence,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut
@@ -14,6 +16,10 @@ import {
 import { app } from "./firebase-app.js";
 
 export const auth = getAuth(app);
+
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn("Could not set local auth persistence.", error);
+});
 
 const provider = new GoogleAuthProvider();
 

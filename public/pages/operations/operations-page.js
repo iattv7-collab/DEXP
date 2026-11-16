@@ -227,6 +227,7 @@ function wireTabs() {
   });
 
   operationsReadyTableBody?.addEventListener("change", handleReadyPickupChange);
+  liveOperationsTableBody?.addEventListener("click", handleLivePickupClick);
 
   renderTabs();
 }
@@ -745,9 +746,60 @@ function renderLiveOperationRow(request) {
       request.completedAtMs || request.cancelledAtMs,
     ),
   )}</td>
-      <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}</td>
+      <td data-label="Elapsed">${escapeHtml(formatElapsed(request))}${renderLivePickupAction(request)}</td>
     </tr>
   `;
+}
+
+function isPickupRequest(request = {}) {
+  const type = String(request.requestType || "").toLowerCase();
+  const title = String(request.title || "").toLowerCase();
+  return type.includes("pickup") || type.includes("pick-up") || type.includes("pick_up") || title.includes("pick up") || title.includes("pickup");
+}
+
+function renderLivePickupAction(request = {}) {
+  if (request.status !== REQUEST_STATUS.COMPLETED || !isPickupRequest(request)) {
+    return "";
+  }
+
+  const ro = dealerROs.find((item) => item.id === request.roId);
+
+  if (!ro || ro.pickedUpAtMs) {
+    return `<div>Picked up</div>`;
+  }
+
+  return `<button type="button" class="small-button js-live-picked-up" data-ro-id="${escapeHtml(request.roId || "")}">Picked up</button>`;
+}
+
+async function handleLivePickupClick(event) {
+  const button = event.target.closest(".js-live-picked-up");
+  if (!button) return;
+
+  const roId = button.dataset.roId;
+  if (!roId) return;
+
+  const session = getSession();
+  button.disabled = true;
+
+  try {
+    await updateRO(
+      roId,
+      {
+        pickedUpAtMs: Date.now(),
+        pickedUpBy: session?.uid || "",
+        pickedUpByName: session?.displayName || "",
+        pickedUpByRole: session?.role || "",
+      },
+      {
+        module: "operations",
+        eventType: "picked_up_updated",
+        message: "Customer picked up",
+      },
+    );
+  } catch (error) {
+    button.disabled = false;
+    alert(error?.message || "Could not mark picked up.");
+  }
 }
 
 function renderHistoryRow(request) {
