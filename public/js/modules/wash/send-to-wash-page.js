@@ -81,6 +81,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const pWashStatus = $("pWashStatus");
   const pLocation = $("pLocation");
   const pWaiter = $("pWaiter");
+  const waiterCheck = $("waiterCheck");
 
   let selectedTicket = null;
   let currentSession = await waitForSession();
@@ -175,6 +176,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pWashStatus.textContent = "";
     pLocation.textContent = "";
     pWaiter.textContent = "";
+    if (waiterCheck) waiterCheck.checked = false;
 
     notesEl.value = "";
   }
@@ -252,12 +254,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
     pLocation.textContent = locationValue(ticket);
     pWaiter.textContent = isWaiterTicket(ticket) ? "Yes" : "No";
+    if (waiterCheck) waiterCheck.checked = isWaiterTicket(ticket);
 
     if (keyAlreadyAtWashCheck) keyAlreadyAtWashCheck.checked = false;
     if (locationPanel) locationPanel.style.display = "none";
 
     return applyPreviewLocks(ticket);
   }
+
+  waiterCheck?.addEventListener("change", async () => {
+    if (!selectedTicket) return;
+    const checked = waiterCheck.checked;
+    const now = Date.now();
+    const user = auth.currentUser;
+    if (!user) {
+      setMsg("Not authenticated.", false);
+      waiterCheck.checked = !checked;
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "ros", selectedTicket.id), {
+        customerWaiting: checked,
+        isWaiter: checked,
+        waiterMarkedAtMs: checked ? now : null,
+        waiterNextReminderAtMs: checked ? now + 60 * 60 * 1000 : null,
+        waiterReminderCount: 0,
+        waiterLastSentAtMs: null,
+        updatedAt: serverTimestamp(),
+        updatedByUid: user.uid,
+        updatedByName: clean(user.displayName || ""),
+        updatedByEmail: clean(user.email || ""),
+        lastEditedAtMs: now,
+        lastEditedBy: user.uid,
+        lastEditedRole: currentSession?.role || "unknown",
+        lastEditedFields: [
+          "customerWaiting",
+          "isWaiter",
+          "waiterMarkedAtMs",
+          "waiterNextReminderAtMs",
+          "waiterReminderCount",
+          "waiterLastSentAtMs",
+        ],
+      });
+
+      selectedTicket = {
+        ...selectedTicket,
+        customerWaiting: checked,
+        isWaiter: checked,
+      };
+      pWaiter.textContent = checked ? "Yes" : "No";
+      setMsg(checked ? "Marked as waiter." : "Waiter removed.");
+    } catch (error) {
+      console.error(error);
+      waiterCheck.checked = !checked;
+      setMsg(error?.message || "Could not update waiter.", false);
+    }
+  });
 
   async function findByField(fieldName, value) {
     const snap = await getDocs(
