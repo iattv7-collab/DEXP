@@ -55,6 +55,7 @@ let currentVisibleNotifications = [];
 let notificationTrayExpanded = false;
 
 let notificationAlertTimer = null;
+let pendingSoundNotification = null;
 
 const ringingNotificationIds = new Set();
 
@@ -90,22 +91,19 @@ export async function startNotificationEngine() {
   document.addEventListener("keydown", unlockNotificationAlerts, {
     once: true,
   });
-  notificationPreferences = {
-    notificationsEnabled: true,
-    soundEnabled: true,
-    vibrationEnabled: true,
-  };
-
   initialNotificationSnapshotLoaded = false;
   alertedNotificationIds.clear();
 
-  getCurrentDeviceNotificationPreferences()
-    .then((preferences) => {
-      notificationPreferences = preferences;
-    })
-    .catch((error) => {
-      console.warn("Could not load device notification preferences.", error);
-    });
+  try {
+    notificationPreferences = await getCurrentDeviceNotificationPreferences();
+  } catch (error) {
+    console.warn("Could not load device notification preferences.", error);
+    notificationPreferences = {
+      notificationsEnabled: false,
+      soundEnabled: false,
+      vibrationEnabled: false,
+    };
+  }
 
   const groups = await getNotificationGroups();
 
@@ -201,14 +199,34 @@ function processNewNotificationAlerts(notifications = []) {
   });
 
   if (!initialNotificationSnapshotLoaded) {
+    const now = Date.now();
+    const recentWindowMs = 15000; // 15 seconds
+
     notifications.forEach((notification) => {
-      if (notification?.id) {
-        alertedNotificationIds.add(notification.id);
+      if (!notification?.id) return;
+
+      const createdAt = Number(notification.createdAtMs || 0);
+      const isRecent = createdAt && now - createdAt < recentWindowMs;
+
+      if (isRecent && !silencedNotificationIds.has(notification.id)) {
+        // Arrived while the page was loading — show banner and allow sound.
+        ringingNotificationIds.add(notification.id);
+        popupNotificationIds.add(notification.id);
       }
+
+      alertedNotificationIds.add(notification.id);
     });
 
-    initialNotificationSnapshotLoaded = true;
-    stopRepeatingNotificationAlert();
+    // Only lock the flag once we have seen real data.
+    if (notifications.length > 0) {
+      initialNotificationSnapshotLoaded = true;
+    }
+
+    if (ringingNotificationIds.size) {
+      startRepeatingNotificationAlert();
+    } else {
+      stopRepeatingNotificationAlert();
+    }
     return;
   }
 
@@ -321,6 +339,10 @@ async function startForegroundPushListener() {
 
     const messaging = getMessaging(app);
     unsubscribeForegroundPush = onMessage(messaging, (payload) => {
+      if (pageIsInForeground()) {
+        return;
+      }
+
       const data = payload?.data || {};
       showSystemNotification(
         {
@@ -337,15 +359,17 @@ async function startForegroundPushListener() {
 }
 
 function showSystemNotification(notification = {}, options = {}) {
+  // Never show the browser/system banner while the app is in the foreground.
+  // DEXP in-app banner + sound only.
+  if (pageIsInForeground()) {
+    return;
+  }
+
   if (!("Notification" in window)) {
     return;
   }
 
   if (Notification.permission !== "granted") {
-    return;
-  }
-
-  if (!options.force && pageIsInForeground()) {
     return;
   }
 
@@ -406,40 +430,28 @@ function silenceNotificationAlert(notificationId) {
 }
 
 function unlockNotificationAlerts() {
-  const soundPaths = Object.values(NOTIFICATION_CONFIG.sounds || {});
-
-  soundPaths.forEach((soundPath) => {
-    let audio = notificationAudioCache.get(soundPath);
-
-    if (!audio) {
-      audio = new Audio(soundPath);
-      audio.preload = "auto";
-
-      notificationAudioCache.set(soundPath, audio);
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
     }
+  } catch (error) {
+    console.warn("Could not unlock audio context.", error);
+  }
 
-    const previousVolume = audio.volume;
-
-    audio.volume = 0;
-    audio.currentTime = 0;
-
-    audio
-      .play()
-      .then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.volume = previousVolume;
-      })
-      .catch((error) => {
-        audio.volume = previousVolume;
-
-        console.warn("Could not unlock notification audio.", error);
-      });
-  });
-
-  if (canVibrate()) {
-    navigator.vibrate(1);
-    navigator.vibrate(0);
+  // If a notification arrived before the first tap, play it now.
+  if (pendingSoundNotification && notificationPreferences.soundEnabled) {
+    const notification = pendingSoundNotification;
+    pendingSoundNotification = null;
+    playNotificationSound(notification);
   }
 }
 
@@ -462,7 +474,10 @@ function playNotificationSound(notification = {}) {
     audio.volume = getNotificationVolume(notification);
 
     audio.play().catch((error) => {
-      console.warn("Browser blocked notification sound.", error);
+      // iOS blocked it because there has been no tap yet.
+      // Remember it and play on the next gesture.
+      pendingSoundNotification = notification;
+      console.warn("Sound deferred until user gesture.", error);
     });
   } catch (error) {
     console.warn("Could not play notification sound.", error);
