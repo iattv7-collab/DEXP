@@ -244,6 +244,40 @@ export async function archiveRO(roId, options = {}) {
       [ROS_FIELDS.followupCompletedBy]: "",
       [ROS_FIELDS.followupCompletedByName]: "",
       [ROS_FIELDS.followupTextSentAtMs]: null,
+
+      // Clear any open move so the valet is free
+      moveStatus: "",
+      moveStartedAt: null,
+      moveStartedBy: "",
+      moveStartedByUid: "",
+      moveStartedDeviceId: "",
+      moveGroupId: "",
+      moveGroupTargetId: "",
+      moveGroupTargetTag: "",
+      moveGroupOrder: null,
+      finishMoveLeftAtMs: null,
+      finishMoveNagAtMs: null,
+
+      // Clear the active-request chip on the RO
+      activeRequestId: "",
+      activeRequestNotificationId: "",
+      activeRequestType: "",
+      activeRequestTitle: "",
+      activeRequestStatus: "",
+      activeRequestTargetGroupId: "",
+      activeRequestTargetGroupName: "",
+      activeRequestRequestedByUid: "",
+      activeRequestRequestedByName: "",
+      activeRequestRequestedByCompanyId: "",
+      activeRequestCreatedAtMs: null,
+      activeRequestStartedAtMs: null,
+      activeRequestStartedByUid: "",
+      activeRequestStartedByName: "",
+
+      keyMissingAtWash: false,
+      keyMissingAtWashAtMs: null,
+      keyMissingAtWashBy: "",
+      keyMissingAtWashByName: "",
     },
     {
       module: options.module || "ro-tracker",
@@ -251,6 +285,55 @@ export async function archiveRO(roId, options = {}) {
       message: archiveReason ? `RO archived: ${archiveReason}` : "RO archived",
     },
   );
+
+  await cancelOpenRequestsForArchivedRO(roId, session);
+}
+
+async function cancelOpenRequestsForArchivedRO(roId, session) {
+  const openStatuses = ["active", "in_progress"];
+
+  const requestsQuery = query(
+    collection(db, "requests"),
+    where("dealerId", "==", session.dealerId),
+    where("status", "in", openStatuses),
+    limit(50),
+  );
+
+  const snapshot = await getDocs(requestsQuery);
+  const nowMs = Date.now();
+
+  for (const docSnap of snapshot.docs) {
+    const request = docSnap.data() || {};
+    if (request.roId !== roId) continue;
+
+    await updateDoc(docSnap.ref, {
+      status: "cancelled",
+      cancelledAt: serverTimestamp(),
+      cancelledAtMs: nowMs,
+      cancelledBy: session.uid || "",
+      cancelledByName: session.displayName || session.email || "",
+      updatedAt: serverTimestamp(),
+      updatedAtMs: nowMs,
+    });
+
+    if (request.notificationRequestId) {
+      const notificationRef = doc(
+        db,
+        "notificationRequests",
+        request.notificationRequestId,
+      );
+
+      await updateDoc(notificationRef, {
+        status: "expired",
+        resolvedAt: serverTimestamp(),
+        resolvedAtMs: nowMs,
+        resolvedBy: session.uid || "",
+        updatedAt: serverTimestamp(),
+        updatedAtMs: nowMs,
+        updatedBy: session.uid || "",
+      });
+    }
+  }
 }
 
 export async function restoreArchivedRO(roId, options = {}) {
