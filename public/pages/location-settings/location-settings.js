@@ -78,7 +78,7 @@ async function handleCreateArea() {
   const label = areaNameInput.value.trim();
 
   if (!label) {
-    showMessage("Enter area name.");
+    showMessage("Enter location name.");
     return;
   }
 
@@ -89,10 +89,10 @@ async function handleCreateArea() {
 
     await loadAreas();
 
-    showMessage("Area added.");
+    showMessage("Location added.");
   } catch (error) {
     console.error(error);
-    showMessage("Could not create area.");
+    showMessage("Could not create location.");
   }
 }
 
@@ -104,7 +104,7 @@ async function loadAreas() {
     areas = await getAreas();
   } catch (error) {
     console.error(error);
-    showMessage("Could not load saved areas.");
+    showMessage("Could not load saved locations.");
   }
 
   try {
@@ -152,7 +152,7 @@ function renderAreas(areas = []) {
   if (!areas.length) {
     areasTableBody.innerHTML = `
       <tr>
-        <td colspan="2">No areas created.</td>
+        <td colspan="2">No locations created.</td>
       </tr>
     `;
     return;
@@ -231,7 +231,7 @@ function bindAreaEditButtons() {
       const newLabel = input.value.trim();
 
       if (!newLabel) {
-        showMessage("Area name cannot be empty.");
+        showMessage("Location name cannot be empty.");
         return;
       }
 
@@ -241,7 +241,7 @@ function bindAreaEditButtons() {
 
       await loadAreas();
 
-      showMessage("Area updated.");
+      showMessage("Location updated.");
     });
   });
 }
@@ -249,7 +249,7 @@ function bindAreaEditButtons() {
 function bindDeleteAreaButtons() {
   document.querySelectorAll(".delete-area-button").forEach((button) => {
     button.addEventListener("click", async () => {
-      const confirmed = confirm("Delete this area?");
+      const confirmed = confirm("Delete this location?");
 
       if (!confirmed) {
         return;
@@ -258,7 +258,7 @@ function bindDeleteAreaButtons() {
       await deleteArea(button.dataset.id);
       await loadAreas();
 
-      showMessage("Area deleted.");
+      showMessage("Location deleted.");
     });
   });
 }
@@ -270,7 +270,7 @@ function populateAreaDropdown(areas = []) {
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Select area...";
+  placeholder.textContent = "Select location...";
 
   locationAreaSelect.appendChild(placeholder);
 
@@ -296,7 +296,7 @@ async function handleCreateLocation() {
   const area = locationAreaSelect.value;
 
   if (!area) {
-    showMessage("Select area.");
+    showMessage("Select location.");
     return;
   }
 
@@ -418,7 +418,7 @@ function buildLocationRow({ location, inactive }) {
     `;
 
   return `
-    <td data-label="Area">
+    <td data-label="Location">
       ${escapeHtml(formatArea(location.area))}
     </td>
 

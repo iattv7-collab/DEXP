@@ -508,7 +508,7 @@ function populateLegacyAreaDropdown() {
 
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Select area...";
+  placeholder.textContent = "Select location...";
 
   moveAreaSelect.appendChild(placeholder);
 
@@ -683,7 +683,7 @@ function showUpdateLocationPanel() {
     return;
   }
 
-  updateLocationAreaSelect.innerHTML = `<option value="">Select area...</option>`;
+  updateLocationAreaSelect.innerHTML = `<option value="">Select location...</option>`;
 
   Object.keys(groupedLocations).forEach((area) => {
     const option = document.createElement("option");
@@ -748,7 +748,7 @@ async function saveUpdatedLocation() {
   const finalLot = String(updateLocationLotSelect?.value || "").trim();
 
   if (!finalArea || !finalLot) {
-    showMessage("Select the area and lot.");
+    showMessage("Select the location and lot.");
     return;
   }
 
