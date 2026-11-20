@@ -1,0 +1,76 @@
+// public/pages/message/index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Message</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: rgba(0,0,0,.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      width: 420px;
+      max-width: 92vw;
+      border-radius: 10px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+      padding: 20px;
+    }
+    h2 { margin: 0 0 16px; font-size: 18px; }
+    label { display: block; font-size: 13px; margin: 12px 0 4px; color: #333; }
+    select, textarea, input[type=text] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #fff;
+      cursor: pointer;
+    }
+    button.primary { background: #1E40AF; color: #fff; border-color: #1E40AF; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .status { margin-top: 10px; font-size: 13px; color: #444; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Message</h2>
+
+    <label>To</label>
+    <select id="toSelect">
+      <option value="">Select a person</option>
+    </select>
+
+    <label>Tag (optional)</label>
+    <input id="tagInput" type="text" placeholder="Tag number" />
+
+    <label>Message</label>
+    <textarea id="messageText" placeholder="Type your message"></textarea>
+
+    <div class="actions">
+      <button id="cancelBtn" type="button">Cancel</button>
+      <button id="sendBtn" type="button" class="primary" disabled>Send</button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script type="module" src="/js/modules/message/message-page.js"></script>
+</body>
+</html>

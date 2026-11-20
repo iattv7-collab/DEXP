@@ -206,6 +206,20 @@ export function renderAppHeader(options = {}) {
       customizeBtn.title = "Pin modules to the header";
       customizeBtn.addEventListener("click", () => openHeaderShortcutsPicker(session));
       nav.insertBefore(customizeBtn, nav.firstChild);
+
+      const messageBtn = document.createElement("button");
+      messageBtn.type = "button";
+      messageBtn.id = "headerMessageButton";
+      messageBtn.textContent = "Message";
+      messageBtn.title = "Send an internal message";
+      messageBtn.addEventListener("click", () => {
+        window.open(
+          "/pages/message/index.html",
+          "dexpMessage",
+          "width=480,height=640,left=200,top=80,resizable=yes,scrollbars=yes"
+        );
+      });
+      nav.insertBefore(messageBtn, customizeBtn);
     }
   }
 
