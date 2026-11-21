@@ -205,6 +205,15 @@ service cloud.firestore {
       allow delete: if isPlatformAdmin();
     }
 
+    match /messages/{docId} {
+      allow read: if canReadDoc();
+      allow create: if isPlatformAdmin() || newDocBelongsToCaller();
+      allow update: if isPlatformAdmin()
+        || (docBelongsToCaller() && dealerIdUnchanged());
+      allow delete: if isPlatformAdmin()
+        || docBelongsToCaller();
+    }
+
     // Catch-all: loanerFleet, requests, notificationGroups, etc.
     match /{collection}/{docId} {
       allow read: if canReadDoc();

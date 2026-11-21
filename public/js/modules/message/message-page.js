@@ -97,18 +97,32 @@ sendBtn.addEventListener("click", async () => {
       resolved: false,
     });
 
-    await createNotificationRequest({
-      targetType: NOTIFICATION_TARGET_TYPE.USER,
-      targetUserId: toUid,
-      title: `Message from ${session.displayName || session.email || "someone"}`,
-      body: text,
-      type: "internal_message",
-      data: {
-        messageId: messageRef.id,
-        tag,
-        roId,
-      },
-    });
+    console.log("message doc written, creating notification");
+
+    try {
+      const result = await Promise.race([
+        createNotificationRequest({
+          targetType: NOTIFICATION_TARGET_TYPE.USER,
+          targetUserId: toUid,
+          module: "message",
+          eventType: "internal_message",
+          title: `Message from ${session.displayName || session.email || "someone"}`,
+          message: text,
+          data: {
+            messageId: messageRef.id,
+            tag,
+            roId,
+          },
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("notification timeout")), 5000)
+        ),
+      ]);
+      console.log("notification created", result);
+    } catch (notifyErr) {
+      console.error("notification failed", notifyErr);
+      statusEl.textContent = "Message saved, alert failed.";
+    }
 
     statusEl.textContent = "Sent.";
     setTimeout(() => window.close(), 700);

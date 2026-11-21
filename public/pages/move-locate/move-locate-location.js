@@ -24,6 +24,7 @@ export async function saveVehicleLocation({ ro, area, lot, blockingTag }) {
     currentLocation: lot,
     currentLocationArea: area,
     locationUpdatedAt: Date.now(),
+    blockedByTag: "",
   }, {
     eventType: "location_updated",
     module: "move-locate",

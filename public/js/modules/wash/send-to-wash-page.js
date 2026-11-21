@@ -533,6 +533,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentLocation: lot,
       location: lot,
       currentLocationArea: area || "",
+      blockedByTag: "",
       updatedAt: serverTimestamp(),
       updatedByUid: user.uid,
       updatedByName: clean(user.displayName || ""),
@@ -540,10 +541,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastEditedAtMs: Date.now(),
       lastEditedBy: user.uid,
       lastEditedRole: currentSession?.role || "unknown",
-      lastEditedFields: ["currentLocation", "location", "currentLocationArea"],
+      lastEditedFields: ["currentLocation", "location", "currentLocationArea", "blockedByTag"],
     });
 
-    return { ...ticket, currentLocation: lot, location: lot, currentLocationArea: area || "" };
+    const movedTag = String(ticket.tagNumber || "").trim().toUpperCase();
+    if (movedTag) {
+      const othersSnap = await getDocs(
+        query(
+          collection(db, "ros"),
+          where("dealerId", "==", ticket.dealerId),
+          where("status", "!=", "archived"),
+        ),
+      );
+      for (const docSnap of othersSnap.docs) {
+        const other = docSnap.data();
+        if (String(other.blockedByTag || "").trim().toUpperCase() !== movedTag) continue;
+        await updateDoc(docSnap.ref, { blockedByTag: "" });
+      }
+    }
+
+    return { ...ticket, currentLocation: lot, location: lot, currentLocationArea: area || "", blockedByTag: "" };
   }
 
   async function handleSave() {

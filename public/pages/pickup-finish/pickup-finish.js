@@ -7,7 +7,7 @@ import { getSession } from "/js/core/session.js";
 import { MODULES } from "/js/config/modules.js";
 import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
-import { findActiveROByTag, getRO, updateRO } from "/js/services/firestore/ros-service.js";
+import { findActiveROByTag, getRO, updateRO, getDealerROs } from "/js/services/firestore/ros-service.js";
 import { getPickupSettings } from "/js/services/firestore/pickup-settings-service.js";
 import {
   completeRequest,
@@ -167,6 +167,25 @@ async function finishMove() {
       currentRO = fresh;
       renderCard();
       return;
+    }
+
+    const movedTag = String(fresh.tagNumber || "").trim().toUpperCase();
+    if (movedTag) {
+      const others = (await getDealerROs()).filter((ro) => {
+        return String(ro.blockedByTag || "").trim().toUpperCase() === movedTag;
+      });
+      for (const blocked of others) {
+        if (!blocked.id) continue;
+        await updateRO(
+          blocked.id,
+          { blockedByTag: "" },
+          {
+            module: "pickup-finish",
+            eventType: "blocked_by_cleared",
+            message: `Blocked by tag ${movedTag} cleared because that vehicle was moved`,
+          },
+        );
+      }
     }
 
     await updateRO(

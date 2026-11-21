@@ -17,6 +17,7 @@ import {
   initPickupRequestPanel,
   openPickupSearch,
 } from "/js/modules/pickup-request/pickup-request-panel.js";
+import { initMessageFloat, setMessageCountListener, openMessageFloat } from "/js/modules/message/message-float.js";
 
 let unsubscribeHeaderFollowUps = null;
 
@@ -206,21 +207,41 @@ export function renderAppHeader(options = {}) {
       customizeBtn.title = "Pin modules to the header";
       customizeBtn.addEventListener("click", () => openHeaderShortcutsPicker(session));
       nav.insertBefore(customizeBtn, nav.firstChild);
-
-      const messageBtn = document.createElement("button");
-      messageBtn.type = "button";
-      messageBtn.id = "headerMessageButton";
-      messageBtn.textContent = "Message";
-      messageBtn.title = "Send an internal message";
-      messageBtn.addEventListener("click", () => {
-        window.open(
-          "/pages/message/index.html",
-          "dexpMessage",
-          "width=480,height=640,left=200,top=80,resizable=yes,scrollbars=yes"
-        );
-      });
-      nav.insertBefore(messageBtn, customizeBtn);
     }
+  }
+
+  // Message button on every screen
+  const nav = header.querySelector(".app-header-nav");
+  if (nav && !platformMode && session) {
+    const messageBtn = document.createElement("button");
+    messageBtn.type = "button";
+    messageBtn.id = "headerMessageButton";
+    messageBtn.innerHTML = `Message <span id="headerMessageBadge" style="display:none;background:#c00;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-left:4px;"></span>`;
+    messageBtn.title = "Send an internal message";
+    messageBtn.addEventListener("click", () => {
+      openMessageFloat();
+    });
+    const first = nav.firstElementChild;
+    if (first) {
+      nav.insertBefore(messageBtn, first);
+    } else {
+      nav.appendChild(messageBtn);
+    }
+
+    setMessageCountListener((count) => {
+      const badge = document.getElementById("headerMessageBadge");
+      if (!badge) return;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = "inline";
+        messageBtn.style.background = "#c00";
+        messageBtn.style.color = "#fff";
+      } else {
+        badge.style.display = "none";
+        messageBtn.style.background = "";
+        messageBtn.style.color = "";
+      }
+    });
   }
 
   function renderHeaderShortcuts(container, session) {
@@ -493,6 +514,8 @@ export function renderAppHeader(options = {}) {
       window.location.href = "/pages/auth/login.html";
     });
   }
+
+  initMessageFloat();
 }
 
 async function toggleNotificationSettingsPanel(

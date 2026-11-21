@@ -207,6 +207,13 @@ export async function updateRO(roId, updates = {}, options = {}) {
 export async function archiveRO(roId, options = {}) {
   const session = requireDealerSession();
 
+  const before = await getROForWrite(roId, session);
+  const archivedTag = String(
+    before?.[ROS_FIELDS.tagNumber] || before?.tagNumber || "",
+  )
+    .trim()
+    .toUpperCase();
+
   const archiveReason = String(options.archiveReason || "").trim();
   const archivedAtMs = Date.now();
   const settings = await loadDealerFollowupSettings();
@@ -245,7 +252,6 @@ export async function archiveRO(roId, options = {}) {
       [ROS_FIELDS.followupCompletedByName]: "",
       [ROS_FIELDS.followupTextSentAtMs]: null,
 
-      // Clear any open move so the valet is free
       moveStatus: "",
       moveStartedAt: null,
       moveStartedBy: "",
@@ -258,7 +264,6 @@ export async function archiveRO(roId, options = {}) {
       finishMoveLeftAtMs: null,
       finishMoveNagAtMs: null,
 
-      // Clear the active-request chip on the RO
       activeRequestId: "",
       activeRequestNotificationId: "",
       activeRequestType: "",
@@ -278,6 +283,8 @@ export async function archiveRO(roId, options = {}) {
       keyMissingAtWashAtMs: null,
       keyMissingAtWashBy: "",
       keyMissingAtWashByName: "",
+
+      blockedByTag: "",
     },
     {
       module: options.module || "ro-tracker",
@@ -286,7 +293,43 @@ export async function archiveRO(roId, options = {}) {
     },
   );
 
+  if (archivedTag) {
+    await clearCarsBlockedByTag(archivedTag, session);
+  }
+
   await cancelOpenRequestsForArchivedRO(roId, session);
+}
+
+async function clearCarsBlockedByTag(tag, session) {
+  const currentTag = String(tag || "").trim().toUpperCase();
+  if (!currentTag) return;
+
+  const rosRef = collection(db, ROS_COLLECTION);
+  const q = query(
+    rosRef,
+    where(ROS_FIELDS.dealerId, "==", session.dealerId),
+    where(ROS_FIELDS.status, "!=", ROS_STATUS.ARCHIVED),
+  );
+
+  const snapshot = await getDocs(q);
+  const blockedCars = snapshot.docs
+    .map((docSnap) => docSnap.data())
+    .filter((ro) => {
+      return String(ro.blockedByTag || "").trim().toUpperCase() === currentTag;
+    });
+
+  for (const blockedCar of blockedCars) {
+    if (!blockedCar.id) continue;
+    await updateRO(
+      blockedCar.id,
+      { blockedByTag: "" },
+      {
+        eventType: "blocked_by_cleared",
+        module: "ro-tracker",
+        message: `Blocked by tag ${currentTag} cleared because that vehicle left`,
+      },
+    );
+  }
 }
 
 async function cancelOpenRequestsForArchivedRO(roId, session) {
