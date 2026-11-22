@@ -12,8 +12,9 @@ import {
   updateRO,
   createRO,
   watchDealerROs,
-  findActiveROByTag,
+findActiveROByTag,
   findActiveROByNumber,
+  findLatestArchivedROByTag,
 } from "/js/services/firestore/ros-service.js";
 
 import { MODULES } from "/js/config/modules.js";
@@ -868,10 +869,11 @@ async function findVehicle() {
     return roNumber === searchValue || tagNumber === searchValue;
   });
 
-  if (!match && searchMode !== "vin") {
+if (!match && searchMode !== "vin") {
     match =
       (await findActiveROByTag(searchValue)) ||
-      (await findActiveROByNumber(searchValue));
+      (await findActiveROByNumber(searchValue)) ||
+      (await findLatestArchivedROByTag(searchValue));
   }
 
   if (!match) {
@@ -908,19 +910,26 @@ async function findVehicle() {
     }
 
     document.getElementById("updateLocationButton")?.classList.add("hidden");
-    document.getElementById("addTagButton")?.classList.add("hidden");
+    document.getElementById("addTagButton")?.classList.remove("hidden");
     document.getElementById("clearSearchButton")?.classList.remove("hidden");
     document.getElementById("moveSearchBackRow")?.classList.add("hidden");
     document.getElementById("moveSearchBackRow")?.classList.add("hidden");
     searchVehicleButton.disabled = true;
     renderMoveDestination(null);
 
-    const where = formatAreaLot(getROArea(match), getROLot(match));
-    showMessage(
-      where
-        ? `This car was picked up. Last location: ${where}.`
-        : "This car was picked up.",
-    );
+const where = formatAreaLot(getROArea(match), getROLot(match));
+    const archivedDate = formatDateTime(match.archivedAtMs || match.archivedAt);
+    const parts = ["This car was picked up."];
+
+    if (archivedDate) {
+      parts.push(`Archived ${archivedDate}.`);
+    }
+
+    if (where) {
+      parts.push(`Last location: ${where}.`);
+    }
+
+    showMessage(parts.join(" "));
     return;
   }
 

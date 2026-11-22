@@ -20,6 +20,8 @@ let minimized = false;
 let messages = [];
 let currentThreadUid = null;
 let onCountChange = null;
+let peopleList = [];
+let peopleLoaded = false;
 
 export function initMessageFloat() {
   const session = getSession();
@@ -44,18 +46,39 @@ export function initMessageFloat() {
   `;
   document.body.appendChild(box);
 
-  const q = query(
+  const qIn = query(
     collection(db, "messages"),
     where("dealerId", "==", session.dealerId),
-    where("toUid", "==", session.uid),
-    where("resolved", "==", false)
+    where("toUid", "==", session.uid)
   );
 
-  unsubscribe = onSnapshot(q, (snap) => {
-    messages = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const qOut = query(
+    collection(db, "messages"),
+    where("dealerId", "==", session.dealerId),
+    where("fromUid", "==", session.uid)
+  );
+
+  let incoming = [];
+  let outgoing = [];
+
+  function mergeAndRender() {
+    messages = [...incoming, ...outgoing];
     messages.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
     render();
-    if (onCountChange) onCountChange(messages.length);
+    if (onCountChange) {
+      const unviewed = incoming.filter((m) => !m.viewed).length;
+      onCountChange(unviewed);
+    }
+  }
+
+  onSnapshot(qIn, (snap) => {
+    incoming = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    mergeAndRender();
+  });
+
+  onSnapshot(qOut, (snap) => {
+    outgoing = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    mergeAndRender();
   });
 }
 
@@ -67,29 +90,44 @@ export function openMessageFloat() {
   minimized = false;
   currentThreadUid = null;
   if (box) {
-    box.style.display = messages.length ? "block" : "none";
-    render();
+    box.style.display = "block";
+    if (!peopleLoaded) {
+      loadPeople();
+    } else {
+      render();
+    }
   }
 }
 
-
+async function loadPeople() {
+  try {
+    const { getAllUsers } = await import("/js/services/firestore/users-service.js");
+    const users = await getAllUsers();
+    const session = getSession();
+    peopleList = users
+      .filter((u) => u.active !== false && u.uid !== session.uid)
+      .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+    peopleLoaded = true;
+  } catch (err) {
+    console.error(err);
+  }
+  render();
+}
 
 function render() {
   if (!box) return;
   const count = messages.length;
 
-  if (count === 0) {
-    box.style.display = "none";
-    currentThreadUid = null;
-    return;
-  }
-  box.style.display = "block";
-
   if (minimized) {
+    const unviewed = messages.filter((m) => m.toUid === getSession()?.uid && !m.viewed).length;
+    if (unviewed === 0) {
+      box.style.display = "none";
+      return;
+    }
     box.innerHTML = `
       <div id="msgFloatMin" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
         <span>Messages</span>
-        <span style="background:#1E40AF;color:#fff;border-radius:12px;padding:2px 8px;font-size:12px;">${count}</span>
+        <span style="background:#c00;color:#fff;border-radius:12px;padding:2px 8px;font-size:12px;">${unviewed}</span>
       </div>
     `;
     document.getElementById("msgFloatMin").onclick = () => {
@@ -99,57 +137,91 @@ function render() {
     return;
   }
 
+  const session = getSession();
   const byPerson = {};
   messages.forEach((m) => {
-    const otherUid = m.fromUid;
-    const otherName = m.fromName || "Someone";
+    const otherUid = m.fromUid === session.uid ? m.toUid : m.fromUid;
+    const otherName = m.fromUid === session.uid ? m.toName : m.fromName;
+    if (!otherUid) return;
     if (!byPerson[otherUid]) {
-      byPerson[otherUid] = { uid: otherUid, name: otherName, msgs: [] };
+      byPerson[otherUid] = { uid: otherUid, name: otherName || "Someone", msgs: [] };
     }
     byPerson[otherUid].msgs.push(m);
   });
-  const people = Object.values(byPerson);
 
   if (!currentThreadUid) {
-    const list = people
-      .map(
-        (p) => `
-        <div data-open="${p.uid}" style="padding:10px 12px;border-top:1px solid #eee;cursor:pointer;">
-          <div style="font-weight:600;">${escapeHtml(p.name)}</div>
-          <div style="font-size:12px;color:#666;">${p.msgs.length} message${p.msgs.length === 1 ? "" : "s"}</div>
-        </div>`
-      )
+    const searchVal = (document.getElementById("msgFloatSearch")?.value || "").toLowerCase();
+    const filtered = peopleList
+      .filter((u) => {
+        const name = (u.displayName || u.email || "").toLowerCase();
+        return name.includes(searchVal);
+      })
+      .sort((a, b) => {
+        const aUnread = (byPerson[a.uid]?.msgs || []).filter((m) => !m.viewed).length;
+        const bUnread = (byPerson[b.uid]?.msgs || []).filter((m) => !m.viewed).length;
+        return bUnread - aUnread;
+      });
+
+    const list = filtered
+      .map((u) => {
+        const unread = (byPerson[u.uid]?.msgs || []).filter((m) => !m.viewed).length;
+        return `
+        <div data-open="${u.uid}" style="padding:10px 12px;border-top:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:600;">${escapeHtml(u.displayName || u.email || "")}${u.companyId ? ` (${escapeHtml(u.companyId)})` : ""}</div>
+            ${unread ? `<div style="font-size:12px;color:#666;">${unread} new</div>` : ""}
+          </div>
+          ${unread ? `<span style="background:#c00;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;">${unread}</span>` : ""}
+        </div>`;
+      })
       .join("");
 
     box.innerHTML = `
       <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;">
-        <strong>Messages (${count})</strong>
-        <button id="msgFloatMinBtn" type="button" style="border:1px solid #ccc;background:#fff;cursor:pointer;font-size:16px;padding:2px 8px;border-radius:4px;color:#333;">_</button>
+        <strong>Messages</strong>
+        <button id="msgFloatMinBtn" type="button" style="border:1px solid #1E40AF;background:#1E40AF;color:#fff;cursor:pointer;font-size:16px;padding:2px 8px;border-radius:4px;">−</button>
       </div>
-      <div style="max-height:320px;overflow:auto;">${list}</div>
+      <div style="padding:8px 12px;border-bottom:1px solid #eee;">
+        <input id="msgFloatSearch" type="text" placeholder="Search people…" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #ccc;border-radius:6px;" />
+      </div>
+      <div style="max-height:320px;overflow:auto;">${list || '<div style="padding:12px;color:#666;">No people</div>'}</div>
     `;
 
     document.getElementById("msgFloatMinBtn").onclick = () => {
       minimized = true;
       render();
     };
+    const searchInput = document.getElementById("msgFloatSearch");
+    searchInput.value = searchVal;
+    searchInput.focus();
+    searchInput.setSelectionRange(searchVal.length, searchVal.length);
+    searchInput.oninput = () => render();
     box.querySelectorAll("[data-open]").forEach((row) => {
-      row.onclick = () => {
+      row.onclick = async () => {
         currentThreadUid = row.dataset.open;
+        const unread = byPerson[currentThreadUid]?.msgs || [];
+        for (const m of unread) {
+          try {
+            await updateDoc(doc(db, "messages", m.id), { viewed: true });
+          } catch (err) {
+            console.error(err);
+          }
+        }
         render();
       };
     });
     return;
   }
 
-  const person = people.find((p) => p.uid === currentThreadUid);
+  const person = peopleList.find((u) => u.uid === currentThreadUid) || byPerson[currentThreadUid];
   if (!person) {
     currentThreadUid = null;
     render();
     return;
   }
 
-  const thread = person.msgs
+  const threadMsgs = byPerson[currentThreadUid]?.msgs || [];
+  const thread = threadMsgs
     .slice()
     .reverse()
     .map(
@@ -161,21 +233,25 @@ function render() {
     )
     .join("");
 
+  const displayName = person.displayName || person.name || person.email || "Someone";
+
   box.innerHTML = `
     <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;gap:8px;">
-      <button id="msgFloatBack" type="button" style="border:1px solid #999;background:#f5f5f5;cursor:pointer;font-size:14px;padding:4px 8px;border-radius:4px;">←</button>
-      <strong style="flex:1;text-align:center;">${escapeHtml(person.name)}</strong>
-      <button id="msgFloatMinBtn" type="button" style="border:1px solid #ccc;background:#fff;cursor:pointer;font-size:16px;padding:2px 8px;border-radius:4px;color:#333;">_</button>
+      <button id="msgFloatBack" type="button" style="border:1px solid #1E40AF;background:#1E40AF;color:#fff;cursor:pointer;font-size:13px;padding:4px 8px;border-radius:4px;">← Back</button>
+      <strong style="flex:1;text-align:center;">${escapeHtml(displayName)}</strong>
+      <button id="msgFloatMinBtn" type="button" style="border:1px solid #1E40AF;background:#1E40AF;color:#fff;cursor:pointer;font-size:16px;padding:2px 8px;border-radius:4px;">−</button>
     </div>
-    <div style="max-height:280px;overflow:auto;">${thread}</div>
+    <div style="max-height:280px;overflow:auto;">${thread || '<div style="padding:12px;color:#666;">No messages yet</div>'}</div>
     <div style="padding:10px 12px;border-top:1px solid #eee;">
-      <textarea id="msgFloatReply" placeholder="Reply…" style="width:100%;box-sizing:border-box;min-height:50px;padding:6px;border:1px solid #ccc;border-radius:6px;"></textarea>
-      <div style="margin-top:6px;display:flex;justify-content:space-between;">
-        <button id="msgFloatResolveAll" type="button" style="font-size:12px;padding:4px 8px;">Resolve all</button>
+      <textarea id="msgFloatReply" placeholder="Message…" style="width:100%;box-sizing:border-box;min-height:50px;padding:6px;border:1px solid #ccc;border-radius:6px;"></textarea>
+      <div style="margin-top:6px;text-align:right;">
         <button id="msgFloatSend" type="button" style="background:#1E40AF;color:#fff;border:0;padding:6px 12px;border-radius:6px;cursor:pointer;">Send</button>
       </div>
     </div>
   `;
+
+  const threadEl = box.querySelector("div[style*='max-height']");
+  if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
 
   document.getElementById("msgFloatBack").onclick = () => {
     currentThreadUid = null;
@@ -185,46 +261,36 @@ function render() {
     minimized = true;
     render();
   };
-  document.getElementById("msgFloatResolveAll").onclick = async () => {
-    for (const m of person.msgs) {
-      try {
-        await updateDoc(doc(db, "messages", m.id), { resolved: true });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    currentThreadUid = null;
-  };
   document.getElementById("msgFloatSend").onclick = async () => {
     const text = document.getElementById("msgFloatReply").value.trim();
     if (!text) return;
     const session = getSession();
     const messageRef = doc(collection(db, "messages"));
-    const sample = person.msgs[0];
+    const toName = displayName;
     try {
       await setDoc(messageRef, {
         id: messageRef.id,
         dealerId: session.dealerId,
         fromUid: session.uid,
         fromName: session.displayName || session.email || "",
-        toUid: person.uid,
-        toName: person.name,
+        toUid: currentThreadUid,
+        toName,
         text,
-        tag: sample.tag || "",
-        roId: sample.roId || "",
-        roNumber: sample.roNumber || "",
+        tag: "",
+        roId: "",
+        roNumber: "",
         createdAtMs: Date.now(),
         createdAt: serverTimestamp(),
         resolved: false,
       });
       await createNotificationRequest({
         targetType: NOTIFICATION_TARGET_TYPE.USER,
-        targetUserId: person.uid,
+        targetUserId: currentThreadUid,
         module: "message",
         eventType: "internal_message",
         title: `Message from ${session.displayName || session.email || "someone"}`,
         message: text,
-        data: { messageId: messageRef.id, tag: sample.tag || "", roId: sample.roId || "" },
+        data: { messageId: messageRef.id },
       });
       document.getElementById("msgFloatReply").value = "";
     } catch (err) {

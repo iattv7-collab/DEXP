@@ -6,7 +6,7 @@ import { scanROImage } from "/js/services/ocr/ro-ocr-service.js?v=tag13";
 import {
   createRO,
   updateRO,
-  findActiveROByNumber,
+  findROByNumber,
   findActiveROByTag,
   findActiveAdvisorByCompanyId,
 } from "/js/services/firestore/ros-service.js";
@@ -251,8 +251,8 @@ async function checkScannerDuplicates() {
   let duplicateFound = false;
   const messages = [];
 
-  if (roNumber) {
-    const existingRO = await findActiveROByNumber(roNumber);
+if (roNumber) {
+    const existingRO = await findROByNumber(roNumber);
 
     if (existingRO) {
       roNumberInput.classList.add("field-error");

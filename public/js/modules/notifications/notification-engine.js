@@ -536,6 +536,10 @@ function getVisibleNotifications(requests = [], session) {
       return false;
     }
 
+    if (String(item.eventType || "").trim() === "internal_message") {
+      return false;
+    }
+
     if (item.dismissedBy?.[session.uid]) {
       return false;
     }

@@ -37,7 +37,7 @@ export async function createRO(data = {}, options = {}) {
   const tagNumber = String(data[ROS_FIELDS.tagNumber] || "").trim();
 
   if (roNumber) {
-    const existingRO = await findActiveROByNumber(roNumber);
+    const existingRO = await findROByNumber(roNumber);
 
     if (existingRO) {
       throw new Error("RO number already exists.");
@@ -69,10 +69,16 @@ export async function createRO(data = {}, options = {}) {
   const normalizedRONumber = roNumber.replace(/\s+/g, "").toUpperCase();
   const normalizedTagNumber = tagNumber.replace(/\s+/g, "").toUpperCase();
 
-  const roDocId =
+  let roDocId =
     normalizedRONumber || `TAG-${normalizedTagNumber}` || crypto.randomUUID();
 
-  const roRef = doc(db, ROS_COLLECTION, roDocId);
+  let roRef = doc(db, ROS_COLLECTION, roDocId);
+  const existingDoc = await getDoc(roRef);
+
+  if (existingDoc.exists()) {
+    roDocId = `TAG-${normalizedTagNumber || "RO"}-${Date.now()}`;
+    roRef = doc(db, ROS_COLLECTION, roDocId);
+  }
 
   const roData = {
     [ROS_FIELDS.id]: roRef.id,
@@ -550,7 +556,7 @@ export function watchROsByAdvisorId(advisorId, callback) {
   });
 }
 
-export async function findActiveROByNumber(roNumber = "") {
+export async function findROByNumber(roNumber = "") {
   const session = getSession();
 
   if (!session?.dealerId || !roNumber) {
@@ -566,9 +572,16 @@ export async function findActiveROByNumber(roNumber = "") {
 
   const snapshot = await getDocs(q);
 
-  if (snapshot.empty) return null;
+  return snapshot.empty ? null : snapshot.docs[0].data();
+}
 
-  const ro = snapshot.docs[0].data();
+export async function findActiveROByNumber(roNumber = "") {
+  const ro = await findROByNumber(roNumber);
+
+  if (!ro) {
+    return null;
+  }
+
   if (String(ro[ROS_FIELDS.status] || "").toLowerCase() === ROS_STATUS.ARCHIVED) {
     return null;
   }
@@ -577,22 +590,46 @@ export async function findActiveROByNumber(roNumber = "") {
 }
 
 export async function findActiveROByTag(tagNumber = "") {
+  const matches = await findROsByTag(tagNumber);
+
+  return (
+    matches.find(
+      (ro) =>
+        String(ro[ROS_FIELDS.status] || "").toLowerCase() !== ROS_STATUS.ARCHIVED,
+    ) || null
+  );
+}
+
+export async function findLatestArchivedROByTag(tagNumber = "") {
+  const matches = await findROsByTag(tagNumber);
+  const archived = matches.filter(
+    (ro) =>
+      String(ro[ROS_FIELDS.status] || "").toLowerCase() === ROS_STATUS.ARCHIVED,
+  );
+
+  archived.sort(
+    (a, b) => Number(b.archivedAtMs || 0) - Number(a.archivedAtMs || 0),
+  );
+
+  return archived[0] || null;
+}
+
+async function findROsByTag(tagNumber = "") {
   const session = getSession();
 
   if (!session?.dealerId || !tagNumber) {
-    return null;
+    return [];
   }
 
   const q = query(
     collection(db, ROS_COLLECTION),
     where(ROS_FIELDS.dealerId, "==", session.dealerId),
     where(ROS_FIELDS.tagNumber, "==", String(tagNumber).trim()),
-    limit(1),
   );
 
   const snapshot = await getDocs(q);
 
-  return snapshot.empty ? null : snapshot.docs[0].data();
+  return snapshot.docs.map((docSnap) => docSnap.data());
 }
 
 export async function addROActivity(roId, activity = {}) {
