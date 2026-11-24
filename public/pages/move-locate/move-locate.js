@@ -2115,6 +2115,7 @@ function showMessage(message) {
 }
 
 function showFailedSave(message) {
+  currentRO = null;
   hideUpdateLocationPanel();
   vehicleResultCard?.classList.add("hidden");
   document.querySelector(".move-search-row")?.classList.add("hidden");
