@@ -282,16 +282,22 @@ function initializeMoveLocate() {
   document.getElementById("moveFinishBackButton")?.addEventListener("click", () => {
     resetMoveLocateForm();
   });
-
   if (moveSearchBackButton) {
     moveSearchBackButton.addEventListener("click", () => {
       if (addTagPanel && !addTagPanel.classList.contains("hidden")) {
         hideAddTagPanel();
         return;
       }
+      if (moveLocateMessage?.textContent?.startsWith("Cannot block") ||
+          moveLocateMessage?.textContent?.startsWith("A vehicle cannot") ||
+          moveLocateMessage?.textContent?.includes("was not found")) {
+        resetMoveLocateForm();
+        return;
+      }
       window.location.href = "/pages/dashboard/index.html";
     });
   }
+
 
   if (saveAddTagButton) {
     saveAddTagButton.addEventListener("click", async () => {
@@ -702,6 +708,11 @@ function showUpdateLocationPanel() {
     updateLocationButton.textContent = "Back";
   }
 
+  if (saveUpdatedLocationButton) {
+    saveUpdatedLocationButton.disabled = true;
+    saveUpdatedLocationButton.textContent = "Save";
+  }
+
   if (vehicleResultCard) {
     vehicleResultCard.classList.add("hidden");
   }
@@ -758,8 +769,30 @@ async function saveUpdatedLocation() {
   );
 
   if (blockingTag && blockingTag === getROTag(currentRO)) {
-    showMessage("A vehicle cannot block itself.");
+    showFailedSave("A vehicle cannot block itself.");
     return;
+  }
+
+  if (blockingTag) {
+    const blockedRO = await findActiveROByTag(blockingTag);
+    if (!blockedRO) {
+      showFailedSave(`Blocking tag ${blockingTag} was not found.`);
+      return;
+    }
+    const blockedArea = getROArea(blockedRO);
+    const blockedLot = getROLot(blockedRO);
+    if (!blockedLot) {
+      showFailedSave(`Cannot block tag ${blockingTag} — its lot is not set.`);
+      return;
+    }
+    if (blockedLot !== finalLot) {
+      showFailedSave(`Cannot block tag ${blockingTag} — it is in ${blockedLot}, not ${finalLot}.`);
+      return;
+    }
+    if (blockedArea && blockedArea !== finalArea) {
+      showFailedSave(`Cannot block tag ${blockingTag} — it is in a different area.`);
+      return;
+    }
   }
 
   lastROs = await getDealerROs();
@@ -779,6 +812,7 @@ async function saveUpdatedLocation() {
   }
 
   saveUpdatedLocationButton.disabled = true;
+  saveUpdatedLocationButton.innerHTML = `<span class="dexp-spinner"></span> Saving…`;
 
   try {
     await saveVehicleLocation({
@@ -788,13 +822,12 @@ async function saveUpdatedLocation() {
       blockingTag,
     });
 
-    lastROs = await getDealerROs();
-    currentRO = lastROs.find((ro) => ro.id === freshRO.id) || freshRO;
-    const savedRO = currentRO;
-    vehicleSearchInput.value = "";
-    searchVehicleButton.disabled = false;
-    renderSelectedVehicle(savedRO);
     hideUpdateLocationPanel();
+    vehicleResultCard?.classList.add("hidden");
+    document.querySelector(".move-search-row")?.classList.add("hidden");
+    document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+    document.getElementById("updateLocationButton")?.classList.add("hidden");
+
     showMessage(
       blockingTag
         ? `Location updated to ${formatAreaLot(finalArea, finalLot)}. Blocking ${blockingTag}.`
@@ -802,15 +835,13 @@ async function saveUpdatedLocation() {
     );
 
     setTimeout(() => {
-      if (currentRO?.id !== savedRO.id) {
-        return;
-      }
       resetMoveLocateForm();
       clearMessage();
     }, 1500);
   } catch (error) {
     console.error(error);
     saveUpdatedLocationButton.disabled = false;
+    saveUpdatedLocationButton.textContent = "Save";
     showMessage("Could not update location.");
   }
 }
@@ -2066,8 +2097,11 @@ function showMessage(message) {
     message === "Vehicle not found." ||
     message.startsWith("Could not") ||
     message.startsWith("This car was picked up") ||
+    message.startsWith("Cannot block") ||
+    message.startsWith("A vehicle cannot") ||
     message.includes("not allowed") ||
-    message.includes("in a move");
+    message.includes("in a move") ||
+    message.includes("was not found");
   moveLocateMessage.classList.toggle("fail", fail);
   moveLocateMessage.classList.toggle("ok", !fail && Boolean(message));
   moveLocateMessage.classList.toggle(
@@ -2078,6 +2112,20 @@ function showMessage(message) {
     "move-saved-message",
     message.startsWith("Dropped off") || message.startsWith("Locations saved"),
   );
+}
+
+function showFailedSave(message) {
+  hideUpdateLocationPanel();
+  vehicleResultCard?.classList.add("hidden");
+  document.querySelector(".move-search-row")?.classList.add("hidden");
+  document.getElementById("moveSecondaryActions")?.classList.add("hidden");
+  document.getElementById("updateLocationButton")?.classList.add("hidden");
+  document.getElementById("addTagButton")?.classList.add("hidden");
+
+  showMessage(message);
+
+  document.getElementById("moveSearchBackButton")?.classList.add("hidden");
+  document.getElementById("moveFinishBackButton")?.classList.remove("hidden");
 }
 
 function clearMessage() {
@@ -2178,7 +2226,7 @@ async function saveAddTag() {
 
   if (saveAddTagButton) {
     saveAddTagButton.disabled = true;
-    saveAddTagButton.textContent = "Saving...";
+    saveAddTagButton.innerHTML = `<span class="dexp-spinner"></span> Saving…`;
   }
 
   try {

@@ -16,7 +16,8 @@ import { db } from "/js/services/firebase/firestore.js";
 
 let unsubscribe = null;
 let box = null;
-let minimized = false;
+let minimized = localStorage.getItem("dexp_msg_minimized") === "1";
+let lastUnviewed = 0;
 let messages = [];
 let currentThreadUid = null;
 let onCountChange = null;
@@ -64,9 +65,15 @@ export function initMessageFloat() {
   function mergeAndRender() {
     messages = [...incoming, ...outgoing];
     messages.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+    const unviewed = incoming.filter((m) => !m.viewed).length;
+    if (unviewed > lastUnviewed) {
+      minimized = false;
+      localStorage.setItem("dexp_msg_minimized", "0");
+      if (box) box.style.display = "block";
+    }
+    lastUnviewed = unviewed;
     render();
     if (onCountChange) {
-      const unviewed = incoming.filter((m) => !m.viewed).length;
       onCountChange(unviewed);
     }
   }
@@ -88,6 +95,7 @@ export function setMessageCountListener(fn) {
 
 export function openMessageFloat() {
   minimized = false;
+  localStorage.setItem("dexp_msg_minimized", "0");
   currentThreadUid = null;
   if (box) {
     box.style.display = "block";
@@ -132,6 +140,7 @@ function render() {
     `;
     document.getElementById("msgFloatMin").onclick = () => {
       minimized = false;
+      localStorage.setItem("dexp_msg_minimized", "0");
       render();
     };
     return;
@@ -189,6 +198,7 @@ function render() {
 
     document.getElementById("msgFloatMinBtn").onclick = () => {
       minimized = true;
+      localStorage.setItem("dexp_msg_minimized", "1");
       render();
     };
     const searchInput = document.getElementById("msgFloatSearch");
@@ -224,13 +234,22 @@ function render() {
   const thread = threadMsgs
     .slice()
     .reverse()
-    .map(
-      (m) => `
-      <div style="border-top:1px solid #eee;padding:8px 12px;">
-        <div style="font-size:12px;color:#666;margin-bottom:2px;">${escapeHtml(m.fromName || "")}${m.tag ? ` · tag ${m.tag}` : ""}</div>
+    .map((m) => {
+      const mine = m.fromUid === session.uid;
+      const when = m.createdAtMs
+        ? new Date(m.createdAtMs).toLocaleString([], {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : "";
+      return `
+      <div style="border-top:1px solid #eee;padding:8px 12px;background:${mine ? "#eef4ff" : "#d6e4ff"};">
+        <div style="font-size:12px;color:#666;margin-bottom:2px;">${escapeHtml(m.fromName || "")}${m.tag ? ` · tag ${m.tag}` : ""}${when ? ` · ${when}` : ""}</div>
         <div>${escapeHtml(m.text || "")}</div>
-      </div>`
-    )
+      </div>`;
+    })
     .join("");
 
   const displayName = person.displayName || person.name || person.email || "Someone";
@@ -259,6 +278,7 @@ function render() {
   };
   document.getElementById("msgFloatMinBtn").onclick = () => {
     minimized = true;
+    localStorage.setItem("dexp_msg_minimized", "1");
     render();
   };
   document.getElementById("msgFloatSend").onclick = async () => {
