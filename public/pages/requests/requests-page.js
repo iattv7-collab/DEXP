@@ -407,7 +407,7 @@ async function handleCreateSelectedRequest() {
         customMessage ||
         `RO ${finalRoNumber || "N/A"} • Tag ${finalTagNumber || "N/A"}`,
 
-      route: selectedRequestType.route || "/pages/move-locate/move-locate.html",
+      route: "/pages/move-locate/move-locate-simple.html",
 
       routeParams: {
         tagNumber: finalTagNumber,
@@ -488,7 +488,7 @@ async function handleCreatePresetRequest(preset) {
         customMessage ||
         `${preset.defaultMessage} RO ${finalRoNumber || "N/A"} Tag ${finalTagNumber || "N/A"}.`,
 
-      route: "/pages/move-locate/move-locate.html",
+      route: "/pages/move-locate/move-locate-simple.html",
 
       routeParams: {
         tagNumber: finalTagNumber,

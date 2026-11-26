@@ -71,7 +71,14 @@ async function saveBlockingRelationship({ blockerRO, blockedTag, area, lot }) {
     throw new Error(`Blocking tag ${cleanBlockedTag} is not in the same lot.`);
   }
 
-  const blockerChain = buildBlockedByChain(blockerRO, freshROs);
+  await clearReverseBlock({
+    blockerTag,
+    blockedTag: cleanBlockedTag,
+  });
+
+  const afterClearROs = await getDealerROs();
+  const freshBlocker = findROByTag(blockerTag, afterClearROs) || blockerRO;
+  const blockerChain = buildBlockedByChain(freshBlocker, afterClearROs);
   if (blockerChain.includes(cleanBlockedTag)) {
     throw new Error("This would create a circular blocking chain.");
   }
@@ -105,4 +112,22 @@ async function clearCarsBlockedByTag(tag) {
       message: `Blocked by tag ${currentTag} cleared because blocker moved`,
     });
   }
+}
+
+async function clearReverseBlock({ blockerTag, blockedTag }) {
+  const freshROs = await getDealerROs();
+  const reverse = findROByTag(blockerTag, freshROs);
+  if (!reverse?.id) return;
+  if (normalizeTag(reverse.blockedByTag || "") !== blockedTag) return;
+
+  await updateROLocation(reverse.id, {
+    currentLocation: reverse.currentLocation || "",
+    currentLocationArea: reverse.currentLocationArea || "",
+    locationUpdatedAt: Date.now(),
+    blockedByTag: "",
+  }, {
+    eventType: "blocked_by_cleared",
+    module: "move-locate",
+    message: `Reverse block cleared before ${blockerTag} blocks ${blockedTag}`,
+  });
 }

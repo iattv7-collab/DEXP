@@ -1,0 +1,120 @@
+<!-- public/pages/move-locate/move-locate-simple.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Move & Locate</title>
+    <link rel="stylesheet" href="/css/core/base.css?v=2" />
+    <link rel="stylesheet" href="/css/modules/move-locate.css?v=19" />
+    <style>
+      .simple-blocking {
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        border-radius: 6px;
+        padding: 8px 10px;
+        width: 100%;
+      }
+      .simple-blocking.checking {
+        background: #fee2e2;
+        border-color: #fca5a5;
+      }
+      .simple-blocking.eligible {
+        background: #bbf7d0;
+        border-color: #4ade80;
+      }
+      .simple-finish-row {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+      .simple-finish-row button {
+        min-width: 120px;
+      }
+      #simpleFinishButton:disabled {
+        background: #e5e7eb;
+        color: #9ca3af;
+        cursor: not-allowed;
+      }
+      .simple-details-toggle {
+        cursor: pointer;
+        color: #64748b;
+        font-size: 13px;
+        margin-top: 8px;
+        user-select: none;
+      }
+      .simple-details {
+        margin-top: 8px;
+        font-size: 14px;
+        color: #334155;
+      }
+      .simple-to-line {
+        color: #d97706;
+        font-weight: 700;
+        margin: 6px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="moveLocateSimplePage" class="full-page">
+      <section class="page-shell full-page">
+        <section class="tool-card">
+          <h3>Move Vehicle</h3>
+          <p class="tool-help">Search by RO or Tag</p>
+
+          <div class="tool-row">
+            <input id="simpleSearchInput" type="text" placeholder="RO # or Tag #" />
+            <button id="simpleSearchButton" type="button" disabled>Search</button>
+          </div>
+
+          <p id="simpleMessage" class="tool-message"></p>
+
+          <div id="simpleResult" class="hidden">
+            <div class="tool-preview-grid">
+              <div><strong>Tag</strong> <span id="simpleTag"></span></div>
+              <div><strong>RO</strong> <span id="simpleRO"></span></div>
+              <div><strong>Location</strong> <span id="simpleLocation"></span></div>
+            </div>
+            <div id="simpleToLine" class="simple-to-line hidden"></div>
+
+            <div class="simple-details-toggle" id="simpleDetailsToggle">Details</div>
+            <div id="simpleDetails" class="simple-details hidden">
+              <div><b>Customer:</b> <span id="simpleCustomer"></span></div>
+              <div><b>VIN:</b> <span id="simpleVIN"></span></div>
+              <div><b>Model:</b> <span id="simpleVehicle"></span></div>
+              <div><b>Advisor:</b> <span id="simpleAdvisor"></span></div>
+            </div>
+
+            <div style="margin-top: 16px;">
+              <label>
+                Area
+                <select id="simpleAreaSelect">
+                  <option value="">Select area...</option>
+                </select>
+              </label>
+              <label>
+                Lot
+                <select id="simpleLotSelect">
+                  <option value="">Select lot...</option>
+                </select>
+              </label>
+              <label>
+                Blocking
+                <input id="simpleBlockingInput" class="simple-blocking" type="text" placeholder="Tag (optional)" />
+              </label>
+            </div>
+
+            <div class="simple-finish-row">
+              <button id="simpleFinishButton" type="button" disabled>Finish</button>
+              <button id="simpleCancelButton" type="button" class="small-button secondary">Cancel</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/pages/move-locate/move-locate-simple.js?v=1"></script>
+  </body>
+</html>

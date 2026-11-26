@@ -237,11 +237,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     locationLotSelect.innerHTML = '<option value="">Select lot...</option>';
     if (!area || !groupedLocations[area]) return;
     groupedLocations[area].forEach((loc) => {
+      if (finishMode && loc.remote === true) return;
       const opt = document.createElement("option");
       opt.value = loc.label || "";
       opt.textContent = loc.label || "";
+      opt.dataset.remote = loc.remote === true ? "1" : "";
       locationLotSelect.appendChild(opt);
     });
+  }
+
+  function selectedLotIsBlocked() {
+    const lot = String(locationLotSelect?.value || "").trim();
+    if (!lot) return true;
+    const opt = locationLotSelect?.selectedOptions?.[0];
+    return opt?.dataset.remote === "1";
+  }
+
+  function paintSelectedLot() {
+    if (!pLocation) return;
+    const blocked = selectedLotIsBlocked();
+    if (blocked) {
+      pLocation.style.background = "#fee2e2";
+      pLocation.style.padding = "4px 8px";
+      pLocation.style.borderRadius = "6px";
+      if (finishBtn) finishBtn.disabled = true;
+      if (finishMode) setMsg("Pick an allowed lot. Remote, Annex, Service Drive, and key box are not allowed.", false);
+    } else {
+      pLocation.style.background = "#bbf7d0";
+      pLocation.style.padding = "4px 8px";
+      pLocation.style.borderRadius = "6px";
+      if (finishBtn) finishBtn.disabled = false;
+      if (finishMode) setMsg("");
+    }
   }
 
   function fillPreview(ticket) {
@@ -253,6 +280,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     pModel.textContent = modelValue(ticket);
     pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
     pLocation.textContent = locationValue(ticket);
+    locationBlocksWash(ticket).then((blockMsg) => {
+      if (!pLocation) return;
+      if (blockMsg) {
+        pLocation.style.background = "#fee2e2";
+        pLocation.style.padding = "4px 8px";
+        pLocation.style.borderRadius = "6px";
+        if (finishBtn) finishBtn.disabled = true;
+        if (finishMode) setMsg("Update location. " + blockMsg, false);
+      } else {
+        pLocation.style.background = "#bbf7d0";
+        pLocation.style.padding = "4px 8px";
+        pLocation.style.borderRadius = "6px";
+        if (finishBtn) finishBtn.disabled = false;
+        if (finishMode) setMsg("");
+      }
+    });
+    paintLocationGate(ticket);
     pWaiter.textContent = isWaiterTicket(ticket) ? "Yes" : "No";
     if (waiterCheck) waiterCheck.checked = isWaiterTicket(ticket);
 
@@ -489,15 +533,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       return "Car is at a remote location. Move it to the main shop first.";
     }
 
-    if (label.includes("annex")) {
-      return "Car is at the Annex. Move it to the main shop first.";
-    }
-
-    if (label.includes("key box") || label.includes("keybox") || match.isKeyBox === true) {
-      return "Key is in a key box. Move the car first.";
-    }
-
     return null;
+  }
+
+  async function paintLocationGate(ticket) {
+    if (!pLocation) return;
+    const blockMsg = await locationBlocksWash(ticket);
+    if (blockMsg) {
+      pLocation.style.background = "#fee2e2";
+      pLocation.style.padding = "4px 8px";
+      pLocation.style.borderRadius = "6px";
+      if (finishBtn) finishBtn.disabled = true;
+      if (finishMode) setMsg("Update location. " + blockMsg, false);
+    } else {
+      pLocation.style.background = "#bbf7d0";
+      pLocation.style.padding = "4px 8px";
+      pLocation.style.borderRadius = "6px";
+      if (finishBtn) finishBtn.disabled = false;
+      if (finishMode) setMsg("");
+    }
   }
 
   updateLocationBtn.addEventListener("click", async () => {
@@ -513,7 +567,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     locationPanel.style.display = "block";
   });
 
-  locationAreaSelect.addEventListener("change", populateLotSelect);
+  locationAreaSelect.addEventListener("change", () => {
+    populateLotSelect();
+    paintSelectedLot();
+  });
+  locationLotSelect?.addEventListener("change", paintSelectedLot);
 
   saveBtn.addEventListener("click", async () => {
     await handleSave();
@@ -560,7 +618,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    return { ...ticket, currentLocation: lot, location: lot, currentLocationArea: area || "", blockedByTag: "" };
+    const updated = { ...ticket, currentLocation: lot, location: lot, currentLocationArea: area || "", blockedByTag: "" };
+    await paintLocationGate(updated);
+    return updated;
   }
 
   async function handleSave() {
@@ -592,6 +652,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       freshTicket = await updateLocationIfChanged(freshTicket);
       selectedTicket = freshTicket;
       fillPreview(freshTicket);
+      await paintLocationGate(freshTicket);
 
       if (isPickedUp(freshTicket)) {
         setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
@@ -603,9 +664,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
+      if (selectedLotIsBlocked()) {
+        setMsg("Pick an allowed lot. Remote, Annex, Service Drive, and key box are not allowed.", false);
+        paintSelectedLot();
+        if (finishBtn) finishBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = false;
+        return;
+      }
+
       const blockMsg = await locationBlocksWash(freshTicket);
-      if (blockMsg) {
-        setMsg("Update location. " + blockMsg, false);
+      if (blockMsg || selectedLotIsBlocked()) {
+        setMsg("Update location. Remote lots are not allowed.", false);
         if (saveBtn) saveBtn.disabled = false;
         return;
       }
@@ -770,7 +839,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const blockMsg = await locationBlocksWash(freshTicket);
       if (blockMsg) {
         setMsg("Update location. " + blockMsg, false);
-        if (finishBtn) finishBtn.disabled = false;
+        if (pLocation) {
+          pLocation.style.background = "#fee2e2";
+          pLocation.style.padding = "4px 8px";
+          pLocation.style.borderRadius = "6px";
+        }
+        if (finishBtn) finishBtn.disabled = true;
         if (cancelBtn) cancelBtn.disabled = false;
         return;
       }

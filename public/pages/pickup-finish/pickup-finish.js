@@ -12,8 +12,12 @@ import { getPickupSettings } from "/js/services/firestore/pickup-settings-servic
 import {
   completeRequest,
   markRequestInProgress,
+  releaseRequestInProgress,
 } from "/js/services/firestore/requests-service.js";
-import { resolveNotificationRequest } from "/js/services/firestore/notification-requests-service.js";
+import {
+  resolveNotificationRequest,
+  releaseNotificationRequest,
+} from "/js/services/firestore/notification-requests-service.js";
 
 protectRoute({
   allowedModules: [MODULES.MOVE_LOCATE],
@@ -81,12 +85,13 @@ function renderCard() {
   const currentWhere = [currentArea, currentLot].filter(Boolean).join(" / ") || "No location saved";
 
   let action = "";
-  if (!moving) {
-    action = `<button id="pickupStartMove" type="button">Start Move</button>`;
-  } else if (mine) {
-    action = `<button id="pickupFinishMove" type="button">Finish</button>`;
-  } else {
+  if (moving && !mine) {
     action = `<p>Already being moved by ${escapeHtml(currentRO.moveStartedBy || "another user")}.</p>`;
+  } else {
+    action = `
+      <button id="pickupFinishMove" type="button">Finish</button>
+      <button id="pickupCancelMove" type="button" class="small-button secondary">Cancel</button>
+    `;
   }
 
   card.hidden = false;
@@ -102,8 +107,11 @@ function renderCard() {
     ${action}
   `;
 
-  card.querySelector("#pickupStartMove")?.addEventListener("click", startMove);
   card.querySelector("#pickupFinishMove")?.addEventListener("click", finishMove);
+  card.querySelector("#pickupCancelMove")?.addEventListener("click", cancelMove);
+  if (!moving) {
+    startMove();
+  }
   show("");
 }
 
@@ -229,6 +237,55 @@ async function finishMove() {
   } catch (error) {
     console.error(error);
     show(error?.message || "Could not finish move.");
+  }
+}
+
+async function cancelMove() {
+  const session = getSession();
+  show("Cancelling...");
+
+  try {
+    const fresh = (await getRO(currentRO.id)) || currentRO;
+
+    await updateRO(
+      fresh.id,
+      {
+        moveStatus: "",
+        moveStartedAt: null,
+        moveStartedBy: "",
+        moveStartedByUid: "",
+      },
+      {
+        module: "pickup-finish",
+        eventType: "vehicle_move_cancelled",
+        message: "Pickup move cancelled",
+      },
+    );
+
+    if (requestId) {
+      try {
+        await releaseRequestInProgress(requestId);
+      } catch (error) {
+        console.warn("Could not release request.", error);
+      }
+    }
+
+    if (notificationId) {
+      try {
+        await releaseNotificationRequest(notificationId);
+      } catch (error) {
+        console.warn("Could not release notification.", error);
+      }
+    }
+
+    show("Cancelled. Notification is available again.");
+    card.hidden = true;
+    setTimeout(() => {
+      window.location.href = "/pages/dashboard/index.html";
+    }, 800);
+  } catch (error) {
+    console.error(error);
+    show(error?.message || "Could not cancel.");
   }
 }
 
