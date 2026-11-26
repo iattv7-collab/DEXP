@@ -158,6 +158,13 @@
   flex-wrap: wrap;
 }
 
+.appointments-toolbar #appointmentsSearchInput {
+  height: 29px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
 .appointments-toolbar #appointmentsUploadToggle {
   margin-left: auto;
 }

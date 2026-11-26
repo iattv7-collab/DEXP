@@ -1,0 +1,128 @@
+<!-- public/pages/dispatch/index.html -->
+<!-- New Dispatch module. Existing Operations stays untouched. -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEXP Dispatch</title>
+
+    <link rel="stylesheet" href="/css/core/reset.css" />
+    <link rel="stylesheet" href="/css/core/base.css" />
+    <link rel="stylesheet" href="/css/modules/operations.css?v=4" />
+    <link rel="stylesheet" href="/css/modules/appointments-ops.css?v=9" />
+    <link rel="stylesheet" href="/css/components/date-time-picker.css?v=1" />
+    <link rel="stylesheet" href="/css/modules/dispatch.css?v=1" />
+  </head>
+
+  <body>
+    <main id="dispatchPage" class="operations-shell">
+      <section class="page-section">
+        <div class="page-title-row">
+          <div>
+            <h2>Dispatch</h2>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button
+            id="dispatchLiveTabButton"
+            type="button"
+            class="small-button"
+          >
+            Live
+          </button>
+
+          <button
+            id="dispatchHistoryTabButton"
+            type="button"
+            class="small-button secondary"
+          >
+            History
+          </button>
+
+          <button
+            id="dispatchAppointmentsTabButton"
+            type="button"
+            class="small-button secondary"
+          >
+            Appointments
+          </button>
+        </div>
+      </section>
+
+      <!-- Live board -->
+      <section id="dispatchLiveSection" class="page-section">
+        <div class="dexp-admin-card">
+
+          <div class="action-row" style="margin: 12px 0">
+            <button type="button" class="small-button js-filter" data-filter="all">All</button>
+            <button type="button" class="small-button secondary js-filter" data-filter="unclaimed">Unclaimed</button>
+            <button type="button" class="small-button secondary js-filter" data-filter="overdue">Overdue</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tag / RO</th>
+                  <th>Request</th>
+                  <th>Requested By</th>
+                  <th>Owner</th>
+                  <th>Age</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="dispatchLiveTableBody">
+                <tr>
+                  <td colspan="7">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section id="dispatchHistorySection" class="page-section hidden">
+        <div class="dexp-admin-card">
+          <div class="action-row" style="margin-bottom: 12px">
+            <span style="position:relative; display:inline-flex; align-items:center; gap:6px;">
+              <span id="dispatchHistoryDayLabel" style="font-weight:bold;">Today</span>
+              <button type="button" class="small-button secondary" id="dispatchHistoryDayBtn" title="Pick a day">📅</button>
+              <input type="date" id="dispatchHistoryDayInput" style="position:absolute; left:100%; top:0; opacity:0; width:1px; height:1px; pointer-events:none;" />
+            </span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Tag / RO</th>
+                  <th>Request</th>
+                  <th>Requested By</th>
+                  <th>Finished By</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="dispatchHistoryTableBody">
+                <tr>
+                  <td colspan="7">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Appointments (existing page content loaded here, no changes to appointments itself) -->
+      <section id="operationsAppointmentsSection" class="page-section hidden"></section>
+    </main>
+
+    <script type="module" src="/js/core/app.js"></script>
+    <script type="module" src="/pages/dispatch/dispatch-page.js?v=1"></script>
+  </body>
+</html>

@@ -33,6 +33,7 @@ export const MODULES = {
   SHOP: "shop",
   OPERATIONS: "operations",
   APPOINTMENTS: "appointments",
+  DISPATCH: "dispatch",
 };
 
 export const MODULE_CONFIG = {
@@ -238,6 +239,13 @@ export const MODULE_CONFIG = {
     icon: "event",
     permission: PERMISSIONS.APPOINTMENTS_VIEW,
   },
+
+  [MODULES.DISPATCH]: {
+    label: "Dispatch",
+    route: "/pages/dispatch/index.html",
+    icon: "monitoring",
+    permission: PERMISSIONS.OPERATIONS_VIEW,
+  },
 };
 
 export const CORE_REQUIRED_MODULES = [
@@ -328,5 +336,11 @@ export const SELLABLE_MODULE_GROUPS = [
     id: "appointments",
     label: "Appointments",
     modules: [MODULES.APPOINTMENTS],
+  },
+
+  {
+    id: "dispatch-board",
+    label: "Dispatch",
+    modules: [MODULES.DISPATCH],
   },
 ];

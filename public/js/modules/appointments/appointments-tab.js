@@ -78,6 +78,16 @@ function syncDateInput() {
   if (input) input.value = toDateInputValue(selectedDate);
 }
 
+function formatAppointmentsLabel(yyyyMmDd) {
+  if (!yyyyMmDd) return "Today";
+  const [y, m, d] = String(yyyyMmDd).split("-").map(Number);
+  const today = new Date();
+  if (y === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate()) {
+    return "Today";
+  }
+  return m + "/" + d + "/" + y;
+}
+
 function toDateInputValue(dateStr) {
   const [month, day, year] = String(dateStr || "").split("/");
   if (!month || !day || !year) return "";
@@ -117,9 +127,12 @@ function fromTimeInputValue(value) {
 function renderShell() {
   return `
     <div class="dexp-admin-card appointments-card">
-      <h3>Appointments</h3>
       <div class="action-row appointments-toolbar">
-        <input id="appointmentsDateInput" type="date" value="${escapeHtml(toDateInputValue(selectedDate))}" />
+        <span style="position:relative; display:inline-flex; align-items:center; gap:6px;">
+          <span id="appointmentsDayLabel" style="font-weight:bold;">${escapeHtml(formatAppointmentsLabel(toDateInputValue(selectedDate)))}</span>
+          <button type="button" class="small-button secondary" id="appointmentsDayBtn" title="Pick a day">📅</button>
+          <input id="appointmentsDateInput" type="date" value="${escapeHtml(toDateInputValue(selectedDate))}" style="position:absolute; left:100%; top:0; opacity:0; width:1px; height:1px; pointer-events:none;" />
+        </span>
         <input id="appointmentsSearchInput" type="search" placeholder="Search name, VIN, or phone" />
         <select id="appointmentsAdvisorSelect" class="small-button secondary">
           <option value="all">All</option>
@@ -193,9 +206,15 @@ function renderShell() {
 
 function wire(root) {
 
+  document.getElementById("appointmentsDayBtn")?.addEventListener("click", () => {
+    document.getElementById("appointmentsDateInput")?.showPicker?.();
+  });
+
   document.getElementById("appointmentsDateInput")?.addEventListener("change", (event) => {
     selectedDate = fromDateInputValue(event.target.value) || selectedDate;
     syncDateInput();
+    const label = document.getElementById("appointmentsDayLabel");
+    if (label) label.textContent = formatAppointmentsLabel(event.target.value);
     startWatch();
   });
 
