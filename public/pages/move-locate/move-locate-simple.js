@@ -133,8 +133,20 @@ function fillLots() {
     const opt = document.createElement("option");
     opt.value = lot.label;
     opt.textContent = lot.label;
+    opt.dataset.remote = lot.remote === true ? "1" : "";
     lotSelect.appendChild(opt);
   });
+}
+
+function selectedLotIsRemote() {
+  const opt = lotSelect.selectedOptions?.[0];
+  return opt?.dataset.remote === "1";
+}
+
+function isWashRequest() {
+  const title = String(currentRO?.activeRequestTitle || "").toLowerCase();
+  const type = String(currentRO?.activeRequestType || "").toLowerCase();
+  return title.includes("wash") || type.includes("wash");
 }
 
 async function findVehicle() {
@@ -225,8 +237,20 @@ function destinationReady() {
 }
 
 function updateFinishState() {
-  const ready = destinationReady() && blockingEligible;
+  const remoteBlocked = isWashRequest() && selectedLotIsRemote();
+  const ready = destinationReady() && blockingEligible && !remoteBlocked;
   finishButton.disabled = !ready;
+  if (locationEl) {
+    if (remoteBlocked) {
+      locationEl.style.background = "#fee2e2";
+      locationEl.style.padding = "4px 8px";
+      locationEl.style.borderRadius = "6px";
+      showMessage("Remote lots are not allowed for wash.");
+    } else {
+      locationEl.style.background = "";
+      locationEl.style.padding = "";
+    }
+  }
 }
 
 async function handleFinish() {
@@ -236,6 +260,12 @@ async function handleFinish() {
   const area = areaSelect.value;
   const lot = lotSelect.value;
   const blocking = normalizeTag(blockingInput.value);
+
+  if (isWashRequest() && selectedLotIsRemote()) {
+    showMessage("Remote lots are not allowed for wash.");
+    updateFinishState();
+    return;
+  }
 
   try {
     if (currentRO.moveStatus !== "moving") {

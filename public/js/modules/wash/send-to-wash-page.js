@@ -165,7 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     alreadyInWashMsg.style.display = "none";
     if (keyAlreadyAtWashCheck) keyAlreadyAtWashCheck.checked = false;
     if (saveBtn) saveBtn.disabled = false;
-    if (locationPanel) locationPanel.style.display = "none";
+    if (locationPanel && !finishMode) locationPanel.style.display = "none";
     if (locationAreaSelect) locationAreaSelect.innerHTML = '<option value="">Select area...</option>';
     if (locationLotSelect) locationLotSelect.innerHTML = '<option value="">Select lot...</option>';
     if (locationBlockingInput) locationBlockingInput.value = "";
@@ -261,13 +261,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       pLocation.style.padding = "4px 8px";
       pLocation.style.borderRadius = "6px";
       if (finishBtn) finishBtn.disabled = true;
-      if (finishMode) setMsg("Pick an allowed lot. Remote, Annex, Service Drive, and key box are not allowed.", false);
+      if (finishMode) setMsg("Pick a non-remote lot.", false);
     } else {
       pLocation.style.background = "#bbf7d0";
       pLocation.style.padding = "4px 8px";
       pLocation.style.borderRadius = "6px";
-      if (finishBtn) finishBtn.disabled = false;
-      if (finishMode) setMsg("");
+      if (finishMode) {
+        paintSelectedLot();
+      } else if (finishBtn) {
+        finishBtn.disabled = false;
+      }
     }
   }
 
@@ -280,28 +283,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     pModel.textContent = modelValue(ticket);
     pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
     pLocation.textContent = locationValue(ticket);
-    locationBlocksWash(ticket).then((blockMsg) => {
-      if (!pLocation) return;
-      if (blockMsg) {
-        pLocation.style.background = "#fee2e2";
-        pLocation.style.padding = "4px 8px";
-        pLocation.style.borderRadius = "6px";
-        if (finishBtn) finishBtn.disabled = true;
-        if (finishMode) setMsg("Update location. " + blockMsg, false);
-      } else {
-        pLocation.style.background = "#bbf7d0";
-        pLocation.style.padding = "4px 8px";
-        pLocation.style.borderRadius = "6px";
-        if (finishBtn) finishBtn.disabled = false;
-        if (finishMode) setMsg("");
-      }
-    });
-    paintLocationGate(ticket);
+    if (finishMode) {
+      if (finishBtn) finishBtn.disabled = true;
+    }
     pWaiter.textContent = isWaiterTicket(ticket) ? "Yes" : "No";
     if (waiterCheck) waiterCheck.checked = isWaiterTicket(ticket);
 
     if (keyAlreadyAtWashCheck) keyAlreadyAtWashCheck.checked = false;
-    if (locationPanel) locationPanel.style.display = "none";
+    if (locationPanel && !finishMode) locationPanel.style.display = "none";
 
     return applyPreviewLocks(ticket);
   }
@@ -811,8 +800,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      fillPreview({ id: roSnap.id, ...roSnap.data() });
-      setMsg("Take the key to wash, then Finish.");
+      const ticket = { id: roSnap.id, ...roSnap.data() };
+      fillPreview(ticket);
+      if (!Object.keys(groupedLocations).length) {
+        await loadLocationCatalog();
+      }
+      if (locationPanel) locationPanel.style.display = "block";
+
+      const blockMsg = await locationBlocksWash(ticket);
+      if (blockMsg) {
+        if (pLocation) {
+          pLocation.style.background = "#fee2e2";
+          pLocation.style.padding = "4px 8px";
+          pLocation.style.borderRadius = "6px";
+        }
+        if (finishBtn) finishBtn.disabled = true;
+        setMsg("Current lot is remote. Pick a non-remote lot.");
+      } else {
+        paintSelectedLot();
+        setMsg("Pick a non-remote lot, then Finish.");
+      }
     } catch (error) {
       console.error(error);
       setMsg(error?.message || "Could not open this key.", false);
@@ -837,8 +844,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       fillPreview(freshTicket);
 
       const blockMsg = await locationBlocksWash(freshTicket);
-      if (blockMsg) {
-        setMsg("Update location. " + blockMsg, false);
+      if (blockMsg || selectedLotIsBlocked()) {
+        setMsg("Update location. Remote lots are not allowed.", false);
         if (pLocation) {
           pLocation.style.background = "#fee2e2";
           pLocation.style.padding = "4px 8px";
@@ -851,7 +858,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (isPickedUp(freshTicket)) {
         setMsg("This vehicle is already picked up. It cannot be sent to wash.", false);
-        if (finishBtn) finishBtn.disabled = false;
+        if (finishBtn && !finishMode) finishBtn.disabled = false;
+      if (finishMode) paintSelectedLot();
         if (cancelBtn) cancelBtn.disabled = false;
         return;
       }
