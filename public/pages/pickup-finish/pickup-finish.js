@@ -17,6 +17,8 @@ import {
 import {
   resolveNotificationRequest,
   releaseNotificationRequest,
+  openNotificationRequest,
+  markNotificationInProgress,
 } from "/js/services/firestore/notification-requests-service.js";
 
 protectRoute({
@@ -157,6 +159,10 @@ async function startMove() {
       markRequestInProgress(requestId).catch((error) => {
         console.warn("Could not mark request in progress.", error);
       });
+    }
+    if (notificationId) {
+      openNotificationRequest(notificationId).catch(() => {});
+      markNotificationInProgress(notificationId).catch(() => {});
     }
   } catch (error) {
     console.error(error);

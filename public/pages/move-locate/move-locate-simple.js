@@ -30,6 +30,8 @@ import {
 import {
   resolveNotificationRequest,
   releaseNotificationRequest,
+  openNotificationRequest,
+  markNotificationInProgress,
 } from "/js/services/firestore/notification-requests-service.js";
 
 protectRoute({ allowedModules: [MODULES.MOVE_LOCATE] });
@@ -377,6 +379,10 @@ function loadRouteParams() {
     searchInput.value = tag;
     searchButton.disabled = false;
     setTimeout(findVehicle, 300);
+  }
+  if (activeNotificationId) {
+    openNotificationRequest(activeNotificationId).catch(() => {});
+    markNotificationInProgress(activeNotificationId).catch(() => {});
   }
 }
 

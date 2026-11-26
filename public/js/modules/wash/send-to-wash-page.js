@@ -266,11 +266,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       pLocation.style.background = "#bbf7d0";
       pLocation.style.padding = "4px 8px";
       pLocation.style.borderRadius = "6px";
-      if (finishMode) {
-        paintSelectedLot();
-      } else if (finishBtn) {
-        finishBtn.disabled = false;
-      }
+      if (finishBtn) finishBtn.disabled = false;
+      if (finishMode) setMsg("");
     }
   }
 
