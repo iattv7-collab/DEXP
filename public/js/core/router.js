@@ -153,7 +153,7 @@ async function sendOwnerToOpenMove(session) {
   const tag = String(openMove.tagNumber || openMove.tag || "").trim();
 
   window.location.replace(
-    `/pages/move-locate/move-locate.html?tagNumber=${encodeURIComponent(tag)}`,
+    `/pages/move-locate/move-locate-simple.html?tagNumber=${encodeURIComponent(tag)}`,
   );
 
   return true;

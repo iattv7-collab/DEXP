@@ -94,7 +94,7 @@ export async function createRequestType(data = {}) {
 
     route:
       String(data.route || "").trim() ||
-      "/pages/move-locate/move-locate.html",
+      "/pages/move-locate/move-locate-simple.html",
 
     active: data.active !== false,
     sortOrder: Number(data.sortOrder || 0),

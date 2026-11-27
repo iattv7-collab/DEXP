@@ -24,7 +24,7 @@ import {
   formatAreaLabel,
   formatAreaLot,
 } from "./move-locate-helpers.js";
-import { getROTag, getROArea, getROLot, findROByTag } from "./move-locate-move.js";
+import { getROTag, getROArea, getROLot, findROByTag, buildBlockedByChain } from "./move-locate-move.js";
 import {
   completeRequest,
   releaseRequestInProgress,
@@ -46,6 +46,7 @@ const tagEl = document.getElementById("simpleTag");
 const roEl = document.getElementById("simpleRO");
 const locationEl = document.getElementById("simpleLocation");
 const toLineEl = document.getElementById("simpleToLine");
+const blockedByEl = document.getElementById("simpleBlockedBy");
 const detailsToggle = document.getElementById("simpleDetailsToggle");
 const detailsEl = document.getElementById("simpleDetails");
 const customerEl = document.getElementById("simpleCustomer");
@@ -213,6 +214,14 @@ function renderResult(ro) {
     toLineEl.classList.remove("hidden");
   } else {
     toLineEl.classList.add("hidden");
+  }
+
+  const chain = buildBlockedByChain(ro, lastROs);
+  if (chain.length && blockedByEl) {
+    blockedByEl.textContent = `Blocked by: ${chain.join(", ")}`;
+    blockedByEl.classList.remove("hidden");
+  } else if (blockedByEl) {
+    blockedByEl.classList.add("hidden");
   }
 
   customerEl.textContent = ro.customerName || "";

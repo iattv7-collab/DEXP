@@ -966,7 +966,10 @@ function renderNotificationCard(item) {
 }
 
 function buildNotificationRoute(notification) {
-  const route = String(notification.route || "").trim();
+  let route = String(notification.route || "").trim();
+  if (route.includes("/pages/move-locate/move-locate.html")) {
+    route = "/pages/move-locate/move-locate-simple.html";
+  }
 
   const routeParams =
     typeof notification.routeParams === "object" && notification.routeParams
