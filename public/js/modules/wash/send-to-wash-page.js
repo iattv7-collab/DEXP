@@ -250,7 +250,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function selectedLotIsBlocked() {
     const lot = String(locationLotSelect?.value || "").trim();
-    if (!lot) return true;
+    if (!lot) return false;
     const opt = locationLotSelect?.selectedOptions?.[0];
     return opt?.dataset.remote === "1";
   }
