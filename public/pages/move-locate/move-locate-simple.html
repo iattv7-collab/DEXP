@@ -70,6 +70,25 @@
 
           <p id="simpleMessage" class="tool-message"></p>
 
+          <div id="simpleAddTagPanel" class="update-location-panel hidden">
+            <div class="update-location-title">Add Tag</div>
+            <label>
+              Tag Number
+              <input id="simpleAddTagInput" type="text" placeholder="Tag #" />
+            </label>
+            <label>
+              Advisor
+              <select id="simpleAddTagAdvisor">
+                <option value="">Select advisor...</option>
+              </select>
+            </label>
+            <label>
+              RO Number (optional)
+              <input id="simpleAddTagRo" type="text" placeholder="RO # if you have it" />
+            </label>
+            <button id="simpleSaveAddTag" type="button">Save Tag</button>
+          </div>
+
           <div id="simpleResult" class="hidden">
             <div class="tool-preview-grid">
               <div><strong>Tag</strong> <span id="simpleTag"></span></div>
@@ -115,6 +134,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate-simple.js?v=1"></script>
+    <script type="module" src="/pages/move-locate/move-locate-simple.js?v=2"></script>
   </body>
 </html>

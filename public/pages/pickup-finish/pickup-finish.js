@@ -9,6 +9,7 @@ import { ROS_FIELDS } from "/js/config/ros-fields.js";
 
 import { findActiveROByTag, getRO, updateRO, getDealerROs } from "/js/services/firestore/ros-service.js";
 import { getPickupSettings } from "/js/services/firestore/pickup-settings-service.js";
+import { buildBlockedByChain } from "/pages/move-locate/move-locate-move.js";
 import {
   completeRequest,
   markRequestInProgress,
@@ -68,6 +69,9 @@ async function loadFinish() {
       return;
     }
 
+    const allROs = await getDealerROs();
+    window.pickupBlockedBy = buildBlockedByChain(currentRO, allROs).join(", ") || "—";
+
     renderCard();
   } catch (error) {
     console.error(error);
@@ -105,6 +109,7 @@ function renderCard() {
       <div><span>Customer</span><br><strong>${escapeHtml(currentRO.customerName || "")}</strong></div>
     </div>
     <p>Current location: <strong>${escapeHtml(currentWhere)}</strong></p>
+    <p>Blocked by: <strong>${escapeHtml(window.pickupBlockedBy || "—")}</strong></p>
     <p>Destination: <strong>${escapeHtml(destination.destinationArea || "")} / ${escapeHtml(destination.destinationLabel || "")}</strong></p>
     ${action}
   `;

@@ -11,7 +11,9 @@ import {
   findActiveROByTag,
   findActiveROByNumber,
   updateRO,
+  createRO,
 } from "/js/services/firestore/ros-service.js";
+import { getAllUsers } from "/js/services/firestore/users-service.js";
 import {
   getActiveLocations,
   groupLocationsByArea,
@@ -55,6 +57,11 @@ const lotSelect = document.getElementById("simpleLotSelect");
 const blockingInput = document.getElementById("simpleBlockingInput");
 const finishButton = document.getElementById("simpleFinishButton");
 const cancelButton = document.getElementById("simpleCancelButton");
+const addTagPanel = document.getElementById("simpleAddTagPanel");
+const addTagInput = document.getElementById("simpleAddTagInput");
+const addTagAdvisor = document.getElementById("simpleAddTagAdvisor");
+const addTagRo = document.getElementById("simpleAddTagRo");
+const saveAddTagButton = document.getElementById("simpleSaveAddTag");
 
 let currentRO = null;
 let groupedLocations = {};
@@ -97,6 +104,9 @@ function wireEvents() {
   blockingInput.addEventListener("input", onBlockingInput);
   finishButton.addEventListener("click", handleFinish);
   cancelButton.addEventListener("click", handleCancel);
+  if (saveAddTagButton) {
+    saveAddTagButton.addEventListener("click", saveAddTag);
+  }
 }
 
 async function loadLocations() {
@@ -164,9 +174,11 @@ async function findVehicle() {
 
   if (!ro) {
     showMessage("No active RO found.");
+    showAddTag(tag);
     return;
   }
 
+  hideAddTag();
   currentRO = ro;
   renderResult(ro);
   resultEl.classList.remove("hidden");
@@ -383,6 +395,77 @@ function loadRouteParams() {
   if (activeNotificationId) {
     openNotificationRequest(activeNotificationId).catch(() => {});
     markNotificationInProgress(activeNotificationId).catch(() => {});
+  }
+}
+
+async function showAddTag(tag) {
+  if (!addTagPanel) return;
+  addTagPanel.classList.remove("hidden");
+  if (addTagInput) addTagInput.value = tag || "";
+  if (addTagRo) addTagRo.value = "";
+  if (addTagAdvisor) {
+    addTagAdvisor.innerHTML = `<option value="">Select advisor...</option>`;
+    try {
+      const users = await getAllUsers();
+      users
+        .filter((u) => u.role === "advisor" && u.active !== false)
+        .sort((a, b) =>
+          String(a.displayName || a.companyId || "").localeCompare(
+            String(b.displayName || b.companyId || ""),
+          ),
+        )
+        .forEach((advisor) => {
+          const option = document.createElement("option");
+          option.value = String(advisor.companyId || "").trim();
+          option.textContent = `${advisor.displayName || "Advisor"} (${advisor.companyId || ""})`;
+          addTagAdvisor.appendChild(option);
+        });
+    } catch (err) {
+      console.error(err);
+      showMessage("Could not load advisors.");
+    }
+  }
+}
+
+function hideAddTag() {
+  addTagPanel?.classList.add("hidden");
+}
+
+async function saveAddTag() {
+  const tagNumber = String(addTagInput?.value || "").trim();
+  const advisorNumber = String(addTagAdvisor?.value || "").trim();
+  const roNumber = String(addTagRo?.value || "").trim();
+
+  if (!tagNumber) {
+    showMessage("Tag number is required.");
+    return;
+  }
+  if (!advisorNumber) {
+    showMessage("Advisor number is required.");
+    return;
+  }
+
+  try {
+    await createRO(
+      {
+        [ROS_FIELDS.roNumber]: roNumber,
+        [ROS_FIELDS.tagNumber]: tagNumber,
+        [ROS_FIELDS.advisorCompanyId]: advisorNumber,
+        [ROS_FIELDS.scanSource]: "move-locate-tag",
+      },
+      {
+        eventType: "tag_entered",
+        module: "move-locate",
+        message: "Tag entered from Move & Locate",
+      },
+    );
+    hideAddTag();
+    showMessage(`Tag ${tagNumber} added.`);
+    searchInput.value = "";
+    searchButton.disabled = true;
+  } catch (err) {
+    const msg = err?.message || "Could not add tag.";
+    showMessage(msg.includes("already exists") ? `Tag ${tagNumber} already exists. Not added.` : msg);
   }
 }
 
