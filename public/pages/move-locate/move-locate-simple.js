@@ -62,6 +62,7 @@ const addTagInput = document.getElementById("simpleAddTagInput");
 const addTagAdvisor = document.getElementById("simpleAddTagAdvisor");
 const addTagRo = document.getElementById("simpleAddTagRo");
 const saveAddTagButton = document.getElementById("simpleSaveAddTag");
+const addTagCancelButton = document.getElementById("simpleAddTagCancel");
 
 let currentRO = null;
 let groupedLocations = {};
@@ -105,7 +106,23 @@ function wireEvents() {
   finishButton.addEventListener("click", handleFinish);
   cancelButton.addEventListener("click", handleCancel);
   if (saveAddTagButton) {
+    saveAddTagButton.disabled = true;
     saveAddTagButton.addEventListener("click", saveAddTag);
+  }
+  if (addTagAdvisor) {
+    addTagAdvisor.addEventListener("change", () => {
+      if (saveAddTagButton) {
+        saveAddTagButton.disabled = !addTagAdvisor.value;
+      }
+    });
+  }
+  if (addTagCancelButton) {
+    addTagCancelButton.addEventListener("click", () => {
+      hideAddTag();
+      clearMessage();
+      searchInput.value = "";
+      searchButton.disabled = true;
+    });
   }
 }
 
@@ -403,6 +420,7 @@ async function showAddTag(tag) {
   addTagPanel.classList.remove("hidden");
   if (addTagInput) addTagInput.value = tag || "";
   if (addTagRo) addTagRo.value = "";
+  if (saveAddTagButton) saveAddTagButton.disabled = true;
   if (addTagAdvisor) {
     addTagAdvisor.innerHTML = `<option value="">Select advisor...</option>`;
     try {

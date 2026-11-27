@@ -54,6 +54,37 @@
         font-weight: 700;
         margin: 6px 0;
       }
+      #simpleAddTagPanel label,
+      #simpleResult label {
+        display: block;
+        margin-bottom: 10px;
+      }
+      #simpleResult label input,
+      #simpleResult label select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+      }
+      #simpleAddTagPanel input,
+      #simpleAddTagPanel select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+      }
+      @media (max-width: 600px) {
+        #simpleAddTagPanel {
+          padding: 8px 4px;
+        }
+        .simple-finish-row,
+        #simpleAddTagPanel > div[style] {
+          flex-wrap: wrap;
+          justify-content: stretch;
+        }
+        #simpleAddTagPanel button {
+          flex: 1;
+          min-width: 120px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -68,10 +99,10 @@
             <button id="simpleSearchButton" type="button" disabled>Search</button>
           </div>
 
-          <p id="simpleMessage" class="tool-message"></p>
+          <p id="simpleMessage" class="tool-message" style="font-size:1.15rem; font-weight:700; color:#c0392b;"></p>
 
           <div id="simpleAddTagPanel" class="update-location-panel hidden">
-            <div class="update-location-title">Add Tag</div>
+            <div class="update-location-title">Add Tag?</div>
             <label>
               Tag Number
               <input id="simpleAddTagInput" type="text" placeholder="Tag #" />
@@ -86,7 +117,10 @@
               RO Number (optional)
               <input id="simpleAddTagRo" type="text" placeholder="RO # if you have it" />
             </label>
-            <button id="simpleSaveAddTag" type="button">Save Tag</button>
+            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:12px;">
+              <button id="simpleSaveAddTag" type="button">Save Tag</button>
+              <button id="simpleAddTagCancel" type="button" class="small-button secondary">Cancel</button>
+            </div>
           </div>
 
           <div id="simpleResult" class="hidden">
@@ -119,7 +153,7 @@
                 </select>
               </label>
               <label>
-                Blocking
+                Is Blocking Tag
                 <input id="simpleBlockingInput" class="simple-blocking" type="text" placeholder="Tag (optional)" />
               </label>
             </div>
@@ -134,6 +168,6 @@
     </main>
 
     <script type="module" src="/js/core/app.js"></script>
-    <script type="module" src="/pages/move-locate/move-locate-simple.js?v=2"></script>
+    <script type="module" src="/pages/move-locate/move-locate-simple.js?v=5"></script>
   </body>
 </html>

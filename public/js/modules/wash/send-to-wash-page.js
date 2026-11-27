@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const pModel = $("pModel");
   const pWashStatus = $("pWashStatus");
   const pLocation = $("pLocation");
+  const pBlockedBy = $("pBlockedBy");
   const pWaiter = $("pWaiter");
   const waiterCheck = $("waiterCheck");
 
@@ -175,6 +176,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pModel.textContent = "";
     pWashStatus.textContent = "";
     pLocation.textContent = "";
+    if (pBlockedBy) pBlockedBy.textContent = "";
     pWaiter.textContent = "";
     if (waiterCheck) waiterCheck.checked = false;
 
@@ -280,6 +282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     pModel.textContent = modelValue(ticket);
     pWashStatus.textContent = washStatusOf(ticket) || "not in wash";
     pLocation.textContent = locationValue(ticket);
+    if (pBlockedBy) pBlockedBy.textContent = clean(ticket.blockedByTag) || "—";
     if (finishMode) {
       if (finishBtn) finishBtn.disabled = true;
     }

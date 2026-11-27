@@ -53,7 +53,7 @@ export const MODULE_CONFIG = {
 
   [MODULES.MOVE_LOCATE]: {
     label: "Move & Locate",
-    route: "/pages/move-locate/move-locate.html",
+    route: "/pages/move-locate/move-locate-simple.html",
     icon: "location_on",
     permission: PERMISSIONS.MOVE_LOCATE_VIEW,
   },
