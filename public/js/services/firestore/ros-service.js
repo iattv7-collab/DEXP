@@ -383,6 +383,26 @@ async function cancelOpenRequestsForArchivedRO(roId, session) {
       });
     }
   }
+
+  // Also expire the standalone Key not at wash advisor alert for this RO
+  const keyMissingAlertId = `key-missing-advisor-${roId}`;
+  try {
+    const keyMissingRef = doc(db, "notificationRequests", keyMissingAlertId);
+    const keyMissingSnap = await getDoc(keyMissingRef);
+    if (keyMissingSnap.exists() && keyMissingSnap.data()?.status === "active") {
+      await updateDoc(keyMissingRef, {
+        status: "expired",
+        resolvedAt: serverTimestamp(),
+        resolvedAtMs: nowMs,
+        resolvedBy: session.uid || "",
+        updatedAt: serverTimestamp(),
+        updatedAtMs: nowMs,
+        updatedBy: session.uid || "",
+      });
+    }
+  } catch {
+    // ignore if it does not exist
+  }
 }
 
 export async function restoreArchivedRO(roId, options = {}) {

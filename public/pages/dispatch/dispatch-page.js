@@ -24,6 +24,7 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  arrayUnion,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { db } from "/js/services/firebase/firestore.js";
 
@@ -105,18 +106,19 @@ async function initializeDispatchPage() {
       event.stopPropagation();
       const id = finishBtn.dataset.id;
       if (!confirm("Force finish this request?")) return;
-    try {
-      await completeRequest(id);
-      const session = getSession();
-      await updateDoc(doc(db, "requests", id), {
-        forceFinished: true,
-        forceFinishedBy: session?.uid || "",
-        forceFinishedByName: session?.displayName || session?.email || "",
-        forceFinishedAtMs: Date.now(),
-      });
-    } catch (err) {
-      alert(err?.message || "Could not finish.");
-    }
+      try {
+        await completeRequest(id);
+        const session = getSession();
+        await updateDoc(doc(db, "requests", id), {
+          forceFinished: true,
+          forceFinishedBy: session?.uid || "",
+          forceFinishedByName: session?.displayName || session?.email || "",
+          forceFinishedAtMs: Date.now(),
+        });
+        await addHistoryStep(id, "Force Finished", session?.displayName || session?.email || "");
+      } catch (err) {
+        alert(err?.message || "Could not finish.");
+      }
       return;
     }
 
@@ -128,6 +130,8 @@ async function initializeDispatchPage() {
       if (!confirm("Cancel this request?")) return;
       try {
         await cancelRequest(request);
+        const session = getSession();
+        await addHistoryStep(id, "Cancelled", session?.displayName || session?.email || "");
       } catch (err) {
         alert(err?.message || "Could not cancel.");
       }
@@ -139,10 +143,35 @@ async function initializeDispatchPage() {
   historyTableBody.addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-id]");
     if (!row) return;
+    if (event.target.closest("button")) return;
 
     const id = row.dataset.id;
     expandedRequestId = expandedRequestId === id ? "" : id;
     renderHistory();
+  });
+
+  historyTableBody.addEventListener("click", async (event) => {
+    const unfinishBtn = event.target.closest(".js-unfinish");
+    if (!unfinishBtn) return;
+
+    event.stopPropagation();
+    const id = unfinishBtn.dataset.id;
+    if (!confirm("Send this back to the valets?")) return;
+
+    try {
+      const session = getSession();
+      await updateDoc(doc(db, "requests", id), {
+        status: REQUEST_STATUS.OPEN,
+        reopened: true,
+        reopenedBy: session?.uid || "",
+        reopenedByName: session?.displayName || session?.email || "",
+        reopenedAtMs: Date.now(),
+        overdue: true,
+      });
+      await addHistoryStep(id, "Sent to Valets", session?.displayName || session?.email || "");
+    } catch (err) {
+      alert(err?.message || "Could not send back.");
+    }
   });
 
   historyDayBtn?.addEventListener("click", () => {
@@ -170,6 +199,18 @@ async function initializeDispatchPage() {
   initAppointmentsTab({
     getDealerROs: () => dealerROs,
     getNotificationGroups: () => [],
+  });
+}
+
+async function addHistoryStep(requestId, action, byName) {
+  if (!requestId) return;
+  const ref = doc(db, "requests", requestId);
+  await updateDoc(ref, {
+    history: arrayUnion({
+      action,
+      by: byName || "",
+      at: Date.now(),
+    }),
   });
 }
 
@@ -255,8 +296,8 @@ function renderLiveRow(request) {
   const rowClass = overdue
     ? "dispatch-row-overdue"
     : owner
-    ? "dispatch-row-progress"
-    : "dispatch-row-unclaimed";
+      ? "dispatch-row-progress"
+      : "dispatch-row-unclaimed";
 
   const expanded = expandedRequestId === request.id;
   const historyHtml = expanded ? renderRequestHistory(request) : "";
@@ -284,61 +325,73 @@ function renderRequestHistory(request) {
   if (request.createdAtMs) {
     steps.push(
       "Created by " +
-        escapeHtml(request.requestedByName || "someone") +
-        " at " +
-        escapeHtml(formatDateTime(request.createdAtMs)),
+      escapeHtml(request.requestedByName || "someone") +
+      " at " +
+      escapeHtml(formatDateTime(request.createdAtMs)),
     );
   }
   if (request.openedAtMs || request.openedByName) {
     steps.push(
       "Opened by " +
-        escapeHtml(request.openedByName || "") +
-        " at " +
-        escapeHtml(formatDateTime(request.openedAtMs)),
+      escapeHtml(request.openedByName || "") +
+      " at " +
+      escapeHtml(formatDateTime(request.openedAtMs)),
     );
   }
   if (request.startedAtMs || request.startedByName) {
     steps.push(
       "Started by " +
-        escapeHtml(request.startedByName || "") +
-        " at " +
-        escapeHtml(formatDateTime(request.startedAtMs)),
+      escapeHtml(request.startedByName || "") +
+      " at " +
+      escapeHtml(formatDateTime(request.startedAtMs)),
     );
   }
   if (request.completedAtMs || request.completedByName) {
     if (request.forceFinished) {
       steps.push(
         "Force finished by " +
-          escapeHtml(request.forceFinishedByName || request.completedByName || "") +
-          " at " +
-          escapeHtml(formatDateTime(request.forceFinishedAtMs || request.completedAtMs)),
+        escapeHtml(request.forceFinishedByName || request.completedByName || "") +
+        " at " +
+        escapeHtml(formatDateTime(request.forceFinishedAtMs || request.completedAtMs)),
       );
     } else {
       steps.push(
         "Completed by " +
-          escapeHtml(request.completedByName || "") +
-          " at " +
-          escapeHtml(formatDateTime(request.completedAtMs)),
+        escapeHtml(request.completedByName || "") +
+        " at " +
+        escapeHtml(formatDateTime(request.completedAtMs)),
       );
     }
   }
   if (request.cancelledAtMs || request.cancelledByName) {
     steps.push(
       "Cancelled by " +
-        escapeHtml(request.cancelledByName || "") +
-        " at " +
-        escapeHtml(formatDateTime(request.cancelledAtMs)),
+      escapeHtml(request.cancelledByName || "") +
+      " at " +
+      escapeHtml(formatDateTime(request.cancelledAtMs)),
     );
   }
-if (request.reopenedAtMs || request.reopenedByName) {
-  steps.push(
-    "Sent to valets by " +
+  if (request.reopenedAtMs || request.reopenedByName) {
+    steps.push(
+      "Sent to valets by " +
       escapeHtml(request.reopenedByName || "Dispatch") +
       " at " +
       escapeHtml(formatDateTime(request.reopenedAtMs)) +
       " (marked overdue)",
-  );
-}
+    );
+  }
+
+  if (Array.isArray(request.history)) {
+    request.history.forEach((step) => {
+      steps.push(
+        escapeHtml(step.action || "") +
+        " — " +
+        escapeHtml(step.by || "") +
+        " — " +
+        escapeHtml(formatDateTime(step.at))
+      );
+    });
+  }
 
   if (!steps.length) {
     steps.push("No history yet.");

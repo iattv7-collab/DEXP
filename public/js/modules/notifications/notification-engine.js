@@ -548,11 +548,7 @@ function getVisibleNotifications(requests = [], session) {
       return false;
     }
 
-    const isRequestAlert =
-      String(item.module || "").trim() === "requests" ||
-      String(item.sourceType || "").trim() === "request";
-
-    if (item.openedBy && !isRequestAlert) {
+    if (item.openedBy) {
       return false;
     }
 

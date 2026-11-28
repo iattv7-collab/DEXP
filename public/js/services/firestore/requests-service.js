@@ -3,6 +3,7 @@
 
 import {
   addDoc,
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -294,6 +295,11 @@ export async function markRequestInProgress(requestId) {
 
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
+    history: arrayUnion({
+      action: "Opened",
+      by: session.displayName || session.email || "",
+      at: Date.now(),
+    }),
   });
 
   const requestSnap = await getDoc(requestRef);
@@ -340,6 +346,11 @@ export async function releaseRequestInProgress(requestId) {
 
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
+    history: arrayUnion({
+      action: "Completed",
+      by: session.displayName || session.email || "",
+      at: Date.now(),
+    }),
   });
 }
 
@@ -415,6 +426,11 @@ export async function completeRequest(requestId) {
 
     updatedAt: serverTimestamp(),
     updatedAtMs: Date.now(),
+    history: arrayUnion({
+      action: "Cancelled",
+      by: session.displayName || session.email || "",
+      at: Date.now(),
+    }),
   });
 
   const requestSnap = await getDoc(requestRef);
